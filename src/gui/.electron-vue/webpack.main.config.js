@@ -6,9 +6,11 @@ const path = require('path')
 const { dependencies } = require('../package.json')
 const webpack = require('webpack')
 
-const BabiliWebpackPlugin = require('babili-webpack-plugin')
+const TerserPlugin = require('terser-webpack-plugin')
 
 let mainConfig = {
+  // TODO: Turn this off for prod
+  devtool: 'eval-source-map',
   entry: {
     main: path.join(__dirname, '../src/main/index.js')
   },
@@ -43,13 +45,15 @@ let mainConfig = {
   resolve: {
     extensions: ['.js', '.json', '.node']
   },
-  target: 'electron-main'
+  target: 'electron-main',
+  mode: 'production'
 }
 
 /**
  * Adjust mainConfig for development settings
  */
 if (process.env.NODE_ENV !== 'production') {
+  mainConfig.mode = 'development'
   mainConfig.plugins.push(
     new webpack.DefinePlugin({
       '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`
@@ -62,7 +66,7 @@ if (process.env.NODE_ENV !== 'production') {
  */
 if (process.env.NODE_ENV === 'production') {
   mainConfig.plugins.push(
-    new BabiliWebpackPlugin(),
+    new TerserPlugin(),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': '"production"'
     })

@@ -8,6 +8,7 @@ const { spawn } = require('child_process')
 const webpack = require('webpack')
 const WebpackDevServer = require('webpack-dev-server')
 const webpackHotMiddleware = require('webpack-hot-middleware')
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const mainConfig = require('./webpack.main.config')
 const rendererConfig = require('./webpack.renderer.config')
@@ -48,32 +49,53 @@ function startRenderer () {
       heartbeat: 2500 
     })
 
-    compiler.plugin('compilation', compilation => {
-      compilation.plugin('html-webpack-plugin-after-emit', (data, cb) => {
-        hotMiddleware.publish({ action: 'reload' })
-        cb()
-      })
-    })
+    compiler.hooks.compilation.tap('renderer', compilation => {
+        HtmlWebpackPlugin.getHooks(compilation).afterEmit.tapAsync('renderer', (data, cb) => {
+            hotMiddleware.publish({ action: 'reload' })
+            cb();
+        });
+    });
 
-    compiler.plugin('done', stats => {
-      logStats('Renderer', stats)
-    })
+    //compiler.plugin('done', stats => {
+    //  logStats('Renderer', stats)
+    //})
 
     const server = new WebpackDevServer(
-      compiler,
       {
-        contentBase: path.join(__dirname, '../'),
-        quiet: true,
-        before (app, ctx) {
-          app.use(hotMiddleware)
-          ctx.middleware.waitUntilValid(() => {
+        static: {
+            directory: path.join(__dirname, '../'),
+        },
+        hot: true,
+        port: 9080,
+        setupMiddlewares(middlewares, devServer) {
+          //middlewares.push(hotMiddleware)
+          devServer.middleware.waitUntilValid(() => {
             resolve()
           })
+          return middlewares;
         }
-      }
+        //before (app, ctx) {
+        //  app.use(hotMiddleware)
+        //  ctx.middleware.waitUntilValid(() => {
+        //    resolve()
+        //  })
+        //}
+      },
+      //{
+      //  contentBase: path.join(__dirname, '../'),
+      //  hot: true,
+      //  setupMiddlewares(middlewares, devServer) {
+      //    //middlewares.push(hotMiddleware)
+      //    devServer.middleware.waitUntilValid(() => {
+      //      resolve()
+      //    })
+      //  }
+      //},
+      compiler
     )
 
-    server.listen(9080)
+    // TODO: do something with the promise returned here
+    server.start()
   })
 }
 
@@ -83,11 +105,11 @@ function startMain () {
 
     const compiler = webpack(mainConfig)
 
-    compiler.plugin('watch-run', (compilation, done) => {
-      logStats('Main', chalk.white.bold('compiling...'))
-      hotMiddleware.publish({ action: 'compiling' })
-      done()
-    })
+    //compiler.plugin('watch-run', (compilation, done) => {
+    //  logStats('Main', chalk.white.bold('compiling...'))
+    //  hotMiddleware.publish({ action: 'compiling' })
+    //  done()
+    //})
 
     compiler.watch({}, (err, stats) => {
       if (err) {

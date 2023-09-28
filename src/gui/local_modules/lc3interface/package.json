@@ -1,15 +1,15 @@
 {
     "name": "lc3interface",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "description": "LC-3 Backend",
     "gypfile": true,
     "main": "./build/Release/lc3interface",
     "license": "MIT",
     "dependencies": {
-        "nan": "^2.7.0",
+        "nan": "^2.18.0",
         "prebuild": "^12.1.0"
     },
     "devDependencies": {
-        "electron-rebuild": "^1.6.0"
+        "@electron/rebuild": "^3.3.0"
     }
 }
