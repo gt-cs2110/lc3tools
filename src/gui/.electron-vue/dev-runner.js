@@ -7,7 +7,6 @@ const { say } = require('cfonts')
 const { spawn } = require('child_process')
 const webpack = require('webpack')
 const WebpackDevServer = require('webpack-dev-server')
-const webpackHotMiddleware = require('webpack-hot-middleware')
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const mainConfig = require('./webpack.main.config')
@@ -15,7 +14,7 @@ const rendererConfig = require('./webpack.renderer.config')
 
 let electronProcess = null
 let manualRestart = false
-let hotMiddleware
+//let hotMiddleware
 
 function logStats (proc, data) {
   let log = ''
@@ -41,20 +40,14 @@ function logStats (proc, data) {
 
 function startRenderer () {
   return new Promise((resolve, reject) => {
-    rendererConfig.entry.renderer = [path.join(__dirname, 'dev-client')].concat(rendererConfig.entry.renderer)
-
     const compiler = webpack(rendererConfig)
-    hotMiddleware = webpackHotMiddleware(compiler, { 
-      log: false, 
-      heartbeat: 2500 
-    })
 
-    compiler.hooks.compilation.tap('renderer', compilation => {
-        HtmlWebpackPlugin.getHooks(compilation).afterEmit.tapAsync('renderer', (data, cb) => {
-            hotMiddleware.publish({ action: 'reload' })
-            cb();
-        });
-    });
+    //compiler.hooks.compilation.tap('renderer', compilation => {
+    //    HtmlWebpackPlugin.getHooks(compilation).afterEmit.tapAsync('renderer', (data, cb) => {
+    //        hotMiddleware.publish({ action: 'reload' })
+    //        cb();
+    //    });
+    //});
 
     //compiler.plugin('done', stats => {
     //  logStats('Renderer', stats)
@@ -65,7 +58,7 @@ function startRenderer () {
         static: {
             directory: path.join(__dirname, '../'),
         },
-        hot: true,
+        //hot: true,
         port: 9080,
         setupMiddlewares(middlewares, devServer) {
           //middlewares.push(hotMiddleware)

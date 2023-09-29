@@ -10,6 +10,7 @@ const TerserPlugin = require('terser-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const { VueLoaderPlugin } = require('vue-loader')
 
 /**
  * List of node_modules to include in webpack bundle
@@ -31,6 +32,19 @@ let rendererConfig = {
   module: {
     rules: [
       {
+        test: /\.vue$/,
+        use: {
+          loader: 'vue-loader',
+          options: {
+            extractCSS: process.env.NODE_ENV === 'production',
+            loaders: {
+              sass: 'vue-style-loader!css-loader!sass-loader?indentedSyntax=1',
+              scss: 'vue-style-loader!css-loader!sass-loader'
+            }
+          }
+        }
+      },
+      {
         test: /\.css$/,
         use: [MiniCssExtractPlugin.loader, 'css-loader'],
       },
@@ -46,19 +60,6 @@ let rendererConfig = {
       {
         test: /\.node$/,
         use: 'node-loader'
-      },
-      {
-        test: /\.vue$/,
-        use: {
-          loader: 'vue-loader',
-          options: {
-            extractCSS: process.env.NODE_ENV === 'production',
-            loaders: {
-              sass: 'vue-style-loader!css-loader!sass-loader?indentedSyntax=1',
-              scss: 'vue-style-loader!css-loader!sass-loader'
-            }
-          }
-        }
       },
       {
         test: /\.(png|jpe?g|gif|svg)(\?.*)?$/,
@@ -96,18 +97,20 @@ let rendererConfig = {
   },
   plugins: [
     new MiniCssExtractPlugin({ filename: 'styles.css' }),
-    new HtmlWebpackPlugin({
-      filename: 'index.html',
-      template: path.resolve(__dirname, '../src/index.ejs'),
-      minify: {
-        collapseWhitespace: true,
-        removeAttributeQuotes: true,
-        removeComments: true
-      },
-      nodeModules: process.env.NODE_ENV !== 'production'
-        ? path.resolve(__dirname, '../node_modules')
-        : false
-    }),
+    new VueLoaderPlugin(),
+    new HtmlWebpackPlugin(),
+    //new HtmlWebpackPlugin({
+    //  filename: 'index.html',
+    //  template: path.resolve(__dirname, '../src/index.ejs'),
+    //  minify: {
+    //    collapseWhitespace: true,
+    //    removeAttributeQuotes: true,
+    //    removeComments: true
+    //  },
+    //  nodeModules: process.env.NODE_ENV !== 'production'
+    //    ? path.resolve(__dirname, '../node_modules')
+    //    : false
+    //}),
     new webpack.NoEmitOnErrorsPlugin()
   ],
   output: {
@@ -121,6 +124,9 @@ let rendererConfig = {
       'vue$': 'vue/dist/vue.esm.js'
     },
     extensions: ['.js', '.vue', '.json', '.css', '.node']
+  },
+  node: {
+    global: true
   },
   target: 'electron-renderer',
   mode: 'production'
