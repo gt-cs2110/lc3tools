@@ -7,7 +7,6 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <random>
 
 #include "aliases.h"
 #include "asm_types.h"
@@ -495,13 +494,10 @@ std::pair<bool, std::vector<lc3::core::MemLocation>> lc3::core::Assembler::build
                         msg << utils::ssprintf("0x%0.4x", value);
                     } else if(encoder.isValidPseudoBlock(statement)) {
                         uint32_t size = encoder.getPseudoBlockSize(statement);
-                        std::random_device rd;
-                        std::uniform_int_distribution<> distr(0, 0xFFFF); 
-                        // .blkw should technically skip memory locations, but we'll fill with random data to mock that
                         for(uint32_t i = 0; i < size; i += 1) {
-                            ret.emplace_back(distr(rd), statement.line, false);
+                            ret.emplace_back(0, statement.line, false);
                         }
-                        msg << utils::ssprintf("mem[0x%0.4x:0x%04x] skipped for .blkw", statement.pc, statement.pc + size - 1);
+                        msg << utils::ssprintf("mem[0x%0.4x:0x%04x] = 0", statement.pc, statement.pc + size - 1);
                     } else if(encoder.isValidPseudoString(statement)) {
                         std::string const & value = encoder.getPseudoString(statement);
                         for(char c : value) {
