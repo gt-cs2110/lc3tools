@@ -662,8 +662,6 @@ LOW_8_BITS  .FILL x00FF
 
     ; clear power-on bit in MCR
 TRAP_HALT
-    LEA R0, TRAP_HALT_MSG  ; give a warning
-    PUTS
     LDI R0, OS_MCR         ; halt the machine
     LD R1, MASK_HI
     AND R0, R0, R1
@@ -672,7 +670,6 @@ TRAP_HALT
 
 OS_MCR          .FILL xFFFE
 MASK_HI         .FILL x7FFF
-TRAP_HALT_MSG   .STRINGZ "\n\n--- Halting the LC-3 ---\n\n"
 
 
     ; print an error message, then HALT
