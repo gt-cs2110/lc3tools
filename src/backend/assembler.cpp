@@ -495,7 +495,7 @@ std::pair<bool, std::vector<lc3::core::MemLocation>> lc3::core::Assembler::build
                     } else if(encoder.isValidPseudoBlock(statement)) {
                         uint32_t size = encoder.getPseudoBlockSize(statement);
                         for(uint32_t i = 0; i < size; i += 1) {
-                            ret.emplace_back(0, statement.line, false);
+                            ret.emplace_back(0x1337, statement.line, false);
                         }
                         msg << utils::ssprintf("mem[0x%0.4x:0x%04x] = 0", statement.pc, statement.pc + size - 1);
                     } else if(encoder.isValidPseudoString(statement)) {
