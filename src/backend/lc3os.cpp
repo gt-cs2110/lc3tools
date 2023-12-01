@@ -675,41 +675,119 @@ MASK_HI         .FILL x7FFF
 TRAP_HALT_MSG   .STRINGZ "\n\n--- Halting the LC-3 ---\n\n"
 
 
-    ; print an error message, then HALT
+    ; print an error message and offending PC, then HALT
 BAD_TRAP
     LEA R0, BAD_TRAP_MSG   ; give an error message
     PUTS
-    HALT                   ; execute HALT
+    AND R1, R1, 0
+    ADD R1, R1, -1         ; decrement PC before printing
+    BR EX_PRINT_PC         ; print offending PC
 
 BAD_TRAP_MSG   .STRINGZ "\n\n--- Undefined trap executed ---\n\n"
 
 
-    ; print an error message, then HALT
+    ; print an error message and offending PC, then HALT
 EX_PRIV
     LEA R0, EX_PRIV_MSG    ; give an error message
     PUTS
-    HALT                   ; execute HALT
+    AND R1, R1, 0          ; do not decrement PC before printing
+    BR EX_PRINT_PC         ; print offending PC
 
 EX_PRIV_MSG    .STRINGZ "\n\n--- Privilege violation ---\n\n"
 
 
-    ; print an error message, then HALT
+    ; print an error message and offending PC, then HALT
 EX_ILL
     LEA R0, EX_ILL_MSG     ; give an error message
     PUTS
-    HALT                   ; execute HALT
+    AND R1, R1, 0          ; do not decrement PC before printing
+    BR EX_PRINT_PC         ; print offending PC
 
 EX_ILL_MSG     .STRINGZ "\n\n--- Illegal opcode ---\n\n"
 
-
-    ; print an error message, then HALT
+    ; print an error message and offending PC, then HALT
 EX_ACV
     LEA R0, EX_ACV_MSG     ; give an error message
     PUTS
-    HALT                   ; execute HALT
+    AND R1, R1, 0          ; do not decrement PC before printing
+    BR EX_PRINT_PC         ; print offending PC
 
 EX_ACV_MSG     .STRINGZ "\n\n--- Access violation---\n\n"
 
+; For BAD_TRAP, the top of the stack will be PC+1, but for the exceptions, the
+; top of the stack is just PC. So R1 is expected to hold the offset (-1 or 0,
+; realistically)
+EX_PRINT_PC
+    LEA R0, PC_MESSAGE
+    PUTS
+
+    ; Grab the offending PC from the top of
+    ; the supervisor stack and print it
+    LDR R0, R6, 0
+    ; Add the offset required to the PC to get the PC
+    ; that actually caused this error
+    ADD R0, R0, R1
+    JSR PRINTHEX
+
+    ; Print a newline to make the cursor not
+    ; annoyingly right after the PC
+    AND R0, R0, 0
+    ADD R0, R0, 10 ; '\n'
+    PUTC
+    HALT
+    PC_MESSAGE .stringz "Offending PC: "
+
+; Input: Word to print as hex (R0)
+; Output: To the console
+PRINTHEX
+       ADD R6, R6, -5
+       STR R0, R6, 0 ; push r0 onto the stack
+       STR R1, R6, 1 ; push r1 onto the stack
+       STR R2, R6, 2 ; push r2 onto the stack
+       STR R3, R6, 3 ; push r3 onto the stack
+       STR R4, R6, 4 ; push r4 onto the stack
+
+       ADD R1, R0, 0 ; r1 <- r0
+       LD R0, ASCII_X
+       PUTC          ; print 'x'
+
+       AND R2, R2, 0 ; i <- 0 (outer/nibble loop counter)
+NIBBLE AND R0, R0, 0 ; r0 <- 0
+       AND R3, R3, 0 ; j <- 0 (inner/bit loop counter)
+   BIT ADD R1, R1, 0 ; cc for r1
+       BRZP ZERO
+       ADD R0, R0, R0 ; r0 <<= 1
+       ADD R0, R0, 1  ; r0 += 1
+       BR 1
+  ZERO ADD R0, R0, R0  ; r0 <<= 1
+       ADD R1, R1, R1  ; r1 <<= 1
+       ADD R3, R3, 1   ; j++
+       ADD R4, R3, -4  ; cc <- j-4
+       BRN BIT        ; loop while j < 4
+       ADD R4, R0, -10 ; r0-10
+       BRZP AF
+       LD R4, ASCII_ZERO
+       ADD R0, R0, R4  ; r0 += '0'
+       BR PRINT
+    AF LD R4, ASCII_A
+       ADD R0, R0, -10 ; r0 -= 10
+       ADD R0, R0, R4  ; r0 += 'A'
+ PRINT PUTC
+       ADD R2, R2, 1   ; i++
+       ADD R4, R2, -4  ; i-4
+       BRN NIBBLE
+
+       LDR R0, R6, 0 ; pop r0 off the stack
+       LDR R1, R6, 1 ; pop r1 off the stack
+       LDR R2, R6, 2 ; pop r2 off the stack
+       LDR R3, R6, 3 ; pop r3 off the stack
+       LDR R4, R6, 4 ; pop r4 off the stack
+       ADD R6, R6, 5
+       RET
+
+ASCII_X    .fill x78 ; 'x'
+ASCII_ZERO .fill x30 ; '0'
+ASCII_A    .fill x41 ; 'A'
 
 BAD_INT
     RTI
