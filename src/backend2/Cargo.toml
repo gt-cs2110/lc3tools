@@ -1,0 +1,15 @@
+[package]
+name = "lc3-backend"
+version = "0.1.0"
+license = "MIT"
+edition = "2021"
+exclude = ["index.node"]
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lc3-ensemble = { git = "https://github.com/endorpersand/lc3-ensemble.git", version = "0.1.0" }
+neon = "1"
