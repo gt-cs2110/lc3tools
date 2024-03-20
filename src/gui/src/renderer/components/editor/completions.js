@@ -133,8 +133,6 @@ function generateCompletions(mode, doc, pos, prefix) {
 
   const currTokens = currentLineUpToCursor.match(/\b\w+\b|\./g);
 
-  console.log("currTokens", currTokens);
-
   // if we are at the beginning of the line
   if (!currTokens) {
     const tokensAfter = currentLine
