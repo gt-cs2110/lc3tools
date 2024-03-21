@@ -404,7 +404,20 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
 }
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn(addr: u16) -> Result<String>
-    Ok(cx.string("?"))
+    let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
+    let sim_contents = SIM_CONTENTS.lock().unwrap();
+    
+    'get_line: {
+        let Some(obj) = &sim_contents.obj_file else { break 'get_line };
+        let Some(sym) = obj.symbol_table() else { break 'get_line };
+        let Some(src_info) = sym.source_info() else { break 'get_line };
+    
+        let Some(lno) = sym.find_source_line(addr) else { break 'get_line };
+        let Some(lspan) = src_info.line_span(lno) else { break 'get_line };
+        
+        return Ok(cx.string(&src_info.source()[lspan]))
+    }
+    Ok(cx.string(""))
 }
 fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16, value: String) -> Result<()>
