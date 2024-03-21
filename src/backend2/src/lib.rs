@@ -33,11 +33,7 @@ fn print_buffer<'g>() -> MutexGuard<'g, PrintBuffer> {
 }
 static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
     Mutex::new(SimPageContents {
-        sim_state: SimState::Idle({
-            let mut sim = Simulator::new();
-            sim.load_os();
-            sim
-        }),
+        sim_state: SimState::new(),
         obj_file: None
     })
 });
@@ -53,18 +49,26 @@ enum SimAccessError {
     Poisoned
 }
 
-#[derive(Default)]
 enum SimState {
     Idle(Simulator),
     Running {
         mcr: Arc<AtomicBool>,
         handle: mpsc::Receiver<Simulator>,
     },
-    #[default]
     Poison
 }
 impl SimState {
-    /// Tries to reacquire the simulator, returning the state to idle.
+    /// Creates a new idle simulator state.
+    fn new() -> Self {
+        SimState::Idle({
+            let mut sim = Simulator::new();
+            sim.load_os();
+            sim
+        })
+    }
+
+    /// Attempts to reacquire the simulator state (returning it to idle)
+    /// if the simulator is "running" but its process already completed.
     fn try_reacquire(&mut self) {
         use std::sync::mpsc::TryRecvError;
 
@@ -80,7 +84,7 @@ impl SimState {
     /// Blocks the thread until the simulator is idle.
     /// 
     /// If SimState is poisoned, then this will raise a Poisoned error.
-    fn reacquire(&mut self) -> Result<(), SimAccessError> {
+    fn join(&mut self) -> Result<(), SimAccessError> {
         if let SimState::Running { handle, .. } = self {
             match handle.recv() {
                 Ok(sim) => *self = SimState::Idle(sim),
@@ -117,11 +121,11 @@ impl SimState {
             exec: impl FnOnce(&mut Simulator) -> T + Send + 'static,
             close: impl FnOnce(T) + Send + 'static
         ) -> Result<(), SimAccessError> {
-        let mut sim = match std::mem::take(self) {
-            SimState::Idle(sim) => Ok(sim),
-            SimState::Running { .. } => Err(SimAccessError::NotAvailable),
-            SimState::Poison => Err(SimAccessError::Poisoned),
-        }?;
+        let _ = self.simulator()?; // assert idle
+        let SimState::Idle(mut sim) = std::mem::replace(self, SimState::Poison) else {
+            // this is assured by the above
+            unreachable!("sim state should have been idle");
+        };
 
         let mcr = Arc::clone(sim.mcr());
         let (tx, rx) = mpsc::channel();
@@ -140,7 +144,16 @@ impl SimState {
         if let SimState::Running { mcr, .. } = self {
             mcr.store(false, Ordering::Relaxed);
         }
-        self.reacquire()
+        self.join()
+    }
+
+    /// Resets the state of the simulator,
+    /// reseting it back to a randomized machine state (with OS).
+    /// 
+    /// The sim state is idle after this is called.
+    fn reset(&mut self) {
+        let _ = self.pause();
+        *self = SimState::new();
     }
 }
 
@@ -226,11 +239,20 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // should be unreachable cause frontend validates IO
     let bytes = std::fs::read(in_path).unwrap();
     
-    let obj = ObjectFile::read_bytes(&bytes).unwrap();
-    let mut contents = SIM_CONTENTS.lock().unwrap();
+    let Some(obj) = ObjectFile::read_bytes(&bytes) else {
+        writeln!(print_buffer(), "error: malformed object file {fp}").unwrap();
+        return Ok(cx.undefined());
+    };
+
+    let mut contents = match SIM_CONTENTS.lock() {
+        Ok(c)  => c,
+        Err(e) => e.into_inner(),
+    };
+    contents.sim_state.reset();
     contents.sim_state.simulator().unwrap().load_obj_file(&obj);
     contents.obj_file.replace(obj);
-    
+    SIM_CONTENTS.clear_poison();
+
     Ok(cx.undefined())
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -243,13 +265,25 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
     
     // TODO: actually zero out memory properly
-    *SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
+    let mut contents = match SIM_CONTENTS.lock() {
+        Ok(c)  => c,
+        Err(e) => e.into_inner(),
+    };
+    contents.sim_state.reset();
+    SIM_CONTENTS.clear_poison();
+    
     Ok(cx.undefined())
 }
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     
-    *SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
+    let mut contents = match SIM_CONTENTS.lock() {
+        Ok(c)  => c,
+        Err(e) => e.into_inner(),
+    };
+    contents.sim_state.reset();
+    SIM_CONTENTS.clear_poison();
+    
     Ok(cx.undefined())
 }
 
