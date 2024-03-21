@@ -16,7 +16,7 @@ use once_cell::sync::Lazy;
 use print::{report_error, report_simple, PrintBuffer};
 
 static PRINT_BUFFER: Mutex<PrintBuffer> = Mutex::new(PrintBuffer::new());
-static SIMULATOR_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
+static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
     Mutex::new(SimPageContents {
         sim_state: SimState::Idle({
             let mut sim = Simulator::new();
@@ -198,7 +198,7 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     // fn () -> Result<Object>
     let obj = cx.empty_object();
 
-    let contents = SIMULATOR_CONTENTS.lock().unwrap();
+    let contents = SIM_CONTENTS.lock().unwrap();
     let Some(obj_file) = contents.obj_file.as_ref() else { return Ok(obj) };
     let Some(_) = obj_file.symbol_table() else { return Ok(obj) };
     Ok(obj)
@@ -212,7 +212,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let bytes = std::fs::read(in_path).unwrap();
     
     let obj = ObjectFile::read_bytes(&bytes).unwrap();
-    let mut contents = SIMULATOR_CONTENTS.lock().unwrap();
+    let mut contents = SIM_CONTENTS.lock().unwrap();
     contents.sim_state.simulator().unwrap().load_obj_file(&obj);
     contents.obj_file.replace(obj);
     
@@ -221,20 +221,20 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
     // idk what this does
-    *SIMULATOR_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
+    *SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
     Ok(cx.undefined())
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
     
     // TODO: actually zero out memory properly
-    *SIMULATOR_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
+    *SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
     Ok(cx.undefined())
 }
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     
-    *SIMULATOR_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
+    *SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
     Ok(cx.undefined())
 }
 
@@ -258,7 +258,7 @@ fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
 
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+    SIM_CONTENTS.lock().unwrap().sim_state.execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
     );
@@ -270,7 +270,7 @@ fn run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
 
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+    SIM_CONTENTS.lock().unwrap().sim_state.execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
     );
@@ -282,7 +282,7 @@ fn step_in(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+    SIM_CONTENTS.lock().unwrap().sim_state.execute(
         Simulator::step_in,
         |result| finish_execution(channel, done_cb, result)
     );
@@ -294,7 +294,7 @@ fn step_out(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+    SIM_CONTENTS.lock().unwrap().sim_state.execute(
         Simulator::step_out,
         |result| finish_execution(channel, done_cb, result)
     );
@@ -306,7 +306,7 @@ fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+    SIM_CONTENTS.lock().unwrap().sim_state.execute(
         Simulator::step_over,
         |result| finish_execution(channel, done_cb, result)
     );
@@ -314,7 +314,7 @@ fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 fn pause(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.pause();
+    SIM_CONTENTS.lock().unwrap().sim_state.pause();
     Ok(cx.undefined())
 }
 fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
@@ -322,7 +322,7 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // reg here can be R0-7, PC, PSR, MCR
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
 
-    let mut sim_contents = SIMULATOR_CONTENTS.lock().unwrap();
+    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
     let simulator = sim_contents.sim_state.simulator().unwrap();
 
     let value = match &*reg {
@@ -352,7 +352,7 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
 
-    let mut sim_contents = SIMULATOR_CONTENTS.lock().unwrap();
+    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
     let simulator = sim_contents.sim_state.simulator().unwrap();
 
     match &*reg {
@@ -380,7 +380,7 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // fn (addr: u16) -> Result<u16>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
-    let mut sim_contents = SIMULATOR_CONTENTS.lock().unwrap();
+    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
     let simulator = sim_contents.sim_state.simulator().unwrap();
 
     let value = simulator.mem.get(addr, MemAccessCtx { privileged: true, strict: false, io: simulator.io.as_ref() })
@@ -393,7 +393,7 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let addr  = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
     
-    let mut sim_contents = SIMULATOR_CONTENTS.lock().unwrap();
+    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
     let simulator = sim_contents.sim_state.simulator().unwrap();
 
     simulator.mem.set(addr, Word::new_init(value), MemAccessCtx { privileged: true, strict: false, io: simulator.io.as_ref() })
@@ -425,7 +425,7 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16) -> Result<()>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    SIMULATOR_CONTENTS.lock().unwrap()
+    SIM_CONTENTS.lock().unwrap()
         .sim_state
         .simulator()
         .unwrap()
@@ -437,7 +437,7 @@ fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16) -> Result<()>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    SIMULATOR_CONTENTS.lock().unwrap()
+    SIM_CONTENTS.lock().unwrap()
         .sim_state
         .simulator()
         .unwrap()
