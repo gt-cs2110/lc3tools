@@ -213,8 +213,7 @@
 </template>
 
 <script>
-import * as lc3 from "lc3interface";
-import * as lc3ensemble from "lc3-backend";
+import * as lc3 from "lc3-backend";
 import { ipcRenderer, remote } from "electron";
 import path from "path";
 import fs from "fs";
@@ -250,7 +249,6 @@ export default {
 
   created() {
     lc3.Init();
-    lc3ensemble.Init();
     this.getSettings();
   },
 
@@ -316,8 +314,6 @@ export default {
       if (setting == "all") {
         lc3.SetIgnorePrivilege(this.settings.ignore_privilege);
         lc3.SetEnableLiberalAsm(this.settings.liberal_asm);
-        lc3ensemble.SetIgnorePrivilege(this.settings.ignore_privilege);
-        lc3ensemble.SetEnableLiberalAsm(this.settings.liberal_asm);
         this.$store.commit("setTheme", this.settings.theme);
         this.$store.commit("setNumberType", this.settings.numbers);
         this.$store.commit("setAutocomplete", this.settings.autocomplete);
@@ -342,14 +338,12 @@ export default {
         this.$store.commit("setEditorBinding", this.settings.editor_binding);
       } else if (setting === "privilege") {
         lc3.SetIgnorePrivilege(this.settings.ignore_privilege);
-        lc3ensemble.SetIgnorePrivilege(this.settings.ignore_privilege);
         this.$store.commit(
           "setIgnorePrivilege",
           this.settings.ignore_privilege
         );
       } else if (setting === "liberal-asm") {
         lc3.SetEnableLiberalAsm(this.settings.liberal_asm);
-        lc3ensemble.SetEnableLiberalAsm(this.settings.liberal_asm);
         this.$store.commit("setLiberalAsm", this.settings.liberal_asm);
       } else if (setting === "ignore-update") {
         this.$store.commit("setIgnoreUpdate", this.settings.ignore_update);

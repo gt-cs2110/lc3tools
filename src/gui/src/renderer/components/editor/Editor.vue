@@ -105,8 +105,7 @@ import fs from "fs";
 import ace from "brace";
 import { CreateLc3CompletionProvider } from "./completions";
 
-import * as lc3 from "lc3interface";
-import * as lc3ensemble from "lc3-backend";
+import * as lc3 from "lc3-backend";
 import * as Convert from "ansi-to-html";
 
 Vue.use(Vuetify);
@@ -213,13 +212,13 @@ export default {
       let success = true;
       if (this.$store.getters.activeFilePath.endsWith(".bin")) {
         try {
-          lc3ensemble.ConvertBin(this.$store.getters.activeFilePath);
+          lc3.ConvertBin(this.$store.getters.activeFilePath);
         } catch (e) {
           success = false;
         }
       } else {
         try {
-          lc3ensemble.Assemble(this.$store.getters.activeFilePath);
+          lc3.Assemble(this.$store.getters.activeFilePath);
         } catch (e) {
           success = false;
         }
@@ -234,7 +233,7 @@ export default {
         "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
         ]
       });
-      const temp_console_string = lc3ensemble.GetAndClearOutput();
+      const temp_console_string = lc3.GetAndClearOutput();
 
       this.console_str = "";
       setTimeout(() => {

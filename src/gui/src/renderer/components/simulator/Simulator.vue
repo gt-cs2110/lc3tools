@@ -417,7 +417,7 @@ import path from "path";
 import Vue from "vue";
 import Vuetify from "vuetify";
 import fs from "fs";
-import * as lc3 from "lc3interface";
+import * as lc3 from "lc3-backend";
 
 Vue.use(Vuetify);
 

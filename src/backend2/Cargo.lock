@@ -60,7 +60,7 @@ dependencies = [
 [[package]]
 name = "lc3-ensemble"
 version = "0.1.0"
-source = "git+https://github.com/endorpersand/lc3-ensemble.git#1b980ba028176164c7a069206a4e99fbb868913b"
+source = "git+https://github.com/endorpersand/lc3-ensemble.git#6bfd2e7c1ee2226711a9119bf61fbda2b7609c1b"
 dependencies = [
  "logos",
  "rand",
