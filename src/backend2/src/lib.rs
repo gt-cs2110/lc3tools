@@ -3,8 +3,7 @@ mod print;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
+use std::sync::{mpsc, Arc, Mutex};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
@@ -17,88 +16,116 @@ use once_cell::sync::Lazy;
 use print::{report_error, report_simple, PrintBuffer};
 
 static PRINT_BUFFER: Mutex<PrintBuffer> = Mutex::new(PrintBuffer::new());
-static SIMULATOR_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| Mutex::new(SimPageContents {
-    sim_state: SimState::Idle({
-        let mut sim = Simulator::new();
-        sim.load_os();
-        sim
-    }),
-    obj_file: None
-}));
+static SIMULATOR_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
+    Mutex::new(SimPageContents {
+        sim_state: SimState::Idle({
+            let mut sim = Simulator::new();
+            sim.load_os();
+            sim
+        }),
+        obj_file: None
+    })
+});
 
 struct SimPageContents {
     sim_state: SimState,
     obj_file: Option<ObjectFile>
 }
+
+#[derive(Debug)]
+enum SimAccessError {
+    NotAvailable,
+    Poisoned
+}
+
 #[derive(Default)]
 enum SimState {
     Idle(Simulator),
     Running {
         mcr: Arc<AtomicBool>,
-        handle: JoinHandle<(Simulator, Result<(), SimErr>)>
+        handle: mpsc::Receiver<Simulator>,
     },
     #[default]
     Poison
 }
 impl SimState {
+    /// Tries to reacquire the simulator, returning the state to idle.
+    fn try_reacquire(&mut self) {
+        use std::sync::mpsc::TryRecvError;
+
+        if let SimState::Running { handle, .. } = self {
+            match handle.try_recv() {
+                Ok(sim) => *self = SimState::Idle(sim),
+                Err(TryRecvError::Empty) => {},
+                Err(TryRecvError::Disconnected) => *self = SimState::Poison,
+            }
+        }
+    }
+
+    /// Blocks the thread until the simulator is idle.
+    /// 
+    /// If SimState is poisoned, then this will raise a Poisoned error.
+    fn reacquire(&mut self) -> Result<(), SimAccessError> {
+        if let SimState::Running { handle, .. } = self {
+            match handle.recv() {
+                Ok(sim) => *self = SimState::Idle(sim),
+                Err(_)  => *self = SimState::Poison,
+            }
+        };
+
+        match self {
+            SimState::Idle(_) => Ok(()),
+            _ => Err(SimAccessError::Poisoned)
+        }
+    }
+
     /// Accesses the simulator if it is currently idle.
-    fn simulator(&mut self) -> Result<&mut Simulator, ()> {
+    fn simulator(&mut self) -> Result<&mut Simulator, SimAccessError> {
+        self.try_reacquire();
+
         match self {
             SimState::Idle(sim) => Ok(sim),
-            SimState::Running { .. } => Err(()),
-            SimState::Poison => Err(()),
+            SimState::Running { .. } => Err(SimAccessError::NotAvailable),
+            SimState::Poison => Err(SimAccessError::Poisoned),
         }
     }
 
     /// Asynchronously executes function on the simulator, if it is currently idle.
-    fn execute(&mut self, f: impl FnOnce(&mut Simulator) -> Result<(), SimErr> + Send + 'static) -> Result<(), ()> {
+    /// 
+    /// This requires two closures:
+    /// - One that executes instructions with the simulator
+    /// - One that does something with the result of the output
+    /// 
+    /// If the execution of the executor function causes a panic, 
+    /// this will cause the SimState to become poisoned.
+    fn execute<T>(&mut self, 
+            exec: impl FnOnce(&mut Simulator) -> T + Send + 'static,
+            close: impl FnOnce(T) + Send + 'static
+        ) -> Result<(), SimAccessError> {
         let mut sim = match std::mem::take(self) {
             SimState::Idle(sim) => Ok(sim),
-            SimState::Running { .. } => Err(()),
-            SimState::Poison => Err(()),
+            SimState::Running { .. } => Err(SimAccessError::NotAvailable),
+            SimState::Poison => Err(SimAccessError::Poisoned),
         }?;
 
         let mcr = Arc::clone(sim.mcr());
-        let handle = std::thread::spawn(move || {
-            println!("executing function");
-            let result = f(&mut sim);
-            println!("executing done: {result:?}");
-            (sim, result)
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let result = exec(&mut sim);
+            tx.send(sim).unwrap();
+            close(result);
         });
 
-        *self = SimState::Running { mcr, handle };
+        *self = SimState::Running { mcr, handle: rx };
         Ok(())
-    }
-
-    /// Runs the simulator if it is currently idle.
-    fn run(&mut self) -> Result<(), ()> {
-        self.execute(Simulator::run)
     }
 
     /// Pauses the simulator if is running.
-    fn pause(&mut self) -> Result<(), ()> {
-        if let SimState::Running { mcr, handle: _ } = self {
+    fn pause(&mut self) -> Result<(), SimAccessError> {
+        if let SimState::Running { mcr, .. } = self {
             mcr.store(false, Ordering::Relaxed);
         }
-        self.join()?;
-        Ok(())
-    }
-
-    /// Waits for the simulator to be idle again.
-    fn join(&mut self) -> Result<(), ()> {
-        match self {
-            SimState::Idle(_) => Ok(()),
-            SimState::Running { mcr: _, handle: _ } => {
-                let SimState::Running { mcr: _, handle } = std::mem::take(self) else {
-                    unreachable!("already checked to be running");
-                };
-
-                let (sim, _) = handle.join().unwrap();
-                *self = SimState::Idle(sim);
-                Ok(())
-            },
-            SimState::Poison => Err(()),
-        }
+        self.reacquire()
     }
 }
 
@@ -210,38 +237,79 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     *SIMULATOR_CONTENTS.lock().unwrap().sim_state.simulator().unwrap() = Simulator::new();
     Ok(cx.undefined())
 }
+
+/// Helper that handles the result of the simulation and sends the error (if it exists)  back to the JS thread.
+fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), SimErr>) {
+    channel.send(move |mut cx| {
+        let this = cx.undefined();
+        let arg = match result {
+            Ok(_)   => cx.undefined().as_value(&mut cx),
+            Err(e) => cx.string(e.to_string()).as_value(&mut cx),
+        };
+
+        cb.into_inner(&mut cx)
+            .call(&mut cx, this, vec![arg])?;
+
+        Ok(())
+    });
+}
 fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let done_cb = cx.argument::<JsFunction>(0)?;
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.run();
+    let channel = cx.channel();
+    let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
+
+    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+        Simulator::run,
+        |result| finish_execution(channel, done_cb, result)
+    );
 
     Ok(cx.undefined())
 }
 fn run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let done_cb = cx.argument::<JsFunction>(0)?;
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.run();
+    let channel = cx.channel();
+    let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
+
+    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+        Simulator::run,
+        |result| finish_execution(channel, done_cb, result)
+    );
 
     Ok(cx.undefined())
 }
 fn step_in(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let done_cb = cx.argument::<JsFunction>(0)?;
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(Simulator::step_in);
+    let channel = cx.channel();
+    let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
+    
+    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+        Simulator::step_in,
+        |result| finish_execution(channel, done_cb, result)
+    );
 
     Ok(cx.undefined())
 }
 fn step_out(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let done_cb = cx.argument::<JsFunction>(0)?;
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(Simulator::step_out);
+    let channel = cx.channel();
+    let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
+    
+    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+        Simulator::step_out,
+        |result| finish_execution(channel, done_cb, result)
+    );
 
     Ok(cx.undefined())
 }
 fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let done_cb = cx.argument::<JsFunction>(0)?;
-    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(Simulator::step_over);
+    let channel = cx.channel();
+    let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
+    
+    SIMULATOR_CONTENTS.lock().unwrap().sim_state.execute(
+        Simulator::step_over,
+        |result| finish_execution(channel, done_cb, result)
+    );
 
     Ok(cx.undefined())
 }
