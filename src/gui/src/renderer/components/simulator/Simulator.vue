@@ -565,9 +565,9 @@ export default {
     },
     loadFile(path) {
       this.loaded_files.add(path);
-      lc3.LoadObjectFile(path);
-      this.mem_view.start = lc3.GetRegValue("pc");
-      this.mem_view.sym_table = lc3.GetCurrSymTable();
+      lc3.loadObjectFile(path);
+      this.mem_view.start = lc3.getRegValue("pc");
+      this.mem_view.sym_table = lc3.getCurrSymTable();
       this.updateUI();
       this.loadedSnackBar = true;
       // clear output on file (re)load
@@ -586,7 +586,7 @@ export default {
         this.poll_output_handle = setInterval(this.updateConsole, 50);
       }
       if (!this.sim.running) {
-        lc3.ClearInput();
+        lc3.clearInput();
         this.sim.running = true;
         this.data_bg.backgroundColor = "lightgrey";
         return new Promise((resolve, reject) => {
@@ -596,36 +596,36 @@ export default {
               return;
             }
             this.endSimulation(
-              run_function_str != "run" || lc3.DidHitBreakpoint()
+              run_function_str != "run" || lc3.didHitBreakpoint()
             );
             resolve();
           };
           if (run_function_str == "in") {
-            lc3.StepIn(callback);
+            lc3.stepIn(callback);
           } else if (run_function_str == "out") {
-            lc3.StepOut(callback);
+            lc3.stepOut(callback);
           } else if (run_function_str == "over") {
-            lc3.StepOver(callback);
+            lc3.stepOver(callback);
           } else {
             if (this.$store.getters.run_until_halt) {
-              lc3.RunUntilHalt(callback);
+              lc3.runUntilHalt(callback);
             } else {
-              lc3.Run(callback);
+              lc3.run(callback);
             }
           }
         });
       } else {
-        lc3.Pause();
+        lc3.pause();
         this.endSimulation(false);
       }
     },
     reinitializeMachine() {
-      lc3.ReinitializeMachine();
+      lc3.reinitializeMachine();
       this.clearConsole();
       this.updateUI();
     },
     randomizeMachine() {
-      lc3.RandomizeMachine();
+      lc3.randomizeMachine();
       this.clearConsole();
       this.updateUI();
     },
@@ -633,20 +633,20 @@ export default {
       clearInterval(this.poll_output_handle);
       this.poll_output_handle = null;
 
-      lc3.ClearInput();
+      lc3.clearInput();
       this.sim.running = false;
       this.updateUI(true);
-      this.sim.regs[9].value = lc3.GetRegValue("pc");
+      this.sim.regs[9].value = lc3.getRegValue("pc");
 
       if (jump_to_pc) {
         this.jumpToPC(false);
       }
       this.data_bg.backgroundColor = "";
-      this.prev_inst_executed = lc3.GetInstExecCount();
+      this.prev_inst_executed = lc3.getInstExecCount();
     },
     clearConsole() {
       this.console_str = "";
-      lc3.ClearOutput();
+      lc3.clearOutput();
     },
 
     // UI update functions
@@ -663,12 +663,12 @@ export default {
       let key = event.key,
         code = key.charCodeAt(0);
       if (key in overrides) {
-        lc3.AddInput(String.fromCharCode(overrides[key]));
+        lc3.addInput(String.fromCharCode(overrides[key]));
       } else if (key.length == 1) {
         // Handle CTRL-a through CTRL-z.
         if (code > 64 && code < 128 && event.ctrlKey)
           key = String.fromCharCode(code & 0x1f);
-        lc3.AddInput(key);
+        lc3.addInput(key);
       }
       event.preventDefault(); // for TAB, etc.
     },
@@ -680,18 +680,18 @@ export default {
         for (let i = 0; i < rules.length; i += 1) {
           if (rules[i](event) != true) {
             if (type == "reg") {
-              data_cell.value = lc3.GetRegValue(data_cell.name);
+              data_cell.value = lc3.getRegValue(data_cell.name);
             } else if (type == "mem") {
-              data_call.value = lc3.GetMemValue(data_cell.addr);
+              data_call.value = lc3.getMemValue(data_cell.addr);
             }
             return;
           }
         }
         data_cell.value = this.parseValueString(event);
         if (type == "reg") {
-          lc3.SetRegValue(data_cell.name, data_cell.value);
+          lc3.setRegValue(data_cell.name, data_cell.value);
         } else if (type == "mem") {
-          lc3.SetMemValue(data_cell.addr, data_cell.value);
+          lc3.setMemValue(data_cell.addr, data_cell.value);
         }
         this.updateUI();
       }
@@ -700,7 +700,7 @@ export default {
       // Registers
       if (updateReg) {
         for (let i = 0; i < this.sim.regs.length; i++) {
-          const mem_val = lc3.GetRegValue(this.sim.regs[i].name);
+          const mem_val = lc3.getRegValue(this.sim.regs[i].name);
           const prev_val = this.sim.regs[i].value;
           this.sim.regs[i].value = mem_val;
           // flash and highlight registers that change from their previous values
@@ -723,11 +723,11 @@ export default {
       // Memory
       for (let i = 0; i < this.mem_view.data.length; i++) {
         let addr = (this.mem_view.start + i) & 0xffff;
-        let mem_val = lc3.GetMemValue(addr);
+        let mem_val = lc3.getMemValue(addr);
         const prev_val = this.mem_view.data[i].value;
         this.mem_view.data[i].addr = addr;
         this.mem_view.data[i].value = mem_val;
-        this.mem_view.data[i].line = lc3.GetMemLine(addr);
+        this.mem_view.data[i].line = lc3.getMemLine(addr);
 
         // show label using symbol table
         this.mem_view.data[i].label =
@@ -752,7 +752,7 @@ export default {
     },
     updateConsole() {
       // Console
-      let update = lc3.GetAndClearOutput();
+      let update = lc3.getAndClearOutput();
       if (update.length) {
         // Resolve all internal backspaces first
         while (update.match(/[^\x08\n]\x08/)) {
@@ -775,23 +775,23 @@ export default {
           () => (this.$refs.console.scrollTop = this.$refs.console.scrollHeight)
         );
       }
-      this.prev_inst_executed = lc3.GetInstExecCount();
+      this.prev_inst_executed = lc3.getInstExecCount();
     },
 
     toggleBreakpoint(addr) {
       let idx = this.sim.breakpoints.indexOf(addr);
       if (idx == -1) {
         this.sim.breakpoints.push(addr);
-        lc3.SetBreakpoint(addr);
+        lc3.setBreakpoint(addr);
       } else {
         this.sim.breakpoints.splice(idx, 1);
-        lc3.RemoveBreakpoint(addr);
+        lc3.removeBreakpoint(addr);
       }
     },
     setPC(addr) {
       let new_pc = addr & 0xffff;
-      lc3.SetRegValue("pc", new_pc);
-      lc3.RestartMachine();
+      lc3.setRegValue("pc", new_pc);
+      lc3.restartMachine();
       this.updateUI();
     },
     breakpointAt(addr) {

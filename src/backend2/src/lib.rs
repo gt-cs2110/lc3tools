@@ -489,42 +489,37 @@ fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     Ok(cx.boolean(false))
 }
 
-fn hello(mut cx: FunctionContext) -> JsResult<JsString> {
-    Ok(cx.string("hello node"))
-}
-
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    cx.export_function("hello", hello)?;
-    cx.export_function("Init", init)?;
-    cx.export_function("ConvertBin", convert_bin)?;
-    cx.export_function("Assemble", assemble)?;
-    cx.export_function("GetCurrSymTable", get_curr_sym_table)?;
-    cx.export_function("SetEnableLiberalAsm", set_enable_liberal_asm)?;
-    cx.export_function("LoadObjectFile", load_object_file)?;
-    cx.export_function("RestartMachine", restart_machine)?;
-    cx.export_function("ReinitializeMachine", reinitialize_machine)?;
-    cx.export_function("RandomizeMachine", randomize_machine)?;
-    cx.export_function("Run", run)?;
-    cx.export_function("RunUntilHalt", run_until_halt)?;
-    cx.export_function("StepIn", step_in)?;
-    cx.export_function("StepOut", step_out)?;
-    cx.export_function("StepOver", step_over)?;
-    cx.export_function("Pause", pause)?;
-    cx.export_function("GetRegValue", get_reg_value)?;
-    cx.export_function("SetRegValue", set_reg_value)?;
-    cx.export_function("GetMemValue", get_mem_value)?;
-    cx.export_function("SetMemValue", set_mem_value)?;
-    cx.export_function("GetMemLine", get_mem_line)?;
-    cx.export_function("SetMemLine", set_mem_line)?;
-    cx.export_function("SetIgnorePrivilege", set_ignore_privilege)?;
-    cx.export_function("ClearInput", clear_input)?;
-    cx.export_function("AddInput", add_input)?;
-    cx.export_function("GetAndClearOutput", get_and_clear_output)?;
-    cx.export_function("ClearOutput", clear_output)?;
-    cx.export_function("SetBreakpoint", set_breakpoint)?;
-    cx.export_function("RemoveBreakpoint", remove_breakpoint)?;
-    cx.export_function("GetInstExecCount", get_inst_exec_count)?;
-    cx.export_function("DidHitBreakpoint", did_hit_breakpoint)?;
+    cx.export_function("init", init)?;
+    cx.export_function("convertBin", convert_bin)?;
+    cx.export_function("assemble", assemble)?;
+    cx.export_function("getCurrSymTable", get_curr_sym_table)?;
+    cx.export_function("setEnableLiberalAsm", set_enable_liberal_asm)?;
+    cx.export_function("loadObjectFile", load_object_file)?;
+    cx.export_function("restartMachine", restart_machine)?;
+    cx.export_function("reinitializeMachine", reinitialize_machine)?;
+    cx.export_function("randomizeMachine", randomize_machine)?;
+    cx.export_function("run", run)?;
+    cx.export_function("runUntilHalt", run_until_halt)?;
+    cx.export_function("stepIn", step_in)?;
+    cx.export_function("stepOut", step_out)?;
+    cx.export_function("stepOver", step_over)?;
+    cx.export_function("pause", pause)?;
+    cx.export_function("getRegValue", get_reg_value)?;
+    cx.export_function("setRegValue", set_reg_value)?;
+    cx.export_function("getMemValue", get_mem_value)?;
+    cx.export_function("setMemValue", set_mem_value)?;
+    cx.export_function("getMemLine", get_mem_line)?;
+    cx.export_function("setMemLine", set_mem_line)?;
+    cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
+    cx.export_function("clearInput", clear_input)?;
+    cx.export_function("addInput", add_input)?;
+    cx.export_function("getAndClearOutput", get_and_clear_output)?;
+    cx.export_function("clearOutput", clear_output)?;
+    cx.export_function("setBreakpoint", set_breakpoint)?;
+    cx.export_function("removeBreakpoint", remove_breakpoint)?;
+    cx.export_function("getInstExecCount", get_inst_exec_count)?;
+    cx.export_function("didHitBreakpoint", did_hit_breakpoint)?;
     Ok(())
 }

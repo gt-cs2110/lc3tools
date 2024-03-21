@@ -212,13 +212,13 @@ export default {
       let success = true;
       if (this.$store.getters.activeFilePath.endsWith(".bin")) {
         try {
-          lc3.ConvertBin(this.$store.getters.activeFilePath);
+          lc3.convertBin(this.$store.getters.activeFilePath);
         } catch (e) {
           success = false;
         }
       } else {
         try {
-          lc3.Assemble(this.$store.getters.activeFilePath);
+          lc3.assemble(this.$store.getters.activeFilePath);
         } catch (e) {
           success = false;
         }
@@ -233,7 +233,7 @@ export default {
         "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
         ]
       });
-      const temp_console_string = lc3.GetAndClearOutput();
+      const temp_console_string = lc3.getAndClearOutput();
 
       this.console_str = "";
       setTimeout(() => {

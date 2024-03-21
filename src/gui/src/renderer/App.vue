@@ -248,7 +248,7 @@ export default {
   },
 
   created() {
-    lc3.Init();
+    lc3.init();
     this.getSettings();
   },
 
@@ -312,8 +312,8 @@ export default {
     },
     updateGlobals: function(setting) {
       if (setting == "all") {
-        lc3.SetIgnorePrivilege(this.settings.ignore_privilege);
-        lc3.SetEnableLiberalAsm(this.settings.liberal_asm);
+        lc3.setIgnorePrivilege(this.settings.ignore_privilege);
+        lc3.setEnableLiberalAsm(this.settings.liberal_asm);
         this.$store.commit("setTheme", this.settings.theme);
         this.$store.commit("setNumberType", this.settings.numbers);
         this.$store.commit("setAutocomplete", this.settings.autocomplete);
@@ -337,13 +337,13 @@ export default {
       } else if (setting === "editorBinding") {
         this.$store.commit("setEditorBinding", this.settings.editor_binding);
       } else if (setting === "privilege") {
-        lc3.SetIgnorePrivilege(this.settings.ignore_privilege);
+        lc3.setIgnorePrivilege(this.settings.ignore_privilege);
         this.$store.commit(
           "setIgnorePrivilege",
           this.settings.ignore_privilege
         );
       } else if (setting === "liberal-asm") {
-        lc3.SetEnableLiberalAsm(this.settings.liberal_asm);
+        lc3.setEnableLiberalAsm(this.settings.liberal_asm);
         this.$store.commit("setLiberalAsm", this.settings.liberal_asm);
       } else if (setting === "ignore-update") {
         this.$store.commit("setIgnoreUpdate", this.settings.ignore_update);
