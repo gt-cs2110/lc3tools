@@ -3,7 +3,7 @@ mod print;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex, MutexGuard};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
@@ -15,7 +15,22 @@ use neon::prelude::*;
 use once_cell::sync::Lazy;
 use print::{report_error, report_simple, PrintBuffer};
 
-static PRINT_BUFFER: Mutex<PrintBuffer> = Mutex::new(PrintBuffer::new());
+/// Mutex guard to the print buffer.
+/// 
+/// If the executing thread panics before this guard is released, 
+/// the buffer is cleared.
+fn print_buffer<'g>() -> MutexGuard<'g, PrintBuffer> {
+    static PRINT_BUFFER: Mutex<PrintBuffer> = Mutex::new(PrintBuffer::new());
+
+    match PRINT_BUFFER.lock() {
+        Ok(g) => g,
+        Err(mut e) => {
+            std::mem::take(&mut **e.get_mut());
+            PRINT_BUFFER.clear_poison();
+            e.into_inner()
+        }
+    }
+}
 static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
     Mutex::new(SimPageContents {
         sim_state: SimState::Idle({
@@ -151,13 +166,13 @@ fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn get_and_clear_output(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn() -> Result<String>
-    let string = PRINT_BUFFER.lock().unwrap().take();
+    let string = print_buffer().take();
     Ok(cx.string(string))
 }
 
 fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> Result<()>
-    PRINT_BUFFER.lock().unwrap().take();
+    print_buffer().take();
     Ok(cx.undefined())
 }
 
@@ -181,14 +196,14 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(in_path).unwrap();
 
     let ast = parse_ast(&src)
-        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut PRINT_BUFFER.lock().unwrap()))?;
+        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut print_buffer()))?;
     let asm = assemble_debug(ast, &src)
-        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut PRINT_BUFFER.lock().unwrap()))?;
+        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut print_buffer()))?;
     
     std::fs::write(&out_path, asm.write_bytes())
-        .map_err(|e| report_simple(in_path, e, &mut cx, &mut PRINT_BUFFER.lock().unwrap()))?;
+        .map_err(|e| report_simple(in_path, e, &mut cx, &mut print_buffer()))?;
 
-    writeln!(PRINT_BUFFER.lock().unwrap(), "Successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    writeln!(print_buffer(), "Successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
 }
 
@@ -246,7 +261,7 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
 
         if let Err(e) = result {
             let pc = SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap().prefetch_pc();
-            writeln!(PRINT_BUFFER.lock().unwrap(), "error: {e} (instruction x{pc:04X})").unwrap();
+            writeln!(print_buffer(), "error: {e} (instruction x{pc:04X})").unwrap();
         }
 
         cb.into_inner(&mut cx)
@@ -319,6 +334,7 @@ fn pause(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     SIM_CONTENTS.lock().unwrap().sim_state.pause();
     Ok(cx.undefined())
 }
+
 fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // fn(reg: String) -> Result<u16>
     // reg here can be R0-7, PC, PSR, MCR
@@ -342,7 +358,7 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
             let mcr = simulator.mcr();
             if mcr.load(Ordering::Relaxed) { 0x8000 } else { 0x0000 }
         }
-        _ => panic!("not defined register")
+        _ => panic!("undefined register")
     };
     std::mem::drop(sim_contents);
     
@@ -372,7 +388,7 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
             let mcr = simulator.mcr();
             mcr.store((value as i16) < 0, Ordering::Relaxed);
         }
-        _ => panic!("not defined register")
+        _ => panic!("undefined register")
     };
     std::mem::drop(sim_contents);
     

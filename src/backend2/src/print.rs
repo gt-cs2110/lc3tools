@@ -6,6 +6,7 @@ use lc3_ensemble::err::ErrSpan;
 use neon::context::Context;
 use neon::result::Throw;
 
+#[derive(Default)]
 pub(crate) struct PrintBuffer(String);
 impl PrintBuffer {
     pub(crate) const fn new() -> Self {
