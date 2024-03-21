@@ -216,7 +216,7 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     std::fs::write(&out_path, asm.write_bytes())
         .map_err(|e| report_simple(in_path, e, &mut cx, &mut print_buffer()))?;
 
-    writeln!(print_buffer(), "Successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    writeln!(print_buffer(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
 }
 
@@ -398,7 +398,7 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     
     Ok(cx.number(value))
 }
-fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
+fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(reg: String, value: u16) -> Result<()>
     // reg here can be R0-7, PC, PSR, MCR
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
@@ -426,7 +426,7 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     };
     std::mem::drop(sim_contents);
     
-    Ok(cx.number(value))
+    Ok(cx.undefined())
 }
 fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // fn (addr: u16) -> Result<u16>
@@ -440,7 +440,7 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
         .get();
     Ok(cx.number(value))
 }
-fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
+fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (addr: u16, value: u16) -> Result<()>
     let addr  = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
@@ -450,7 +450,8 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
 
     simulator.mem.set(addr, Word::new_init(value), MemAccessCtx { privileged: true, strict: false, io: simulator.io.as_ref() })
         .unwrap();
-    Ok(cx.number(value))
+    
+    Ok(cx.undefined())
 }
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn(addr: u16) -> Result<String>
