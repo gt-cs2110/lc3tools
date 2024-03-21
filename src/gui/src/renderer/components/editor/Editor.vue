@@ -372,7 +372,7 @@ export default {
 
 #console {
   overflow: auto;
-  font-family: "Courier New", Courier, monospace;
+  font-family: Consolas, Menlo, Courier, monospace;
   margin: 15px 10px 5px 10px;
   padding: 10px;
   white-space: pre-wrap;

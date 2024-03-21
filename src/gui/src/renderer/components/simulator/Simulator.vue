@@ -922,7 +922,7 @@ export default {
   line-height: 24px;
   text-align: left;
   padding-left: 5px;
-  font-family: Courier, monospace;
+  font-family: Consolas, Menlo, Courier, monospace;
   overflow: hidden;
   white-space: nowrap;
   align-self: center;
@@ -995,7 +995,7 @@ export default {
   order: 2;
   height: 100%;
   width: 100%;
-  font-family: Courier, monospace;
+  font-family: Consolas, Menlo, Courier, monospace;
   padding: 8px;
   overflow-y: scroll;
   box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.2), 0 4px 5px 0 rgba(0, 0, 0, 0.14),
