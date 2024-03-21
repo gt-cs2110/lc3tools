@@ -571,6 +571,8 @@ export default {
       this.updateUI();
       this.loadedSnackBar = true;
       // clear output on file (re)load
+      // TODO: display errors on load obj file properly.
+      // they're not being displayed because of this vvv
       if (this.$store.getters.clear_out_on_reload) {
         this.clearConsole();
       }
