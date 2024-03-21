@@ -242,10 +242,12 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), SimErr>) {
     channel.send(move |mut cx| {
         let this = cx.undefined();
-        let arg = match result {
-            Ok(_)   => cx.undefined().as_value(&mut cx),
-            Err(e) => cx.string(e.to_string()).as_value(&mut cx),
-        };
+        let arg = cx.undefined().as_value(&mut cx);
+
+        if let Err(e) = result {
+            let pc = SIM_CONTENTS.lock().unwrap().sim_state.simulator().unwrap().prefetch_pc();
+            writeln!(PRINT_BUFFER.lock().unwrap(), "error: {e} (instruction x{pc:04X})").unwrap();
+        }
 
         cb.into_inner(&mut cx)
             .call(&mut cx, this, vec![arg])?;
