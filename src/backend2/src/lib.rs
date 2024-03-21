@@ -98,6 +98,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
+    // idk what this does
     todo!()
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
