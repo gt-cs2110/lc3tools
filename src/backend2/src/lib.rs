@@ -1,26 +1,95 @@
+mod print;
+
+use std::io::Write;
+use std::path::Path;
+use std::sync::Mutex;
+
+use lc3_ensemble::asm::{assemble_debug, ObjectFile};
+use lc3_ensemble::parse::parse_ast;
+use lc3_ensemble::sim::Simulator;
 use neon::prelude::*;
+use once_cell::sync::Lazy;
+use print::{report_error, report_simple, PrintBuffer};
+
+static PRINT_BUFFER: Mutex<PrintBuffer> = Mutex::new(PrintBuffer::new());
+static SIMULATOR_CONTENTS: Lazy<Mutex<SimState>> = Lazy::new(|| {
+    Mutex::new(SimState {
+        sim: Simulator::new(),
+        obj: None,
+    })
+});
+struct SimState {
+    sim: Simulator,
+    obj: Option<ObjectFile>
+}
+
+//--------- CONFIG FUNCTIONS ---------//
 
 fn init(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> Result<()>
-    todo!()
+    // TODO: Determine whether ensemble requires an init.
+    Ok(cx.undefined())
+}
+fn set_enable_liberal_asm(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn (enable: bool) -> Result<()>
+    // TODO: What does liberal ASM do?
+    Ok(cx.undefined())
+}
+fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(enable: bool) -> Result<()>
+    // TODO: Implement ignore privilege
+    Ok(cx.undefined())
 }
 
-fn convert_bin(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+//--------- CONSOLE FUNCTIONS ---------//
+
+fn get_and_clear_output(mut cx: FunctionContext) -> JsResult<JsString> {
+    // fn() -> Result<String>
+    let string = PRINT_BUFFER.lock().unwrap().take();
+    Ok(cx.string(string))
+}
+
+fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn() -> Result<()>
+    PRINT_BUFFER.lock().unwrap().take();
+    Ok(cx.undefined())
+}
+
+//--------- EDITOR/ASSEMBLER FUNCTIONS ---------//
+
+fn convert_bin(mut _cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(fp: String) -> Result<()>
-    todo!()
+
+    // .bin files are files that have ASCII binary instead of assembly code.
+    // Maybe will be implemented later? idk.
+    unimplemented!("ConvertBin");
 }
 
 fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: String) -> Result<()>
-    todo!()
+    let fp = cx.argument::<JsString>(0)?.value(&mut cx);
+    let in_path = AsRef::<Path>::as_ref(&fp);
+    let out_path = in_path.with_extension("obj");
+    
+    // should be unreachable cause frontend validates IO
+    let src = std::fs::read_to_string(in_path).unwrap();
+
+    let ast = parse_ast(&src)
+        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut PRINT_BUFFER.lock().unwrap()))?;
+    let asm = assemble_debug(ast, &src)
+        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut PRINT_BUFFER.lock().unwrap()))?;
+    
+    std::fs::write(&out_path, asm.write_bytes())
+        .map_err(|e| report_simple(in_path, e, &mut cx, &mut PRINT_BUFFER.lock().unwrap()))?;
+
+    writeln!(PRINT_BUFFER.lock().unwrap(), "Successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    Ok(cx.undefined())
 }
+
+//--------- SIMULATOR FUNCTIONS ---------//
 
 fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     // fn (fp: String) -> Result<Object>
-    todo!()
-}
-fn set_enable_liberal_asm(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn (enable: bool) -> Result<()>
     todo!()
 }
 fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -89,11 +158,6 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16, value: String) -> Result<()>
     todo!()
 }
-fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn(enable: bool) -> Result<()>
-    todo!()
-}
-
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
     todo!()
@@ -102,16 +166,6 @@ fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(input: string) -> Result<()>
     // string is supposed to be char, though
-    todo!()
-}
-
-fn get_and_clear_output(mut cx: FunctionContext) -> JsResult<JsString> {
-    // fn() -> Result<String>
-    todo!()
-}
-
-fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn() -> Result<()>
     todo!()
 }
 

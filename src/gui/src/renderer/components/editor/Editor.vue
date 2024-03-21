@@ -106,6 +106,8 @@ import ace from "brace";
 import { CreateLc3CompletionProvider } from "./completions";
 
 import * as lc3 from "lc3interface";
+import * as lc3ensemble from "lc3-backend";
+import * as Convert from "ansi-to-html";
 
 Vue.use(Vuetify);
 
@@ -211,22 +213,32 @@ export default {
       let success = true;
       if (this.$store.getters.activeFilePath.endsWith(".bin")) {
         try {
-          lc3.ConvertBin(this.$store.getters.activeFilePath);
+          lc3ensemble.ConvertBin(this.$store.getters.activeFilePath);
         } catch (e) {
           success = false;
         }
       } else {
         try {
-          lc3.Assemble(this.$store.getters.activeFilePath);
+          lc3ensemble.Assemble(this.$store.getters.activeFilePath);
         } catch (e) {
           success = false;
         }
       }
 
-      const temp_console_string = lc3.GetAndClearOutput();
+      // VS Code's Dark+ terminal colors.
+      let convert = new Convert({
+        colors: [
+        "#000000", "#CD3131", "#0DBC79", "#E5E510", 
+        "#2472C8", "#BC3FBC", "#11A8CD", "#E5E5E5", 
+        "#666666", "#F14C4C", "#23D18B", "#F5F543", 
+        "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
+        ]
+      });
+      const temp_console_string = lc3ensemble.GetAndClearOutput();
+
       this.console_str = "";
       setTimeout(() => {
-        this.console_str = temp_console_string;
+        this.console_str = convert.toHtml(temp_console_string);
       }, 200);
       if (success) {
         this.$store.commit("touchActiveFileBuildTime");

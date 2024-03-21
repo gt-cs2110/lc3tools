@@ -12,6 +12,7 @@
   },
   "author": "",
   "license": "MIT",
+  "types": "./src/lib.d.ts",
   "devDependencies": {
     "cargo-cp-artifact": "^0.1"
   }
