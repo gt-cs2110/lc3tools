@@ -119,10 +119,21 @@ impl SimController {
     /// The sim state is idle after this is called.
     pub(crate) fn reset(&mut self, zeroed: bool) -> &mut Simulator {
         let _ = self.pause();
+        
+        // preserve breakpoints
+        let breakpoints = match self.simulator() {
+            Ok(old_sim) => std::mem::take(&mut old_sim.breakpoints),
+            Err(_) => {
+                eprintln!("could not obtain previous simulator's breakpoints, simulator is poisoned");
+                vec![]
+            },
+        };
         *self = SimController::new(zeroed);
 
         // return simulator ref because SimController::new always sets simulator to idle
-        self.simulator()
-            .unwrap_or_else(|_| unreachable!("sim controller known to be idle"))
+        let sim = self.simulator()
+            .unwrap_or_else(|_| unreachable!("sim controller known to be idle"));
+        sim.breakpoints = breakpoints;
+        sim
     }
 }
