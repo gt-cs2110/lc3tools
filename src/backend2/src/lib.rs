@@ -14,7 +14,7 @@ use lc3_ensemble::sim::io::BiChannelIO;
 use lc3_ensemble::sim::mem::{MemAccessCtx, Word};
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
-use io::{report_error, report_simple, InputBuffer, PrintBuffer};
+use io::{error_reporter, io_reporter, simple_reporter, InputBuffer, PrintBuffer};
 use once_cell::sync::Lazy;
 use sim::SimController;
 
@@ -160,12 +160,12 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(in_path).unwrap();
 
     let ast = parse_ast(&src)
-        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut print_buffer()))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut print_buffer(), &mut cx))?;
     let asm = assemble_debug(ast, &src)
-        .map_err(|e| report_error(e, in_path, &src, &mut cx, &mut print_buffer()))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut print_buffer(), &mut cx))?;
     
     std::fs::write(&out_path, asm.write_bytes())
-        .map_err(|e| report_simple(in_path, e, &mut cx, &mut print_buffer()))?;
+        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut print_buffer(), &mut cx))?;
 
     writeln!(print_buffer(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
@@ -196,7 +196,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let bytes = std::fs::read(in_path).unwrap();
     
     let Some(obj) = ObjectFile::read_bytes(&bytes) else {
-        return Err(report_simple(in_path, "malformed object file", &mut cx, &mut print_buffer()));
+        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut print_buffer(), &mut cx));
     };
 
     let mut contents = sim_contents();
@@ -242,7 +242,9 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
                 .simulator()
                 .or_else(|e| cx.throw_error(e.to_string()))?
                 .prefetch_pc();
-            writeln!(print_buffer(), "error: {e} (instruction x{pc:04X})").unwrap();
+            
+            simple_reporter(&format!("{e} (instruction x{pc:04X})"))
+                .report(&mut print_buffer());
         }
 
         cb.into_inner(&mut cx)

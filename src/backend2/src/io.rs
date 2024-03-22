@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::convert::Infallible;
 use std::path::Path;
 
@@ -54,44 +55,52 @@ impl std::io::Write for PrintBuffer {
     }
 }
 
-pub(crate) fn report_simple<'a>(fp: &Path, err: impl std::fmt::Display, cx: &mut impl Context<'a>, writer: &mut PrintBuffer) -> Throw {
-    ReportContents {
-        writer,
-        err: &err,
+pub(crate) fn simple_reporter<E: std::fmt::Display + ?Sized>(err: &E) -> Reporter<'_, E> {
+    Reporter {
+        err,
+        filename: None,
+        source: None,
+        span: None,
+        help: None,
+        msg_includes_fname: true
+    }
+}
+
+pub(crate) fn io_reporter<'a, E: std::fmt::Display + ?Sized>(err: &'a E, fp: &'a Path) -> Reporter<'a, E> {
+    Reporter {
+        err,
         filename: fp.file_name().and_then(|s| s.to_str()),
         source: None,
         span: None,
         help: None,
         msg_includes_fname: true
-    }.report(cx)
+    }
 }
-pub(crate) fn report_error<'a, E: lc3_ensemble::err::Error>(err: E, fp: &Path, src: &str, cx: &mut impl Context<'a>, writer: &mut PrintBuffer) -> Throw {
+pub(crate) fn error_reporter<'a, E: lc3_ensemble::err::Error + ?Sized>(err: &'a E, fp: &'a Path, src: &'a str) -> Reporter<'a, E> {
     let span = err.span();
     let help = err.help();
 
-    ReportContents {
-        writer,
-        err: &err,
+    Reporter {
+        err,
         filename: fp.file_name().and_then(|s| s.to_str()),
         source: Some(Source::from(src.to_string())),
         span,
-        help: help.as_deref(),
+        help,
         msg_includes_fname: false,
-    }.report(cx)
+    }
 }
 
-struct ReportContents<'c, 'w, E> {
-    writer: &'w mut PrintBuffer,
+pub(crate) struct Reporter<'c, E: ?Sized> {
     err: &'c E,
     filename: Option<&'c str>,
     source: Option<Source<String>>,
     span: Option<ErrSpan>,
-    help: Option<&'c str>,
+    help: Option<Cow<'c, str>>,
     msg_includes_fname: bool
 }
 
-impl<E: std::fmt::Display> ReportContents<'_, '_, E> {
-    fn report<'a>(self, cx: &mut impl Context<'a>) -> Throw {
+impl<E: std::fmt::Display + ?Sized> Reporter<'_, E> {
+    pub(crate) fn report(&mut self, writer: &mut PrintBuffer) {
         let mut colors = ColorGenerator::new();
 
         let msg = if self.msg_includes_fname {
@@ -107,13 +116,13 @@ impl<E: std::fmt::Display> ReportContents<'_, '_, E> {
         let offset = self.span.as_ref().map_or(0, |e| e.first().start);
         
         let mut report = Report::build(ReportKind::Error, fname, offset).with_message(msg);
-        match self.span {
+        match self.span.clone() {
             Some(ErrSpan::One(r)) => {
                 report.add_label({
                     let mut label = Label::new((fname, r))
                         .with_color(colors.next());
                     
-                    if let Some(help) = self.help {
+                    if let Some(help) = self.help.as_deref() {
                         label = label.with_message(help);
                     }
 
@@ -132,7 +141,7 @@ impl<E: std::fmt::Display> ReportContents<'_, '_, E> {
                             .with_message("")
                 });
 
-                if let Some(help) = self.help {
+                if let Some(help) = self.help.as_deref() {
                     report.set_help(help);
                 }
             },
@@ -146,21 +155,29 @@ impl<E: std::fmt::Display> ReportContents<'_, '_, E> {
                         })
                 });
 
-                if let Some(help) = self.help {
+                if let Some(help) = self.help.as_deref() {
                     report.set_help(help);
                 }
             },
             None => {
-                if let Some(help) = self.help {
+                if let Some(help) = self.help.as_deref() {
                     report.add_label(Label::new((fname, 0..0)));
                     report.set_help(help);
                 };
             }
         }
         
+        let source = match &self.source {
+            Some(s) => s.clone(),
+            None    => Source::from(String::new()),
+        };
         report.finish()
-            .write((fname, self.source.unwrap_or_else(|| Source::from(String::new()))), self.writer)
+            .write((fname, source), writer)
             .unwrap();
+    }
+
+    pub(crate) fn report_and_throw<'a>(mut self, writer: &mut PrintBuffer, cx: &mut impl Context<'a>) -> Throw {
+        self.report(writer);
 
         cx.throw_error::<_, Infallible>(self.err.to_string())
             .unwrap_err()
