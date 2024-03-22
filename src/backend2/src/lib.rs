@@ -4,7 +4,7 @@ mod sim;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
@@ -18,7 +18,29 @@ use io::{report_error, report_simple, InputBuffer, PrintBuffer};
 use once_cell::sync::Lazy;
 use sim::SimController;
 
-static INPUT_BUFFER: Lazy<InputBuffer> = Lazy::new(InputBuffer::new);
+/// Use [`input_buffer`].
+static INPUT_BUFFER: Lazy<RwLock<InputBuffer>> = Lazy::new(|| RwLock::new(InputBuffer::new()));
+
+/// Read guard to the input buffer.
+/// 
+/// This is all that's necessary for typical use because receives/sends can
+/// be done with a shared reference.
+/// 
+/// The only operation that should use a write guard is the one to
+/// replace the current `InputBuffer` when initializing the simulator's IO.
+/// If the executing thread panics before this guard is released, 
+/// the buffer is cleared.
+fn input_buffer<'g>() -> RwLockReadGuard<'g, InputBuffer> {
+    match INPUT_BUFFER.read() {
+        Ok(g) => g,
+        Err(e) => {
+            // can't happen, the only poison that can occur is during write
+            // and it can't panic there
+            INPUT_BUFFER.clear_poison();
+            e.into_inner()
+        }
+    }
+}
 
 /// Mutex guard to the print buffer.
 /// 
@@ -42,8 +64,16 @@ fn init_io(sim: &mut Simulator) {
     use lc3_ensemble::sim::io::Stop;
 
     let mcr = Arc::clone(sim.mcr());
+
+    // Reset input buffer.
+    // By wiping the previous buffer, the reader thread of 
+    // the previous simulator's IO should terminate (because the sender channel disconnected).
+    // This means there shouldn't be a memory process risk!
+    *INPUT_BUFFER.write().unwrap() = InputBuffer::new();
+
+    let rx = input_buffer().rx();
     let io = BiChannelIO::new(
-        || INPUT_BUFFER.rx.recv().map_err(|_| Stop),
+        move || rx.recv().map_err(|_| Stop),
         |byte| {
             let _ = print_buffer().write_all(&[byte]);
             Ok(())
@@ -385,9 +415,9 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
-    for _ in 0..INPUT_BUFFER.rx.len() {
-        let _ = INPUT_BUFFER.rx.recv();
-    }
+    let rx = input_buffer().rx();
+    while rx.try_recv().is_ok() {}
+    
     Ok(cx.undefined())
 }
 
@@ -399,7 +429,7 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let &[ch] = input.as_bytes() else {
         return cx.throw_error("more than one byte was sent at once");
     };
-    INPUT_BUFFER.send(ch);
+    input_buffer().send(ch);
 
     Ok(cx.undefined())
 }
