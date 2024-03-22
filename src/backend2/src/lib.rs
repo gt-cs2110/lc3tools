@@ -431,7 +431,7 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
     let rx = input_buffer().rx();
-    while rx.try_recv().is_ok() {}
+    for _ in rx.try_iter() {}
     
     Ok(cx.undefined())
 }
@@ -441,10 +441,13 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // string is supposed to be char, though
     let input = cx.argument::<JsString>(0)?.value(&mut cx);
     
-    let &[ch] = input.as_bytes() else {
-        return cx.throw_error("more than one byte was sent at once");
-    };
-    input_buffer().send(ch);
+    // ignore input requests unless they're happening while the sim is running
+    if let Err(sim::SimAccessError::NotAvailable) = sim_contents().controller.simulator() {
+        let &[ch] = input.as_bytes() else {
+            return cx.throw_error("more than one byte was sent at once");
+        };
+        input_buffer().send(ch);
+    }
 
     Ok(cx.undefined())
 }
