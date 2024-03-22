@@ -187,7 +187,7 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     }
     Ok(obj)
 }
-fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn (fp: string) -> Result<()>
     let fp = cx.argument::<JsString>(0)?.value(&mut cx);
     let in_path = AsRef::<Path>::as_ref(&fp);
@@ -196,8 +196,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let bytes = std::fs::read(in_path).unwrap();
     
     let Some(obj) = ObjectFile::read_bytes(&bytes) else {
-        writeln!(print_buffer(), "error: malformed object file {fp}").unwrap();
-        return Ok(cx.undefined());
+        return Err(report_simple(in_path, "malformed object file", &mut cx, &mut print_buffer()));
     };
 
     let mut contents = sim_contents();
@@ -206,7 +205,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     sim.load_obj_file(&obj);
     contents.obj_file.replace(obj);
 
-    Ok(cx.undefined())
+    Ok(cx.boolean(true))
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>

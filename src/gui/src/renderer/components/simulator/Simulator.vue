@@ -418,6 +418,7 @@ import Vue from "vue";
 import Vuetify from "vuetify";
 import fs from "fs";
 import * as lc3 from "lc3-backend";
+import * as Convert from "ansi-to-html";
 
 Vue.use(Vuetify);
 
@@ -564,18 +565,25 @@ export default {
       }
     },
     loadFile(path) {
-      this.loaded_files.add(path);
-      lc3.loadObjectFile(path);
-      this.mem_view.start = lc3.getRegValue("pc");
-      this.mem_view.sym_table = lc3.getCurrSymTable();
-      this.updateUI();
-      this.loadedSnackBar = true;
-      // clear output on file (re)load
-      // TODO: display errors on load obj file properly.
-      // they're not being displayed because of this vvv
+          // clear output on file (re)load
       if (this.$store.getters.clear_out_on_reload) {
         this.clearConsole();
       }
+
+      this.loaded_files.add(path);
+
+      // load object file can fail if the object file is malformed
+      let success = true;
+      try {
+        lc3.loadObjectFile(path);
+      } catch (e) {
+        success = false;
+      }
+
+      this.mem_view.start = lc3.getRegValue("pc");
+      this.mem_view.sym_table = lc3.getCurrSymTable();
+      this.updateUI();
+      this.loadedSnackBar = success;
     },
     reloadFiles() {
       this.loaded_files.forEach(path => {
@@ -754,6 +762,19 @@ export default {
     },
     updateConsole() {
       // Console
+
+      // TODO: reduce rendundancy by having these defined once
+      // see [`Editor.vue#build`].
+      
+      // VS Code's Dark+ terminal colors.
+      let convert = new Convert({
+        colors: [
+        "#000000", "#CD3131", "#0DBC79", "#E5E510", 
+        "#2472C8", "#BC3FBC", "#11A8CD", "#E5E5E5", 
+        "#666666", "#F14C4C", "#23D18B", "#F5F543", 
+        "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
+        ]
+      });
       let update = lc3.getAndClearOutput();
       if (update.length) {
         // Resolve all internal backspaces first
@@ -772,7 +793,7 @@ export default {
           update = update.substring(bs);
           this.console_str = this.console_str.slice(0, -bs);
         }
-        this.console_str += update;
+        this.console_str += convert.toHtml(update);
         setTimeout(
           () => (this.$refs.console.scrollTop = this.$refs.console.scrollHeight)
         );
