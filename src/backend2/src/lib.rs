@@ -165,7 +165,12 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
 
     let contents = SIM_CONTENTS.lock().unwrap();
     let Some(obj_file) = contents.obj_file.as_ref() else { return Ok(obj) };
-    let Some(_) = obj_file.symbol_table() else { return Ok(obj) };
+    let Some(sym) = obj_file.symbol_table() else { return Ok(obj) };
+    for (label, addr) in sym.label_iter() {
+        let key = cx.number(addr);
+        let val = cx.string(label);
+        obj.set(&mut cx, key, val)?;
+    }
     Ok(obj)
 }
 fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -195,8 +200,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
-    
-    // TODO: reset the simulator's PC + PSR
+    // i'm not sure what the purpose of this function is
 
     Ok(cx.undefined())
 }
@@ -330,7 +334,7 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
             let mcr = simulator.mcr();
             if mcr.load(Ordering::Relaxed) { 0x8000 } else { 0x0000 }
         }
-        _ => panic!("undefined register")
+        reg => cx.throw_error(format!("undefined register {reg:?}"))?
     };
     std::mem::drop(sim_contents);
     
@@ -355,12 +359,12 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         "r6"  => simulator.reg_file[R6].set(value),
         "r7"  => simulator.reg_file[R7].set(value),
         "pc"  => simulator.pc = value,
-        "psr" => panic!("cannot set PSR"),
+        "psr" => { /* cannot set PSR */ },
         "mcr" => {
             let mcr = simulator.mcr();
             mcr.store((value as i16) < 0, Ordering::Relaxed);
         }
-        _ => panic!("undefined register")
+        reg => cx.throw_error(format!("undefined register {reg:?}"))?
     };
     std::mem::drop(sim_contents);
     
@@ -466,8 +470,13 @@ fn get_inst_exec_count(mut cx: FunctionContext) -> JsResult<JsNumber> {
 
 fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn() -> Result<bool>
-    // TODO: implement
-    Ok(cx.boolean(false))
+    let hit = SIM_CONTENTS.lock().unwrap()
+        .controller
+        .simulator()
+        .unwrap()
+        .hit_breakpoint();
+    
+    Ok(cx.boolean(hit))
 }
 
 #[neon::main]
