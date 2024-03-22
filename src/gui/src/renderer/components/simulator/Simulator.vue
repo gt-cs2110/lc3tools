@@ -523,10 +523,13 @@ export default {
   methods: {
     handleMemoryScroll(event) {
       event.preventDefault();
-      this.memScrollOffset += event.deltaY;
-      if (Math.abs(this.memScrollOffset) > 20) {
-        this.jumpToPartMemView(Math.floor(this.memScrollOffset / 20));
-        this.memScrollOffset = 0;
+
+      if (!lc3.isSimRunning()) { // only allow scroll while sim is not running
+        this.memScrollOffset += event.deltaY;
+        if (Math.abs(this.memScrollOffset) > 20) {
+          this.jumpToPartMemView(Math.floor(this.memScrollOffset / 20));
+          this.memScrollOffset = 0;
+        }
       }
     },
     refreshMemoryPanel() {
@@ -765,7 +768,7 @@ export default {
 
       // TODO: reduce rendundancy by having these defined once
       // see [`Editor.vue#build`].
-      
+
       // VS Code's Dark+ terminal colors.
       let convert = new Convert({
         colors: [
@@ -803,12 +806,15 @@ export default {
 
     toggleBreakpoint(addr) {
       let idx = this.sim.breakpoints.indexOf(addr);
-      if (idx == -1) {
-        this.sim.breakpoints.push(addr);
-        lc3.setBreakpoint(addr);
-      } else {
-        this.sim.breakpoints.splice(idx, 1);
-        lc3.removeBreakpoint(addr);
+
+      if (!lc3.isSimRunning()) {
+        if (idx == -1) {
+          lc3.setBreakpoint(addr);
+          this.sim.breakpoints.push(addr);
+        } else {
+          lc3.removeBreakpoint(addr);
+          this.sim.breakpoints.splice(idx, 1);
+        }
       }
     },
     setPC(addr) {

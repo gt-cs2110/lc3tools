@@ -180,4 +180,8 @@ declare module "lc3-backend" {
      * Checks if a breakpoint was tripped.
      */
     export function didHitBreakpoint(): boolean;
+    /**
+     * Checks if the simulator is currently running.
+     */
+    export function isSimRunning(): boolean;
 }

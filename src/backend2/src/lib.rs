@@ -491,6 +491,14 @@ fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     
     Ok(cx.boolean(hit))
 }
+fn is_sim_running(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    let hit = sim_contents()
+        .controller
+        .simulator()
+        .is_err();
+
+    Ok(cx.boolean(hit))
+}
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
@@ -524,5 +532,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("removeBreakpoint", remove_breakpoint)?;
     cx.export_function("getInstExecCount", get_inst_exec_count)?;
     cx.export_function("didHitBreakpoint", did_hit_breakpoint)?;
+    cx.export_function("isSimRunning", is_sim_running)?;
     Ok(())
 }
