@@ -83,12 +83,26 @@ fn init_io(sim: &mut Simulator) {
     sim.open_io(io);
 }
 
-static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
-    Mutex::new(SimPageContents {
-        controller: SimController::new(false),
-        obj_file: None
-    })
-});
+
+fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
+    static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
+        Mutex::new(SimPageContents {
+            controller: SimController::new(false),
+            obj_file: None
+        })
+    });
+    
+    match SIM_CONTENTS.lock() {
+        Ok(g) => g,
+        Err(e) => {
+            // Errors don't put the page contents into an invalid state,
+            // so it should be okay to just do this
+            SIM_CONTENTS.clear_poison();
+            e.into_inner()
+        }
+    }
+}
+
 struct SimPageContents {
     controller: SimController,
     obj_file: Option<ObjectFile>
@@ -163,7 +177,7 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     // fn () -> Result<Object>
     let obj = cx.empty_object();
 
-    let contents = SIM_CONTENTS.lock().unwrap();
+    let contents = sim_contents();
     let Some(obj_file) = contents.obj_file.as_ref() else { return Ok(obj) };
     let Some(sym) = obj_file.symbol_table() else { return Ok(obj) };
     for (label, addr) in sym.label_iter() {
@@ -186,15 +200,11 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         return Ok(cx.undefined());
     };
 
-    let mut contents = match SIM_CONTENTS.lock() {
-        Ok(c)  => c,
-        Err(e) => e.into_inner(),
-    };
+    let mut contents = sim_contents();
     let sim = contents.controller.reset(false);
     init_io(sim);
     sim.load_obj_file(&obj);
     contents.obj_file.replace(obj);
-    SIM_CONTENTS.clear_poison();
 
     Ok(cx.undefined())
 }
@@ -206,26 +216,18 @@ fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
-    let mut contents = match SIM_CONTENTS.lock() {
-        Ok(c)  => c,
-        Err(e) => e.into_inner(),
-    };
+    let mut contents = sim_contents();
     let sim = contents.controller.reset(true);
     init_io(sim);
-    SIM_CONTENTS.clear_poison();
     
     Ok(cx.undefined())
 }
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let mut contents = match SIM_CONTENTS.lock() {
-        Ok(c)  => c,
-        Err(e) => e.into_inner(),
-    };
+    let mut contents = sim_contents();
     let sim = contents.controller.reset(false);
     init_io(sim);
-    SIM_CONTENTS.clear_poison();
-    
+
     Ok(cx.undefined())
 }
 
@@ -236,7 +238,11 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
         let arg = cx.undefined().as_value(&mut cx);
 
         if let Err(e) = result {
-            let pc = SIM_CONTENTS.lock().unwrap().controller.simulator().unwrap().prefetch_pc();
+            let pc = sim_contents()
+                .controller
+                .simulator()
+                .or_else(|e| cx.throw_error(e.to_string()))?
+                .prefetch_pc();
             writeln!(print_buffer(), "error: {e} (instruction x{pc:04X})").unwrap();
         }
 
@@ -251,10 +257,10 @@ fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
 
-    SIM_CONTENTS.lock().unwrap().controller.execute(
+    sim_contents().controller.execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
-    );
+    ).or_else(|e| cx.throw_error(e.to_string()))?;
 
     Ok(cx.undefined())
 }
@@ -263,10 +269,10 @@ fn run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
 
-    SIM_CONTENTS.lock().unwrap().controller.execute(
+    sim_contents().controller.execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
-    );
+    ).or_else(|e| cx.throw_error(e.to_string()))?;
 
     Ok(cx.undefined())
 }
@@ -275,10 +281,10 @@ fn step_in(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    SIM_CONTENTS.lock().unwrap().controller.execute(
+    sim_contents().controller.execute(
         Simulator::step_in,
         |result| finish_execution(channel, done_cb, result)
-    );
+    ).or_else(|e| cx.throw_error(e.to_string()))?;
 
     Ok(cx.undefined())
 }
@@ -287,10 +293,10 @@ fn step_out(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    SIM_CONTENTS.lock().unwrap().controller.execute(
+    sim_contents().controller.execute(
         Simulator::step_out,
         |result| finish_execution(channel, done_cb, result)
-    );
+    ).or_else(|e| cx.throw_error(e.to_string()))?;
 
     Ok(cx.undefined())
 }
@@ -299,15 +305,16 @@ fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    SIM_CONTENTS.lock().unwrap().controller.execute(
+    sim_contents().controller.execute(
         Simulator::step_over,
         |result| finish_execution(channel, done_cb, result)
-    );
+    ).or_else(|e| cx.throw_error(e.to_string()))?;
 
     Ok(cx.undefined())
 }
 fn pause(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    SIM_CONTENTS.lock().unwrap().controller.pause();
+    sim_contents().controller.pause()
+        .or_else(|e| cx.throw_error(e.to_string()))?;
     Ok(cx.undefined())
 }
 
@@ -316,8 +323,9 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // reg here can be R0-7, PC, PSR, MCR
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
 
-    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
-    let simulator = sim_contents.controller.simulator().unwrap();
+    let mut sim_contents = sim_contents();
+    let simulator = sim_contents.controller.simulator()
+        .or_else(|e| cx.throw_error(e.to_string()))?;
 
     let value = match &*reg {
         "r0"  => simulator.reg_file[R0].get(),
@@ -346,8 +354,9 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
 
-    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
-    let simulator = sim_contents.controller.simulator().unwrap();
+    let mut sim_contents = sim_contents();
+    let simulator = sim_contents.controller.simulator()
+        .or_else(|e| cx.throw_error(e.to_string()))?;
 
     match &*reg {
         "r0"  => simulator.reg_file[R0].set(value),
@@ -374,8 +383,9 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // fn (addr: u16) -> Result<u16>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
-    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
-    let simulator = sim_contents.controller.simulator().unwrap();
+    let mut sim_contents = sim_contents();
+    let simulator = sim_contents.controller.simulator()
+        .or_else(|e| cx.throw_error(e.to_string()))?;
 
     let value = simulator.mem.get(addr, MemAccessCtx { privileged: true, strict: false, io: &simulator.io })
         .unwrap()
@@ -387,8 +397,9 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let addr  = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
     
-    let mut sim_contents = SIM_CONTENTS.lock().unwrap();
-    let simulator = sim_contents.controller.simulator().unwrap();
+    let mut sim_contents = sim_contents();
+    let simulator = sim_contents.controller.simulator()
+        .or_else(|e| cx.throw_error(e.to_string()))?;
 
     simulator.mem.set(addr, Word::new_init(value), MemAccessCtx { privileged: true, strict: false, io: &simulator.io })
         .unwrap();
@@ -398,7 +409,7 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn(addr: u16) -> Result<String>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    let sim_contents = SIM_CONTENTS.lock().unwrap();
+    let sim_contents = sim_contents();
     
     'get_line: {
         let Some(obj) = &sim_contents.obj_file else { break 'get_line };
@@ -441,10 +452,10 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16) -> Result<()>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    SIM_CONTENTS.lock().unwrap()
+    sim_contents()
         .controller
         .simulator()
-        .unwrap()
+        .or_else(|e| cx.throw_error(e.to_string()))?
         .breakpoints
         .push(Breakpoint::PC(Comparator::eq(addr)));
     Ok(cx.undefined())
@@ -453,10 +464,10 @@ fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16) -> Result<()>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    SIM_CONTENTS.lock().unwrap()
+    sim_contents()
         .controller
         .simulator()
-        .unwrap()
+        .or_else(|e| cx.throw_error(e.to_string()))?
         .breakpoints
         .retain(|bp| bp != &Breakpoint::PC(Comparator::eq(addr)));
     Ok(cx.undefined())
@@ -470,10 +481,10 @@ fn get_inst_exec_count(mut cx: FunctionContext) -> JsResult<JsNumber> {
 
 fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn() -> Result<bool>
-    let hit = SIM_CONTENTS.lock().unwrap()
+    let hit = sim_contents()
         .controller
         .simulator()
-        .unwrap()
+        .or_else(|e| cx.throw_error(e.to_string()))?
         .hit_breakpoint();
     
     Ok(cx.boolean(hit))

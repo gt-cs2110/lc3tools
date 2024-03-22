@@ -8,7 +8,14 @@ pub(crate) enum SimAccessError {
     NotAvailable,
     Poisoned
 }
-
+impl std::fmt::Display for SimAccessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SimAccessError::NotAvailable => f.write_str("simulator is currently in the process of running; the state cannot be read or written to while it is running"),
+            SimAccessError::Poisoned => f.write_str("simulator was destroyed in the process of running; please reload object files"),
+        }
+    }
+}
 pub(crate) enum SimController {
     Idle(Simulator),
     Running {
