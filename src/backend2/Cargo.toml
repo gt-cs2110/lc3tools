@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ariadne = "0.4.0"
+crossbeam-channel = "0.5.12"
 lc3-ensemble = { git = "https://github.com/endorpersand/lc3-ensemble.git", version = "0.1.0" }
 neon = "1"
 once_cell = "1.19.0"

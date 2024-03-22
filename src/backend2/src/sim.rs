@@ -110,8 +110,12 @@ impl SimController {
     /// reseting it back to a randomized machine state (with OS).
     /// 
     /// The sim state is idle after this is called.
-    pub(crate) fn reset(&mut self, zeroed: bool) {
+    pub(crate) fn reset(&mut self, zeroed: bool) -> &mut Simulator {
         let _ = self.pause();
         *self = SimController::new(zeroed);
+
+        // return simulator ref because SimController::new always sets simulator to idle
+        self.simulator()
+            .unwrap_or_else(|_| unreachable!("sim controller known to be idle"))
     }
 }

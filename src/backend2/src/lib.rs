@@ -4,18 +4,21 @@ mod sim;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
+use lc3_ensemble::sim::io::BiChannelIO;
 use lc3_ensemble::sim::mem::{MemAccessCtx, Word};
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
-use io::{report_error, report_simple, PrintBuffer};
+use io::{report_error, report_simple, InputBuffer, PrintBuffer};
 use once_cell::sync::Lazy;
 use sim::SimController;
+
+static INPUT_BUFFER: Lazy<InputBuffer> = Lazy::new(InputBuffer::new);
 
 /// Mutex guard to the print buffer.
 /// 
@@ -32,6 +35,22 @@ fn print_buffer<'g>() -> MutexGuard<'g, PrintBuffer> {
             e.into_inner()
         }
     }
+}
+
+/// Initializes the simulator's IO
+fn init_io(sim: &mut Simulator) {
+    use lc3_ensemble::sim::io::Stop;
+
+    let mcr = Arc::clone(sim.mcr());
+    let io = BiChannelIO::new(
+        || INPUT_BUFFER.rx.recv().map_err(|_| Stop),
+        |byte| {
+            let _ = print_buffer().write_all(&[byte]);
+            Ok(())
+        },
+        mcr
+    );
+    sim.open_io(io);
 }
 
 static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
@@ -136,8 +155,9 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Ok(c)  => c,
         Err(e) => e.into_inner(),
     };
-    contents.controller.reset(false);
-    contents.controller.simulator().unwrap().load_obj_file(&obj);
+    let sim = contents.controller.reset(false);
+    init_io(sim);
+    sim.load_obj_file(&obj);
     contents.obj_file.replace(obj);
     SIM_CONTENTS.clear_poison();
 
@@ -145,8 +165,9 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
-    // idk what this does
-    *SIM_CONTENTS.lock().unwrap().controller.simulator().unwrap() = Simulator::new();
+    
+    // TODO: reset the simulator's PC + PSR
+
     Ok(cx.undefined())
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -155,7 +176,8 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Ok(c)  => c,
         Err(e) => e.into_inner(),
     };
-    contents.controller.reset(true);
+    let sim = contents.controller.reset(true);
+    init_io(sim);
     SIM_CONTENTS.clear_poison();
     
     Ok(cx.undefined())
@@ -166,7 +188,8 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Ok(c)  => c,
         Err(e) => e.into_inner(),
     };
-    contents.controller.reset(false);
+    let sim = contents.controller.reset(false);
+    init_io(sim);
     SIM_CONTENTS.clear_poison();
     
     Ok(cx.undefined())
@@ -362,14 +385,22 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
-    // TODO: implement
+    for _ in 0..INPUT_BUFFER.rx.len() {
+        let _ = INPUT_BUFFER.rx.recv();
+    }
     Ok(cx.undefined())
 }
 
 fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(input: string) -> Result<()>
     // string is supposed to be char, though
-    // TODO: implement
+    let input = cx.argument::<JsString>(0)?.value(&mut cx);
+    
+    let &[ch] = input.as_bytes() else {
+        return cx.throw_error("more than one byte was sent at once");
+    };
+    INPUT_BUFFER.send(ch);
+
     Ok(cx.undefined())
 }
 

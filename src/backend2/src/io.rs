@@ -6,6 +6,21 @@ use lc3_ensemble::err::ErrSpan;
 use neon::context::Context;
 use neon::result::Throw;
 
+pub(crate) struct InputBuffer {
+    tx: crossbeam_channel::Sender<u8>,
+    pub(crate) rx: crossbeam_channel::Receiver<u8>
+}
+impl InputBuffer {
+    pub(crate) fn new() -> Self {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        InputBuffer { tx, rx }
+    }
+
+    pub(crate) fn send(&self, byte: u8) {
+        // shouldn't ever disconnect
+        let _ = self.tx.send(byte);
+    }
+}
 #[derive(Default)]
 pub(crate) struct PrintBuffer(String);
 impl PrintBuffer {
