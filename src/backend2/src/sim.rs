@@ -19,11 +19,10 @@ pub(crate) enum SimController {
 }
 impl SimController {
     /// Creates a new idle simulator state.
-    pub(crate) fn new() -> Self {
-        SimController::Idle({
-            let mut sim = Simulator::new();
-            sim.load_os();
-            sim
+    pub(crate) fn new(zeroed: bool) -> Self {
+        SimController::Idle(match zeroed {
+            false => Simulator::new(),
+            true  => Simulator::zeroed(),
         })
     }
 
@@ -111,8 +110,8 @@ impl SimController {
     /// reseting it back to a randomized machine state (with OS).
     /// 
     /// The sim state is idle after this is called.
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn reset(&mut self, zeroed: bool) {
         let _ = self.pause();
-        *self = SimController::new();
+        *self = SimController::new(zeroed);
     }
 }

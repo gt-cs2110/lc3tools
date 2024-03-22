@@ -36,7 +36,7 @@ fn print_buffer<'g>() -> MutexGuard<'g, PrintBuffer> {
 
 static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
     Mutex::new(SimPageContents {
-        controller: SimController::new(),
+        controller: SimController::new(false),
         obj_file: None
     })
 });
@@ -136,7 +136,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Ok(c)  => c,
         Err(e) => e.into_inner(),
     };
-    contents.controller.reset();
+    contents.controller.reset(false);
     contents.controller.simulator().unwrap().load_obj_file(&obj);
     contents.obj_file.replace(obj);
     SIM_CONTENTS.clear_poison();
@@ -151,25 +151,22 @@ fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
-    
-    // TODO: actually zero out memory properly
     let mut contents = match SIM_CONTENTS.lock() {
         Ok(c)  => c,
         Err(e) => e.into_inner(),
     };
-    contents.controller.reset();
+    contents.controller.reset(true);
     SIM_CONTENTS.clear_poison();
     
     Ok(cx.undefined())
 }
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    
     let mut contents = match SIM_CONTENTS.lock() {
         Ok(c)  => c,
         Err(e) => e.into_inner(),
     };
-    contents.controller.reset();
+    contents.controller.reset(false);
     SIM_CONTENTS.clear_poison();
     
     Ok(cx.undefined())
