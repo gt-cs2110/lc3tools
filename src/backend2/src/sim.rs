@@ -9,7 +9,7 @@ pub(crate) enum SimAccessError {
     Poisoned
 }
 
-pub(crate) enum SimState {
+pub(crate) enum SimController {
     Idle(Simulator),
     Running {
         mcr: Arc<AtomicBool>,
@@ -17,10 +17,10 @@ pub(crate) enum SimState {
     },
     Poison
 }
-impl SimState {
+impl SimController {
     /// Creates a new idle simulator state.
     pub(crate) fn new() -> Self {
-        SimState::Idle({
+        SimController::Idle({
             let mut sim = Simulator::new();
             sim.load_os();
             sim
@@ -32,11 +32,11 @@ impl SimState {
     fn try_reacquire(&mut self) {
         use std::sync::mpsc::TryRecvError;
 
-        if let SimState::Running { handle, .. } = self {
+        if let SimController::Running { handle, .. } = self {
             match handle.try_recv() {
-                Ok(sim) => *self = SimState::Idle(sim),
+                Ok(sim) => *self = SimController::Idle(sim),
                 Err(TryRecvError::Empty) => {},
-                Err(TryRecvError::Disconnected) => *self = SimState::Poison,
+                Err(TryRecvError::Disconnected) => *self = SimController::Poison,
             }
         }
     }
@@ -45,15 +45,15 @@ impl SimState {
     /// 
     /// If SimState is poisoned, then this will raise a Poisoned error.
     fn join(&mut self) -> Result<(), SimAccessError> {
-        if let SimState::Running { handle, .. } = self {
+        if let SimController::Running { handle, .. } = self {
             match handle.recv() {
-                Ok(sim) => *self = SimState::Idle(sim),
-                Err(_)  => *self = SimState::Poison,
+                Ok(sim) => *self = SimController::Idle(sim),
+                Err(_)  => *self = SimController::Poison,
             }
         };
 
         match self {
-            SimState::Idle(_) => Ok(()),
+            SimController::Idle(_) => Ok(()),
             _ => Err(SimAccessError::Poisoned)
         }
     }
@@ -63,9 +63,9 @@ impl SimState {
         self.try_reacquire();
 
         match self {
-            SimState::Idle(sim) => Ok(sim),
-            SimState::Running { .. } => Err(SimAccessError::NotAvailable),
-            SimState::Poison => Err(SimAccessError::Poisoned),
+            SimController::Idle(sim) => Ok(sim),
+            SimController::Running { .. } => Err(SimAccessError::NotAvailable),
+            SimController::Poison => Err(SimAccessError::Poisoned),
         }
     }
 
@@ -82,7 +82,7 @@ impl SimState {
             close: impl FnOnce(T) + Send + 'static
         ) -> Result<(), SimAccessError> {
         let _ = self.simulator()?; // assert idle
-        let SimState::Idle(mut sim) = std::mem::replace(self, SimState::Poison) else {
+        let SimController::Idle(mut sim) = std::mem::replace(self, SimController::Poison) else {
             // this is assured by the above
             unreachable!("sim state should have been idle");
         };
@@ -95,13 +95,13 @@ impl SimState {
             close(result);
         });
 
-        *self = SimState::Running { mcr, handle: rx };
+        *self = SimController::Running { mcr, handle: rx };
         Ok(())
     }
 
     /// Pauses the simulator if is running.
     pub(crate) fn pause(&mut self) -> Result<(), SimAccessError> {
-        if let SimState::Running { mcr, .. } = self {
+        if let SimController::Running { mcr, .. } = self {
             mcr.store(false, Ordering::Relaxed);
         }
         self.join()
@@ -113,6 +113,6 @@ impl SimState {
     /// The sim state is idle after this is called.
     pub(crate) fn reset(&mut self) {
         let _ = self.pause();
-        *self = SimState::new();
+        *self = SimController::new();
     }
 }
