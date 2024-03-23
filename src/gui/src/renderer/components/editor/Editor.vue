@@ -369,6 +369,9 @@ export default {
 .ace_twilight .ace_completion-highlight {
   color: orange !important;
 }
+.ace-twilight .ace_marker-layer .ace_selection {
+  background: rgb(60, 97, 146) !important;
+}
 </style>
 
 <style scoped>
