@@ -2,6 +2,7 @@ mod io;
 mod sim;
 
 use std::io::Write;
+use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
@@ -417,7 +418,7 @@ fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
         let Some(sym) = obj.symbol_table() else { break 'get_line };
         let Some(src_info) = sym.source_info() else { break 'get_line };
     
-        let Some(lno) = sym.find_source_line(addr) else { break 'get_line };
+        let Some(lno) = sym.find_line_source(addr) else { break 'get_line };
         let Some(lspan) = src_info.line_span(lno) else { break 'get_line };
         
         return Ok(cx.string(&src_info.source()[lspan]))
@@ -501,7 +502,53 @@ fn is_sim_running(mut cx: FunctionContext) -> JsResult<JsBoolean> {
 
     Ok(cx.boolean(hit))
 }
+fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
+    let label = cx.argument::<JsString>(0)?.value(&mut cx);
+    
+    let sim_contents = sim_contents();
+    'get_line: {
+        let Some(obj) = &sim_contents.obj_file else { break 'get_line };
+        let Some(sym) = obj.symbol_table() else { break 'get_line };
+        let Some(src_info) = sym.source_info() else { break 'get_line };
+    
+        let Some(Range { start, end }) = sym.find_label_source(&label) else { break 'get_line };
+        let (slno, scno) = src_info.get_pos_pair(start);
+        let (elno, ecno) = src_info.get_pos_pair(end);
 
+        let array = cx.empty_array();
+        for (i, el) in [slno, scno, elno, ecno].into_iter().enumerate() {
+            let jsel = cx.number(el as f64);
+            array.set(&mut cx, i as u32, jsel)?;
+        }
+        return Ok(array.as_value(&mut cx))
+    }
+    Ok(cx.undefined().as_value(&mut cx))
+
+}
+fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
+    let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
+
+    let sim_contents = sim_contents();
+    'get_line: {
+        let Some(obj) = &sim_contents.obj_file else { break 'get_line };
+        let Some(sym) = obj.symbol_table() else { break 'get_line };
+        let Some(src_info) = sym.source_info() else { break 'get_line };
+    
+        
+        let Some(lno) = sym.find_line_source(addr) else { break 'get_line };
+        let Some(Range { start, end }) = src_info.line_span(lno) else { break 'get_line };
+        let (slno, scno) = src_info.get_pos_pair(start);
+        let (elno, ecno) = src_info.get_pos_pair(end);
+
+        let array = cx.empty_array();
+        for (i, el) in [slno, scno, elno, ecno].into_iter().enumerate() {
+            let jsel = cx.number(el as f64);
+            array.set(&mut cx, i as u32, jsel)?;
+        }
+        return Ok(array.as_value(&mut cx));
+    }
+    Ok(cx.undefined().as_value(&mut cx))
+}
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("init", init)?;
@@ -535,5 +582,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getInstExecCount", get_inst_exec_count)?;
     cx.export_function("didHitBreakpoint", did_hit_breakpoint)?;
     cx.export_function("isSimRunning", is_sim_running)?;
+    cx.export_function("getLabelSourceRange", get_label_source_range)?;
+    cx.export_function("getAddrSourceRange", get_addr_source_range)?;
     Ok(())
 }

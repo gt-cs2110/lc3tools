@@ -184,4 +184,13 @@ declare module "lc3-backend" {
      * Checks if the simulator is currently running.
      */
     export function isSimRunning(): boolean;
+
+    /**
+     * Gets the span in source code that corresponds to a given label.
+     */
+    export function getLabelSourceRange(label: string): [start_lno: number, start_cno: number, end_lno: number, end_cno: number] | undefined;
+    /**
+     * Gets the span in source code that corresponds to a given memory address.
+     */
+    export function getAddrSourceRange(addr: number): [start_lno: number, start_cno: number, end_lno: number, end_cno: number] | undefined;
 }

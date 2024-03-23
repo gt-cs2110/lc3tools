@@ -121,7 +121,8 @@ export default {
       },
       console_str: "",
       editor_theme: "textmate",
-      show_console: false
+      show_console: false,
+      ace_editor: null
     };
   },
   components: {
@@ -129,6 +130,26 @@ export default {
   },
   mounted() {
     setInterval(this.autosaveFile, 5 * 60 * 1000); // autosave every 5 minutes (cool!)
+  },
+  beforeRouteEnter(to, from, next) {
+    next(vm => {
+      if (to.hash) {
+        // format L999C999-L999C999
+        let hash_pattern = /^#?L(\d+)C(\d+)-L(\d+)C(\d+)$/;
+        let match = to.hash.match(hash_pattern);
+        if (match) {
+          let [_, slno_str, scno_str, elno_str, ecno_str] = match;
+          let slno = parseInt(slno_str, 10);
+          let scno = parseInt(scno_str, 10);
+          let elno = parseInt(elno_str, 10);
+          let ecno = parseInt(ecno_str, 10);
+  
+          let { Range } = ace.acequire("ace/range");
+          vm.ace_editor.gotoLine(slno, scno, true);
+          vm.ace_editor.getSelection().setRange(new Range(slno, scno, elno, ecno));
+        }
+      }
+    });
   },
   methods: {
     toggleConsole() {
@@ -253,6 +274,7 @@ export default {
       require("brace/ext/searchbox");
       require("brace/keybinding/vim");
       require("brace/ext/language_tools"); // for more config: const langTools = ace.acequire("ace/ext/language_tools");
+      
       editor.setShowPrintMargin(false);
       editor.setOptions({
         fontSize: "1.25em",
@@ -279,6 +301,8 @@ export default {
         bindKey: { win: "Ctrl-O", mac: "Cmd-O" },
         exec: this.openFile
       });
+
+      this.ace_editor = editor;
     }
   },
   computed: {

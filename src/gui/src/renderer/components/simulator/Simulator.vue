@@ -316,7 +316,7 @@
                           </v-text-field>
                         </v-edit-dialog>
                       </div>
-                      <div class="data-cell">
+                      <div class="data-cell" @click="jumpToSourceByLabel(props.item.label)">
                         <v-tooltip top>
                           <div slot="activator">
                             <i>{{ props.item.label }}</i>
@@ -324,7 +324,7 @@
                           <span>{{ props.item.label }}</span>
                         </v-tooltip>
                       </div>
-                      <div class="data-cell">
+                      <div class="data-cell" @click="jumpToSourceByAddr(props.item.addr)">
                         <i>{{ props.item.line }}</i>
                       </div>
                     </tr>
@@ -822,6 +822,24 @@ export default {
       lc3.setRegValue("pc", new_pc);
       lc3.restartMachine();
       this.updateUI();
+    },
+    jumpToSourceByLabel(label) {
+      if (!lc3.isSimRunning() && label) {
+        let span = lc3.getLabelSourceRange(label);
+        if (typeof span !== "undefined") {
+          let [slno, scno, elno, ecno] = span;
+          this.$router.push({ name: "editor", hash: `L${slno}C${scno}-L${elno}C${ecno}` });
+        }
+      }
+    },
+    jumpToSourceByAddr(addr) {
+      if (!lc3.isSimRunning()) {
+        let span = lc3.getAddrSourceRange(addr);
+        if (typeof span !== "undefined") {
+          let [slno, scno, elno, ecno] = span;
+          this.$router.push({ name: "editor", hash: `L${slno}C${scno}-L${elno}C${ecno}` });
+        }
+      }
     },
     breakpointAt(addr) {
       return this.sim.breakpoints.includes(addr);
