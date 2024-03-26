@@ -7,31 +7,6 @@ use lc3_ensemble::err::ErrSpan;
 use neon::context::Context;
 use neon::result::Throw;
 
-#[derive(Default)]
-pub(crate) struct PrintBuffer(String);
-impl PrintBuffer {
-    pub(crate) const fn new() -> Self {
-        PrintBuffer(String::new())
-    }
-    pub(crate) fn take(&mut self) -> String {
-        std::mem::take(&mut self.0)
-    }
-}
-impl std::io::Write for PrintBuffer {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        use std::io;
-
-        let string = std::str::from_utf8(buf)
-            .map_err(io::Error::other)?;
-        self.0.push_str(string);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
 pub(crate) fn simple_reporter<E: std::fmt::Display + ?Sized>(err: &E) -> Reporter<'_, E> {
     Reporter {
         err,
@@ -77,7 +52,7 @@ pub(crate) struct Reporter<'c, E: ?Sized> {
 }
 
 impl<E: std::fmt::Display + ?Sized> Reporter<'_, E> {
-    pub(crate) fn report(&mut self, writer: &mut PrintBuffer) {
+    pub(crate) fn report(&mut self, writer: &mut impl std::io::Write) {
         let mut colors = ColorGenerator::new();
 
         let msg = if self.msg_includes_fname {
@@ -153,7 +128,7 @@ impl<E: std::fmt::Display + ?Sized> Reporter<'_, E> {
             .unwrap();
     }
 
-    pub(crate) fn report_and_throw<'a>(mut self, writer: &mut PrintBuffer, cx: &mut impl Context<'a>) -> Throw {
+    pub(crate) fn report_and_throw<'a>(mut self, writer: &mut impl std::io::Write, cx: &mut impl Context<'a>) -> Throw {
         self.report(writer);
 
         cx.throw_error::<_, Infallible>(self.err.to_string())

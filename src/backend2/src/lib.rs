@@ -1,4 +1,4 @@
-mod io;
+mod err;
 mod sim;
 
 use std::io::Write;
@@ -15,7 +15,7 @@ use lc3_ensemble::sim::io::{BiChannelIO, BlockingQueue};
 use lc3_ensemble::sim::mem::{MemAccessCtx, Word};
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
-use io::{error_reporter, io_reporter, simple_reporter, PrintBuffer};
+use err::{error_reporter, io_reporter, simple_reporter};
 use once_cell::sync::Lazy;
 use sim::SimController;
 
@@ -44,16 +44,12 @@ fn input_buffer<'g>() -> RwLockReadGuard<'g, BlockingQueue<u8>> {
 }
 
 /// Mutex guard to the print buffer.
-/// 
-/// If the executing thread panics before this guard is released, 
-/// the buffer is cleared.
-fn print_buffer<'g>() -> MutexGuard<'g, PrintBuffer> {
-    static PRINT_BUFFER: Mutex<PrintBuffer> = Mutex::new(PrintBuffer::new());
+fn print_buffer<'g>() -> MutexGuard<'g, Vec<u8>> {
+    static PRINT_BUFFER: Mutex<Vec<u8>> = Mutex::new(vec![]);
 
     match PRINT_BUFFER.lock() {
         Ok(g) => g,
-        Err(mut e) => {
-            std::mem::take(&mut **e.get_mut());
+        Err(e) => {
             PRINT_BUFFER.clear_poison();
             e.into_inner()
         }
@@ -127,13 +123,14 @@ fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn get_and_clear_output(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn() -> Result<String>
-    let string = print_buffer().take();
+    let bytes = std::mem::take(&mut *print_buffer());
+    let string = String::from_utf8_lossy(&bytes);
     Ok(cx.string(string))
 }
 
 fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> Result<()>
-    print_buffer().take();
+    std::mem::take(&mut *print_buffer());
     Ok(cx.undefined())
 }
 
@@ -157,12 +154,12 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(in_path).unwrap();
 
     let ast = parse_ast(&src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut print_buffer(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_buffer(), &mut cx))?;
     let asm = assemble_debug(ast, &src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut print_buffer(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_buffer(), &mut cx))?;
     
     std::fs::write(&out_path, asm.write_bytes())
-        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut print_buffer(), &mut cx))?;
+        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *print_buffer(), &mut cx))?;
 
     writeln!(print_buffer(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
@@ -193,7 +190,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let bytes = std::fs::read(in_path).unwrap();
     
     let Some(obj) = ObjectFile::read_bytes(&bytes) else {
-        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut print_buffer(), &mut cx));
+        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *print_buffer(), &mut cx));
     };
 
     let mut contents = sim_contents();
@@ -241,7 +238,7 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
                 .prefetch_pc();
             
             simple_reporter(&format!("{e} (instruction x{pc:04X})"))
-                .report(&mut print_buffer());
+                .report(&mut *print_buffer());
         }
 
         cb.into_inner(&mut cx)
