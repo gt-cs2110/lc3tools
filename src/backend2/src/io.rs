@@ -7,29 +7,6 @@ use lc3_ensemble::err::ErrSpan;
 use neon::context::Context;
 use neon::result::Throw;
 
-pub(crate) struct InputBuffer {
-    tx: crossbeam_channel::Sender<u8>,
-    rx: crossbeam_channel::Receiver<u8>
-}
-impl InputBuffer {
-    pub(crate) fn new() -> Self {
-        let (tx, rx) = crossbeam_channel::unbounded();
-        InputBuffer { tx, rx }
-    }
-
-    pub(crate) fn send(&self, byte: u8) {
-        // shouldn't ever disconnect
-        let _ = self.tx.send(byte);
-    }
-
-    /// Retrieves a new receiver channel.
-    /// 
-    /// This is done to prevent the receiver from being used in blocking scenarios
-    /// and obstructing a lock.
-    pub(crate) fn rx(&self) -> crossbeam_channel::Receiver<u8> {
-        self.rx.clone()
-    }
-}
 #[derive(Default)]
 pub(crate) struct PrintBuffer(String);
 impl PrintBuffer {

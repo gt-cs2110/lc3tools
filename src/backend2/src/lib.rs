@@ -11,16 +11,16 @@ use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
-use lc3_ensemble::sim::io::BiChannelIO;
+use lc3_ensemble::sim::io::{BiChannelIO, BlockingQueue};
 use lc3_ensemble::sim::mem::{MemAccessCtx, Word};
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
-use io::{error_reporter, io_reporter, simple_reporter, InputBuffer, PrintBuffer};
+use io::{error_reporter, io_reporter, simple_reporter, PrintBuffer};
 use once_cell::sync::Lazy;
 use sim::SimController;
 
 /// Use [`input_buffer`].
-static INPUT_BUFFER: Lazy<RwLock<InputBuffer>> = Lazy::new(|| RwLock::new(InputBuffer::new()));
+static INPUT_BUFFER: Lazy<RwLock<BlockingQueue<u8>>> = Lazy::new(RwLock::default);
 
 /// Read guard to the input buffer.
 /// 
@@ -31,7 +31,7 @@ static INPUT_BUFFER: Lazy<RwLock<InputBuffer>> = Lazy::new(|| RwLock::new(InputB
 /// replace the current `InputBuffer` when initializing the simulator's IO.
 /// If the executing thread panics before this guard is released, 
 /// the buffer is cleared.
-fn input_buffer<'g>() -> RwLockReadGuard<'g, InputBuffer> {
+fn input_buffer<'g>() -> RwLockReadGuard<'g, BlockingQueue<u8>> {
     match INPUT_BUFFER.read() {
         Ok(g) => g,
         Err(e) => {
@@ -62,19 +62,15 @@ fn print_buffer<'g>() -> MutexGuard<'g, PrintBuffer> {
 
 /// Initializes the simulator's IO
 fn init_io(sim: &mut Simulator) {
-    use lc3_ensemble::sim::io::Stop;
-
     let mcr = Arc::clone(sim.mcr());
 
     // Reset input buffer.
     // By wiping the previous buffer, the reader thread of 
     // the previous simulator's IO should terminate (because the sender channel disconnected).
     // This means there shouldn't be a memory process risk!
-    *INPUT_BUFFER.write().unwrap() = InputBuffer::new();
-
-    let rx = input_buffer().rx();
+    *INPUT_BUFFER.write().unwrap() = BlockingQueue::default();
     let io = BiChannelIO::new(
-        move || rx.recv().map_err(|_| Stop),
+        INPUT_BUFFER.read().unwrap().reader(),
         |byte| {
             let _ = print_buffer().write_all(&[byte]);
             Ok(())
@@ -432,7 +428,7 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
-    let rx = input_buffer().rx();
+    let rx = input_buffer().tail();
     for _ in rx.try_iter() {}
     
     Ok(cx.undefined())
@@ -448,7 +444,7 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         let &[ch] = input.as_bytes() else {
             return cx.throw_error("more than one byte was sent at once");
         };
-        input_buffer().send(ch);
+        input_buffer().push(ch);
     }
 
     Ok(cx.undefined())

@@ -76,7 +76,7 @@ dependencies = [
 [[package]]
 name = "lc3-ensemble"
 version = "0.1.0"
-source = "git+https://github.com/endorpersand/lc3-ensemble.git#4568b4210d2b6bd2f642979bc1bc0580a4bdd9eb"
+source = "git+https://github.com/endorpersand/lc3-ensemble.git#9cbd1af55aad0fc354490766ed6993c422260ce0"
 dependencies = [
  "crossbeam-channel",
  "logos",
@@ -220,9 +220,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
+checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
 name = "semver"
@@ -244,9 +244,9 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "syn"
-version = "2.0.53"
+version = "2.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7383cd0e49fff4b6b90ca5670bfd3e9d6a733b3f90c686605aa7eec8c4996032"
+checksum = "002a1b3dbf967edfafc32655d0f377ab0bb7b994aa1d32c8cc7e9b8bf3ebb8f0"
 dependencies = [
  "proc-macro2",
  "quote",
