@@ -31,6 +31,10 @@ static INPUT_BUFFER: Lazy<RwLock<BlockingQueue<u8>>> = Lazy::new(RwLock::default
 /// replace the current `InputBuffer` when initializing the simulator's IO.
 /// If the executing thread panics before this guard is released, 
 /// the buffer is cleared.
+/// 
+/// Care should be taken to not write to this buffer whilst the simulator
+/// is not running, as the simulator's IO will continue to consume data from the queue
+/// regardless of whether the simulator is paused or not.
 fn input_buffer<'g>() -> RwLockReadGuard<'g, BlockingQueue<u8>> {
     match INPUT_BUFFER.read() {
         Ok(g) => g,
