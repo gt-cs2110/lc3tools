@@ -386,7 +386,7 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let simulator = sim_contents.controller.simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?;
 
-    let value = simulator.mem.get(addr, MemAccessCtx { privileged: true, strict: false, io: &simulator.io })
+    let value = simulator.mem.get(addr, MemAccessCtx { privileged: true, strict: false })
         .unwrap()
         .get();
     Ok(cx.number(value))
@@ -400,7 +400,7 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let simulator = sim_contents.controller.simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?;
 
-    simulator.mem.set(addr, Word::new_init(value), MemAccessCtx { privileged: true, strict: false, io: &simulator.io })
+    simulator.mem.set(addr, Word::new_init(value), MemAccessCtx { privileged: true, strict: false })
         .unwrap();
     
     Ok(cx.undefined())
