@@ -76,7 +76,7 @@ dependencies = [
 [[package]]
 name = "lc3-ensemble"
 version = "0.1.0"
-source = "git+https://github.com/endorpersand/lc3-ensemble.git#9cbd1af55aad0fc354490766ed6993c422260ce0"
+source = "git+https://github.com/endorpersand/lc3-ensemble.git#8a5dbed3c621e57e80a4d955456b0d63a3e55216"
 dependencies = [
  "crossbeam-channel",
  "logos",
