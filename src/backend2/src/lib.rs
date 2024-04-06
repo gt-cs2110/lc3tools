@@ -216,6 +216,7 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let mut contents = sim_contents();
     let sim = contents.controller.reset(true);
     init_io(sim);
+    contents.obj_file.take();
     
     Ok(cx.undefined())
 }
@@ -224,7 +225,8 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let mut contents = sim_contents();
     let sim = contents.controller.reset(false);
     init_io(sim);
-
+    contents.obj_file.take();
+    
     Ok(cx.undefined())
 }
 
