@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 
+use lc3_ensemble::sim::mem::WordCreateStrategy;
 use lc3_ensemble::sim::Simulator;
 
 #[derive(Debug)]
@@ -27,10 +28,12 @@ pub(crate) enum SimController {
 impl SimController {
     /// Creates a new idle simulator state.
     pub(crate) fn new(zeroed: bool) -> Self {
-        SimController::Idle(match zeroed {
-            false => Simulator::new(),
-            true  => Simulator::zeroed(),
-        })
+        let sim = Simulator::new(match zeroed {
+            false => WordCreateStrategy::Unseeded,
+            true  => WordCreateStrategy::Known(0),
+        });
+
+        SimController::Idle(sim)
     }
 
     /// Attempts to reacquire the simulator state (returning it to idle)

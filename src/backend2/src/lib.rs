@@ -12,7 +12,6 @@ use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
 use lc3_ensemble::sim::io::{BiChannelIO, BlockingQueue};
-use lc3_ensemble::sim::mem::{MemAccessCtx, Word};
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
@@ -388,9 +387,7 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let simulator = sim_contents.controller.simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?;
 
-    let value = simulator.mem.get(addr, MemAccessCtx { privileged: true, strict: false })
-        .unwrap()
-        .get();
+    let value = simulator.mem.get_raw(addr).get();
     Ok(cx.number(value))
 }
 fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -402,9 +399,7 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let simulator = sim_contents.controller.simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?;
 
-    simulator.mem.set(addr, Word::new_init(value), MemAccessCtx { privileged: true, strict: false })
-        .unwrap();
-    
+    simulator.mem.get_raw_mut(addr).set(value);
     Ok(cx.undefined())
 }
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
