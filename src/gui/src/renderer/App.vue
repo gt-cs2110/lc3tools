@@ -314,6 +314,7 @@ export default {
       if (setting == "all") {
         lc3.setIgnorePrivilege(this.settings.ignore_privilege);
         lc3.setEnableLiberalAsm(this.settings.liberal_asm);
+        lc3.setRunUntilHalt(this.settings.run_until_halt);
         this.$store.commit("setTheme", this.settings.theme);
         this.$store.commit("setNumberType", this.settings.numbers);
         this.$store.commit("setAutocomplete", this.settings.autocomplete);
@@ -348,6 +349,7 @@ export default {
       } else if (setting === "ignore-update") {
         this.$store.commit("setIgnoreUpdate", this.settings.ignore_update);
       } else if (setting === "runUntilHalt") {
+        lc3.setRunUntilHalt(this.settings.run_until_halt);
         this.$store.commit("setRunUntilHalt", this.settings.run_until_halt);
       } else if (setting === "clearOutOnReload") {
         this.$store.commit(

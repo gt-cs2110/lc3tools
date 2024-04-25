@@ -64,12 +64,6 @@ declare module "lc3-backend" {
     export function run(cb: (err: any) => void): void;
 
     /**
-     * Runs the program asynchronously, until a HALT statement is reached.
-     * @param cb Callback to execute in case of errors.
-     */
-    export function runUntilHalt(cb: (err: any) => void): void;
-
-    /**
      * Steps into the next instruction.
      * @param cb Callback to execute in case of errors.
      */
@@ -138,6 +132,12 @@ declare module "lc3-backend" {
      * @param status the status to set the configuration to.
      */
     export function setIgnorePrivilege(status: boolean): boolean;
+
+    /**
+     * Sets the run until halt configuration.
+     * @param status the status to set the configuration to.
+     */
+    export function setRunUntilHalt(status: boolean): boolean;
 
     /**
      * Clears the simulator console input.

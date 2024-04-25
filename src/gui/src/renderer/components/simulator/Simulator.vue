@@ -620,11 +620,7 @@ export default {
           } else if (run_function_str == "over") {
             lc3.stepOver(callback);
           } else {
-            if (this.$store.getters.run_until_halt) {
-              lc3.runUntilHalt(callback);
-            } else {
-              lc3.run(callback);
-            }
+            lc3.run(callback);
           }
         });
       } else {

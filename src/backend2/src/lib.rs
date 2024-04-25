@@ -12,7 +12,7 @@ use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
 use lc3_ensemble::sim::io::{BiChannelIO, BlockingQueue};
-use lc3_ensemble::sim::{SimErr, Simulator};
+use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
 use once_cell::sync::Lazy;
@@ -84,7 +84,8 @@ fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
     static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
         Mutex::new(SimPageContents {
             controller: SimController::new(false),
-            obj_file: None
+            obj_file: None,
+            sim_flags: Default::default()
         })
     });
     
@@ -101,7 +102,8 @@ fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
 
 struct SimPageContents {
     controller: SimController,
-    obj_file: Option<ObjectFile>
+    obj_file: Option<ObjectFile>,
+    sim_flags: SimFlags
 }
 
 //--------- CONFIG FUNCTIONS ---------//
@@ -119,6 +121,16 @@ fn set_enable_liberal_asm(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(enable: bool) -> Result<()>
     // TODO: Implement ignore privilege
+    Ok(cx.undefined())
+}
+fn set_run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(enable: bool) -> Result<()>
+    // the boolean flag is the run_until_halt flag.
+    // if run_until_halt is true, we're using virtual halt
+    // i.e., these are inverses of each other
+    let use_real_halt = !cx.argument::<JsBoolean>(0)?.value(&mut cx);
+    sim_contents().sim_flags.use_real_halt = use_real_halt;
+    
     Ok(cx.undefined())
 }
 
@@ -197,7 +209,9 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     };
 
     let mut contents = sim_contents();
-    let sim = contents.controller.reset(false);
+
+    let flags = contents.sim_flags;
+    let sim = contents.controller.reset(false, flags);
     init_io(sim);
     sim.load_obj_file(&obj);
     contents.obj_file.replace(obj);
@@ -213,7 +227,9 @@ fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
     let mut contents = sim_contents();
-    let sim = contents.controller.reset(true);
+
+    let flags = contents.sim_flags;
+    let sim = contents.controller.reset(true, flags);
     init_io(sim);
     contents.obj_file.take();
     
@@ -222,7 +238,9 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     let mut contents = sim_contents();
-    let sim = contents.controller.reset(false);
+
+    let flags = contents.sim_flags;
+    let sim = contents.controller.reset(false, flags);
     init_io(sim);
     contents.obj_file.take();
     
@@ -252,19 +270,8 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
         Ok(())
     });
 }
+
 fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn (fn(err) -> ()) -> Result<()>
-    let channel = cx.channel();
-    let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
-
-    sim_contents().controller.execute(
-        Simulator::run,
-        |result| finish_execution(channel, done_cb, result)
-    ).or_else(|e| cx.throw_error(e.to_string()))?;
-
-    Ok(cx.undefined())
-}
-fn run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
@@ -555,7 +562,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("reinitializeMachine", reinitialize_machine)?;
     cx.export_function("randomizeMachine", randomize_machine)?;
     cx.export_function("run", run)?;
-    cx.export_function("runUntilHalt", run_until_halt)?;
     cx.export_function("stepIn", step_in)?;
     cx.export_function("stepOut", step_out)?;
     cx.export_function("stepOver", step_over)?;
@@ -567,6 +573,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getMemLine", get_mem_line)?;
     cx.export_function("setMemLine", set_mem_line)?;
     cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
+    cx.export_function("setRunUntilHalt", set_run_until_halt)?;
     cx.export_function("clearInput", clear_input)?;
     cx.export_function("addInput", add_input)?;
     cx.export_function("getAndClearOutput", get_and_clear_output)?;
