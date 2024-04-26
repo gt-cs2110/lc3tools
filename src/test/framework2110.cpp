@@ -404,9 +404,9 @@ std::string Tester::read_mem_string(std::uint16_t addr) {
     auto c = simulator->readMem(addr);
     if (c > 127)
       throw Tester_error("Invalid string read",
-                         (std::ostringstream{}
-                          << "Character at address " << std::showbase
-                          << std::hex << (addr - 1) << " is invalid (>127)")
+                         (std::ostringstream{} << "Character at address "
+                                               << std::showbase << std::hex
+                                               << addr << " is invalid (>127)")
                              .str());
     str.push_back(c);
   }
