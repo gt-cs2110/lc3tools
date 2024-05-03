@@ -1,84 +1,41 @@
 mod err;
 mod sim;
 
+use std::collections::VecDeque;
 use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
-use lc3_ensemble::sim::io::{BiChannelIO, BlockingQueue};
+use lc3_ensemble::sim::io::BufferedIO;
 use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
 use once_cell::sync::Lazy;
 use sim::SimController;
 
-/// Use [`input_buffer`].
-static INPUT_BUFFER: Lazy<RwLock<BlockingQueue<u8>>> = Lazy::new(RwLock::default);
+static INPUT_BUFFER: Lazy<Arc<RwLock<VecDeque<u8>>>> = Lazy::new(Arc::default);
+static PRINT_BUFFER: Lazy<Arc<RwLock<Vec<u8>>>> = Lazy::new(Arc::default);
 
-/// Read guard to the input buffer.
-/// 
-/// This is all that's necessary for typical use because receives/sends can
-/// be done with a shared reference.
-/// 
-/// The only operation that should use a write guard is the one to
-/// replace the current `InputBuffer` when initializing the simulator's IO.
-/// If the executing thread panics before this guard is released, 
-/// the buffer is cleared.
-/// 
-/// Care should be taken to not write to this buffer whilst the simulator
-/// is not running, as the simulator's IO will continue to consume data from the queue
-/// regardless of whether the simulator is paused or not.
-fn input_buffer<'g>() -> RwLockReadGuard<'g, BlockingQueue<u8>> {
-    match INPUT_BUFFER.read() {
-        Ok(g) => g,
-        Err(e) => {
-            // can't happen, the only poison that can occur is during write
-            // and it can't panic there
-            INPUT_BUFFER.clear_poison();
-            e.into_inner()
-        }
-    }
+/// Creates a write guard to [`INPUT_BUFFER`].
+fn input_writer<'w>() -> RwLockWriteGuard<'w, VecDeque<u8>> {
+    INPUT_BUFFER.write()
+        .unwrap_or_else(|e| e.into_inner())
 }
-
-/// Mutex guard to the print buffer.
-fn print_buffer<'g>() -> MutexGuard<'g, Vec<u8>> {
-    static PRINT_BUFFER: Mutex<Vec<u8>> = Mutex::new(vec![]);
-
-    match PRINT_BUFFER.lock() {
-        Ok(g) => g,
-        Err(e) => {
-            PRINT_BUFFER.clear_poison();
-            e.into_inner()
-        }
-    }
+/// Creates a write guard to [`PRINT_BUFFER`].
+fn print_writer<'w>() -> RwLockWriteGuard<'w, Vec<u8>> {
+    PRINT_BUFFER.write()
+        .unwrap_or_else(|e| e.into_inner())
 }
-
-/// Initializes the simulator's IO
-fn init_io(sim: &mut Simulator) {
-    let mcr = Arc::clone(sim.mcr());
-
-    // Reset input buffer.
-    // By wiping the previous buffer, the reader thread of 
-    // the previous simulator's IO should terminate (because the sender channel disconnected).
-    // This means there shouldn't be a memory process risk!
-    *INPUT_BUFFER.write().unwrap() = BlockingQueue::default();
-    let io = BiChannelIO::new(
-        INPUT_BUFFER.read().unwrap().reader(),
-        |byte| {
-            let _ = print_buffer().write_all(&[byte]);
-            Ok(())
-        },
-        mcr
-    );
-    sim.open_io(io);
+/// Creates a BufferedIO value that can be set as the Simulator's IO.
+fn get_buffered_io() -> BufferedIO {
+    BufferedIO::with_bufs(Arc::clone(&INPUT_BUFFER), Arc::clone(&PRINT_BUFFER))
 }
-
 
 fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
     static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
@@ -138,14 +95,14 @@ fn set_run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn get_and_clear_output(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn() -> Result<String>
-    let bytes = std::mem::take(&mut *print_buffer());
+    let bytes = std::mem::take(&mut *print_writer());
     let string = String::from_utf8_lossy(&bytes);
     Ok(cx.string(string))
 }
 
 fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> Result<()>
-    std::mem::take(&mut *print_buffer());
+    print_writer().clear();
     Ok(cx.undefined())
 }
 
@@ -169,14 +126,14 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(in_path).unwrap();
 
     let ast = parse_ast(&src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_buffer(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_writer(), &mut cx))?;
     let asm = assemble_debug(ast, &src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_buffer(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_writer(), &mut cx))?;
     
     std::fs::write(&out_path, asm.write_bytes())
-        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *print_buffer(), &mut cx))?;
+        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *print_writer(), &mut cx))?;
 
-    writeln!(print_buffer(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    writeln!(print_writer(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
 }
 
@@ -205,14 +162,14 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let bytes = std::fs::read(in_path).unwrap();
     
     let Some(obj) = ObjectFile::read_bytes(&bytes) else {
-        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *print_buffer(), &mut cx));
+        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *print_writer(), &mut cx));
     };
 
     let mut contents = sim_contents();
 
     let flags = contents.sim_flags;
     let sim = contents.controller.reset(false, flags);
-    init_io(sim);
+    sim.open_io(get_buffered_io());
     sim.load_obj_file(&obj);
     contents.obj_file.replace(obj);
 
@@ -230,7 +187,7 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let flags = contents.sim_flags;
     let sim = contents.controller.reset(true, flags);
-    init_io(sim);
+    sim.open_io(get_buffered_io());
     contents.obj_file.take();
     
     Ok(cx.undefined())
@@ -241,7 +198,7 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let flags = contents.sim_flags;
     let sim = contents.controller.reset(false, flags);
-    init_io(sim);
+    sim.open_io(get_buffered_io());
     contents.obj_file.take();
     
     Ok(cx.undefined())
@@ -261,7 +218,7 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
                 .prefetch_pc();
             
             simple_reporter(&format!("{e} (instruction x{pc:04X})"))
-                .report(&mut *print_buffer());
+                .report(&mut *print_writer());
         }
 
         cb.into_inner(&mut cx)
@@ -419,7 +376,7 @@ fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
         let Some(sym) = obj.symbol_table() else { break 'get_line };
         let Some(src_info) = sym.source_info() else { break 'get_line };
     
-        let Some(lno) = sym.find_line_source(addr) else { break 'get_line };
+        let Some(lno) = sym.rev_lookup_line(addr) else { break 'get_line };
         let Some(lspan) = src_info.line_span(lno) else { break 'get_line };
         
         return Ok(cx.string(&src_info.source()[lspan]))
@@ -433,9 +390,7 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
-    let rx = input_buffer().tail();
-    for _ in rx.try_iter() {}
-    
+    input_writer().clear();
     Ok(cx.undefined())
 }
 
@@ -449,7 +404,7 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         let &[ch] = input.as_bytes() else {
             return cx.throw_error("more than one byte was sent at once");
         };
-        input_buffer().push(ch);
+        input_writer().push_back(ch);
     }
 
     Ok(cx.undefined())
@@ -512,7 +467,7 @@ fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
         let Some(sym) = obj.symbol_table() else { break 'get_line };
         let Some(src_info) = sym.source_info() else { break 'get_line };
     
-        let Some(Range { start, end }) = sym.find_label_source(&label) else { break 'get_line };
+        let Some(Range { start, end }) = sym.get_label_source(&label) else { break 'get_line };
         let (slno, scno) = src_info.get_pos_pair(start);
         let (elno, ecno) = src_info.get_pos_pair(end);
 
@@ -536,7 +491,7 @@ fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
         let Some(src_info) = sym.source_info() else { break 'get_line };
     
         
-        let Some(lno) = sym.find_line_source(addr) else { break 'get_line };
+        let Some(lno) = sym.rev_lookup_line(addr) else { break 'get_line };
         let Some(Range { start, end }) = src_info.line_span(lno) else { break 'get_line };
         let (slno, scno) = src_info.get_pos_pair(start);
         let (elno, ecno) = src_info.get_pos_pair(end);
