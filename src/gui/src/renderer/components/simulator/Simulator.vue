@@ -814,10 +814,12 @@ export default {
       }
     },
     setPC(addr) {
-      let new_pc = addr & 0xffff;
-      lc3.setRegValue("pc", new_pc);
-      lc3.restartMachine();
-      this.updateUI();
+      if (!lc3.isSimRunning()) {
+        let new_pc = addr & 0xffff;
+        lc3.setRegValue("pc", new_pc);
+        lc3.restartMachine();
+        this.updateUI();
+      }
     },
     jumpToSourceByLabel(label) {
       if (!lc3.isSimRunning() && label) {

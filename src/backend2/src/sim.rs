@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 
-use lc3_ensemble::sim::{SimFlags, WordCreateStrategy};
+use lc3_ensemble::sim::SimFlags;
 use lc3_ensemble::sim::Simulator;
 
 #[derive(Debug)]
@@ -27,16 +27,8 @@ pub(crate) enum SimController {
 }
 impl SimController {
     /// Creates a new idle simulator state.
-    pub(crate) fn new(zeroed: bool) -> Self {
-        let word_create_strat = match zeroed {
-            false => WordCreateStrategy::Unseeded,
-            true  => WordCreateStrategy::Known { value: 0 },
-        };
-        let sim = Simulator::new(SimFlags {
-            word_create_strat,
-            ..Default::default()
-        });
-
+    pub(crate) fn new() -> Self {
+        let sim = Simulator::new(Default::default());
         SimController::Idle(sim)
     }
 
@@ -124,7 +116,7 @@ impl SimController {
     /// reseting it back to a randomized machine state (with OS).
     /// 
     /// The sim state is idle after this is called.
-    pub(crate) fn reset(&mut self, zeroed: bool, flags: SimFlags) -> &mut Simulator {
+    pub(crate) fn reset(&mut self, flags: SimFlags) -> &mut Simulator {
         let _ = self.pause();
         
         // preserve breakpoints
@@ -137,14 +129,15 @@ impl SimController {
         };
 
         let _ = self.pause(); // ignore result
-        if self.simulator().is_err() {
-            *self = SimController::new(zeroed);
-        }
 
+        if self.simulator().is_err() {
+            *self = SimController::new();
+        }
         let sim = self.simulator()
             .unwrap_or_else(|_| unreachable!("sim controller known to be idle"));
-        sim.reset();
+
         sim.flags = flags;
+        sim.reset();
         sim.breakpoints = breakpoints;
         sim
     }

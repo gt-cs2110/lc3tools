@@ -13,7 +13,7 @@ use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
 use lc3_ensemble::sim::io::BufferedIO;
-use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
+use lc3_ensemble::sim::{SimErr, SimFlags, Simulator, WordCreateStrategy};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
 use once_cell::sync::Lazy;
@@ -40,7 +40,7 @@ fn get_buffered_io() -> BufferedIO {
 fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
     static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
         Mutex::new(SimPageContents {
-            controller: SimController::new(false),
+            controller: SimController::new(),
             obj_file: None,
             sim_flags: Default::default()
         })
@@ -54,6 +54,13 @@ fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
             SIM_CONTENTS.clear_poison();
             e.into_inner()
         }
+    }
+}
+
+fn get_create_strategy(zeroed: bool) -> WordCreateStrategy {
+    match zeroed {
+        true => WordCreateStrategy::Known { value: 0 },
+        false => WordCreateStrategy::Unseeded
     }
 }
 
@@ -167,8 +174,11 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
 
     let mut contents = sim_contents();
 
-    let flags = contents.sim_flags;
-    let sim = contents.controller.reset(false, flags);
+    let flags = SimFlags {
+        word_create_strat: get_create_strategy(false),
+        ..contents.sim_flags
+    };
+    let sim = contents.controller.reset(flags);
     sim.open_io(get_buffered_io());
     sim.load_obj_file(&obj);
     contents.obj_file.replace(obj);
@@ -185,8 +195,11 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
     let mut contents = sim_contents();
 
-    let flags = contents.sim_flags;
-    let sim = contents.controller.reset(true, flags);
+    let flags = SimFlags {
+        word_create_strat: get_create_strategy(true),
+        ..contents.sim_flags
+    };
+    let sim = contents.controller.reset(flags);
     sim.open_io(get_buffered_io());
     contents.obj_file.take();
     
@@ -196,8 +209,11 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     let mut contents = sim_contents();
 
-    let flags = contents.sim_flags;
-    let sim = contents.controller.reset(false, flags);
+    let flags = SimFlags {
+        word_create_strat: get_create_strategy(false),
+        ..contents.sim_flags
+    };
+    let sim = contents.controller.reset(flags);
     sim.open_io(get_buffered_io());
     contents.obj_file.take();
     
