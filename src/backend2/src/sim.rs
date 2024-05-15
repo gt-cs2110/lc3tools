@@ -117,17 +117,6 @@ impl SimController {
     /// 
     /// The sim state is idle after this is called.
     pub(crate) fn reset(&mut self, flags: SimFlags) -> &mut Simulator {
-        let _ = self.pause();
-        
-        // preserve breakpoints
-        let breakpoints = match self.simulator() {
-            Ok(old_sim) => std::mem::take(&mut old_sim.breakpoints),
-            Err(_) => {
-                eprintln!("could not obtain previous simulator's breakpoints, simulator is poisoned");
-                vec![]
-            },
-        };
-
         let _ = self.pause(); // ignore result
 
         if self.simulator().is_err() {
@@ -138,7 +127,6 @@ impl SimController {
 
         sim.flags = flags;
         sim.reset();
-        sim.breakpoints = breakpoints;
         sim
     }
 }

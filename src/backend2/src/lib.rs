@@ -11,9 +11,10 @@ use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
-use lc3_ensemble::sim::debug::{Breakpoint, Comparator};
+use lc3_ensemble::sim::debug::Breakpoint;
 use lc3_ensemble::sim::io::BufferedIO;
-use lc3_ensemble::sim::{SimErr, SimFlags, Simulator, WordCreateStrategy};
+use lc3_ensemble::sim::mem::WordCreateStrategy;
+use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
 use once_cell::sync::Lazy;
@@ -426,28 +427,29 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn(addr: u16) -> Result<()>
+fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    // fn(addr: u16) -> Result<u32>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    sim_contents()
+    let value = sim_contents()
         .controller
         .simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?
         .breakpoints
-        .push(Breakpoint::PC(Comparator::eq(addr)));
-    Ok(cx.undefined())
+        .insert(Breakpoint::PC(addr));
+    Ok(cx.number(value))
 }
 
-fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn(addr: u16) -> Result<()>
-    let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    sim_contents()
+fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    // fn(break_id: u32) -> Result<bool>
+    let break_id = cx.argument::<JsNumber>(0)?.value(&mut cx) as u32;
+    let result = sim_contents()
         .controller
         .simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?
         .breakpoints
-        .retain(|bp| bp != &Breakpoint::PC(Comparator::eq(addr)));
-    Ok(cx.undefined())
+        .remove(break_id);
+
+    Ok(cx.boolean(result.is_some()))
 }
 
 fn get_inst_exec_count(mut cx: FunctionContext) -> JsResult<JsNumber> {

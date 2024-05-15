@@ -13,6 +13,6 @@ crate-type = ["cdylib"]
 [dependencies]
 ariadne = "0.4.0"
 crossbeam-channel = "0.5.12"
-lc3-ensemble = "0.3.0"
+lc3-ensemble = "0.4.2"
 neon = "1"
 once_cell = "1.19.0"
