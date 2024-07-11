@@ -164,15 +164,15 @@ declare module "lc3-backend" {
     /**
      * Sets a breakpoint at the given memory address.
      * @param addr The memory address to add a breakpoint to.
-     * @return A breakpoint ID, which can be used to remove the breakpoint later.
+     * @return whether inserting the breakpoint was successful
      */
-    export function setBreakpoint(addr: number): number;
+    export function setBreakpoint(addr: number): boolean;
     /**
      * Removes a breakpoint from the given memory address.
-     * @param breakID A breakpoint ID, obtained from setBreakpoint
+     * @param addr The memory address to remove a breakpoint to.
      * @return whether removing the breakpoint was successful
      */
-    export function removeBreakpoint(breakID: number): boolean;
+    export function removeBreakpoint(addr: number): boolean;
     /**
      * I have no idea what this does and its output is literally unused
      * in the simulator????

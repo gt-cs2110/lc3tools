@@ -441,7 +441,7 @@ export default {
           { flash: 0, updated: 0, name: "pc", value: 0 },
           { flash: 0, updated: 0, name: "mcr", value: 0 }
         ],
-        breakpoints: [], // FIXME: This is a [u16, u32][] instead of a Map<u16, u32> because Vue2 does not support reactive Maps
+        breakpoints: [],
         running: false
       },
       mem_view: { start: 0x3000, data: [], sym_table: {} },
@@ -801,19 +801,15 @@ export default {
     },
 
     toggleBreakpoint(addr) {
-      if (!lc3.isSimRunning()) {
-        let idx = this.sim.breakpoints.findIndex(([add, _]) => add == addr);
+      let idx = this.sim.breakpoints.indexOf(addr);
 
+      if (!lc3.isSimRunning()) {
         if (idx == -1) {
-          let breakID = lc3.setBreakpoint(addr);
-          this.sim.breakpoints.push([addr, breakID]);
+          lc3.setBreakpoint(addr);
+          this.sim.breakpoints.push(addr);
         } else {
-          let [_, breakID] = this.sim.breakpoints[idx];
-          if (lc3.removeBreakpoint(breakID)) {
-            this.sim.breakpoints.splice(idx, 1);
-          } else {
-            throw new Error(`Could not remove breakpoint (addr: ${addr}, ID: ${breakID})`)
-          }
+          lc3.removeBreakpoint(addr);
+          this.sim.breakpoints.splice(idx, 1);
         }
       }
     },
@@ -844,7 +840,7 @@ export default {
       }
     },
     breakpointAt(addr) {
-      return this.sim.breakpoints.some(([add, _]) => add == addr)
+      return this.sim.breakpoints.includes(addr);
     },
     PCAt(addr) {
       return addr == this.sim.regs[9].value && !this.sim.running;

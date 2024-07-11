@@ -13,7 +13,7 @@ use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
 use lc3_ensemble::sim::io::BufferedIO;
-use lc3_ensemble::sim::mem::WordCreateStrategy;
+use lc3_ensemble::sim::mem::MachineInitStrategy;
 use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
@@ -58,10 +58,10 @@ fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
     }
 }
 
-fn get_create_strategy(zeroed: bool) -> WordCreateStrategy {
+fn get_create_strategy(zeroed: bool) -> MachineInitStrategy {
     match zeroed {
-        true => WordCreateStrategy::Known { value: 0 },
-        false => WordCreateStrategy::Unseeded
+        true => MachineInitStrategy::Known { value: 0 },
+        false => MachineInitStrategy::Unseeded
     }
 }
 
@@ -176,7 +176,7 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let mut contents = sim_contents();
 
     let flags = SimFlags {
-        word_create_strat: get_create_strategy(false),
+        machine_init: get_create_strategy(false),
         ..contents.sim_flags
     };
     let sim = contents.controller.reset(flags);
@@ -197,7 +197,7 @@ fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let mut contents = sim_contents();
 
     let flags = SimFlags {
-        word_create_strat: get_create_strategy(true),
+        machine_init: get_create_strategy(true),
         ..contents.sim_flags
     };
     let sim = contents.controller.reset(flags);
@@ -211,7 +211,7 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let mut contents = sim_contents();
 
     let flags = SimFlags {
-        word_create_strat: get_create_strategy(false),
+        machine_init: get_create_strategy(false),
         ..contents.sim_flags
     };
     let sim = contents.controller.reset(flags);
@@ -427,8 +427,8 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    // fn(addr: u16) -> Result<u32>
+fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    // fn(addr: u16) -> Result<bool>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let value = sim_contents()
         .controller
@@ -436,20 +436,20 @@ fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsNumber> {
         .or_else(|e| cx.throw_error(e.to_string()))?
         .breakpoints
         .insert(Breakpoint::PC(addr));
-    Ok(cx.number(value))
+    Ok(cx.boolean(value))
 }
 
 fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
-    // fn(break_id: u32) -> Result<bool>
-    let break_id = cx.argument::<JsNumber>(0)?.value(&mut cx) as u32;
+    // fn(addr: u16) -> Result<bool>
+    let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let result = sim_contents()
         .controller
         .simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?
         .breakpoints
-        .remove(break_id);
+        .remove(&Breakpoint::PC(addr));
 
-    Ok(cx.boolean(result.is_some()))
+    Ok(cx.boolean(result))
 }
 
 fn get_inst_exec_count(mut cx: FunctionContext) -> JsResult<JsNumber> {
