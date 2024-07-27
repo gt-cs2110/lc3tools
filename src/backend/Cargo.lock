@@ -70,7 +70,6 @@ dependencies = [
  "crossbeam-channel",
  "lc3-ensemble",
  "neon",
- "once_cell",
 ]
 
 [[package]]

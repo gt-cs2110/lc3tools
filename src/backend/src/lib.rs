@@ -6,7 +6,7 @@ use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
+use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
@@ -17,11 +17,10 @@ use lc3_ensemble::sim::mem::MachineInitStrategy;
 use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
-use once_cell::sync::Lazy;
 use sim::SimController;
 
-static INPUT_BUFFER: Lazy<Arc<RwLock<VecDeque<u8>>>> = Lazy::new(Arc::default);
-static PRINT_BUFFER: Lazy<Arc<RwLock<Vec<u8>>>> = Lazy::new(Arc::default);
+static INPUT_BUFFER: LazyLock<Arc<RwLock<VecDeque<u8>>>> = LazyLock::new(Arc::default);
+static PRINT_BUFFER: LazyLock<Arc<RwLock<Vec<u8>>>> = LazyLock::new(Arc::default);
 
 /// Creates a write guard to [`INPUT_BUFFER`].
 fn input_writer<'w>() -> RwLockWriteGuard<'w, VecDeque<u8>> {
@@ -39,7 +38,7 @@ fn get_buffered_io() -> BufferedIO {
 }
 
 fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
-    static SIM_CONTENTS: Lazy<Mutex<SimPageContents>> = Lazy::new(|| {
+    static SIM_CONTENTS: LazyLock<Mutex<SimPageContents>> = LazyLock::new(|| {
         Mutex::new(SimPageContents {
             controller: SimController::new(),
             obj_file: None,
