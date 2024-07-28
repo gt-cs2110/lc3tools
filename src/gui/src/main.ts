@@ -1,6 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
+// electron-store is ESM only, 
+// but i cba to try to convert this module from CJS to ESM,
+// so anything involving this module is going to be hacky
+//
+// also because this module is CJS, top-level await doesn't work
+const electronStore = import('electron-store');
 import path from 'path';
-import { AutoUpdaterSendType, showModal } from './types/renderer';
+import { AutoUpdaterSendType } from './types/renderer';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -38,6 +44,11 @@ const createWindow = () => {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
+
+  // Set title
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow.setTitle("LC3Tools v" + app.getVersion());
+  })
 };
 
 // This method will be called when Electron has finished
@@ -64,6 +75,8 @@ app.on('activate', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
+
+// electron-updater
 ipcMain.on("auto_updater", (e, text: AutoUpdaterSendType) => {
   if (text == "update_confirmed") {
     throw new Error("todo");
@@ -72,6 +85,7 @@ ipcMain.on("auto_updater", (e, text: AutoUpdaterSendType) => {
   }
 });
 
+// modals
 ipcMain.handle("show_modal", (e, kind, config) => {
     // Note: If new parameters are accepted into this invocation,
     // the compiler will not indicate so.
@@ -83,3 +97,30 @@ ipcMain.handle("show_modal", (e, kind, config) => {
       return dialog.showOpenDialog(config);
     }
 })
+
+// config storage
+// refer to import for hacky BS
+// also, because of the ESM thing, 
+// this module also doesn't have typing on CJS... whatever
+electronStore.then((module) => {
+  const Store = module.default;
+  const store = new Store();
+  ipcMain.on("config_get", (e, key: string) => {
+    /* @ts-ignore */
+    e.returnValue = store.get(key);
+  });
+  ipcMain.on("config_set", (e, key: string, val: any) => {
+    /* @ts-ignore */
+    store.set(key, val);
+    e.returnValue = undefined;
+  });
+  ipcMain.on("config_get_all", e => {
+    /* @ts-ignore */
+    e.returnValue = store.store;
+  });
+  ipcMain.on("config_set_all", (e, data: object) => {
+    /* @ts-ignore */
+    store.set(data);
+    e.returnValue = undefined;
+  });
+});

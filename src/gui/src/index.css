@@ -1,14 +1,3 @@
-@import url("material-design-icons-iconfont/dist/material-design-icons.min.css");
-@import url("vuetify/dist/vuetify.min.css");
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
-        Arial, sans-serif;
-    margin: auto;
-    max-width: 38rem;
-    padding: 2rem;
-}
-
 /* dark mode autocomplete menu tweaks ------------------------------ */
 .ace_editor.ace_autocomplete.ace_dark {
     background-color: #141414 !important;
@@ -27,7 +16,7 @@ body {
 
 /*  */
 .application {
-font-size: 1em;
+    font-size: 1em;
 }
 
 /* ANSI */
@@ -61,5 +50,5 @@ body {
 
 /* https://stackoverflow.com/q/56973002/11984788 */
 html {
-overflow-y: auto;
+    overflow-y: auto;
 }
