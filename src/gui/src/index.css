@@ -1,7 +1,65 @@
+@import url("material-design-icons-iconfont/dist/material-design-icons.min.css");
+@import url("vuetify/dist/vuetify.min.css");
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
-    Arial, sans-serif;
-  margin: auto;
-  max-width: 38rem;
-  padding: 2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+        Arial, sans-serif;
+    margin: auto;
+    max-width: 38rem;
+    padding: 2rem;
+}
+
+/* dark mode autocomplete menu tweaks ------------------------------ */
+.ace_editor.ace_autocomplete.ace_dark {
+    background-color: #141414 !important;
+    color: white !important;
+    border-color: gray !important;
+    color-scheme: dark;
+}
+
+.ace_editor.ace_autocomplete.ace_dark .ace_marker-layer .ace_active-line {
+    background-color: hsl(223, 30%, 19%) !important;
+}
+
+.ace_editor.ace_autocomplete.ace_dark .ace_line .ace_completion-highlight {
+    color: hsl(214deg 100% 66%);
+}
+
+/*  */
+.application {
+font-size: 1em;
+}
+
+/* ANSI */
+.text-red {
+    color: red;
+}
+.text-yellow {
+    color: yellow;
+}
+.text-green {
+    color: green;
+}
+.text-magenta {
+    color: magenta;
+}
+.text-blue {
+    color: blue;
+}
+.text-gray {
+    color: gray;
+}
+.text-bold {
+    font-weight: bold;
+}
+
+/* Other stuff */
+body {
+    user-select: none;
+    cursor: default;
+}
+
+/* https://stackoverflow.com/q/56973002/11984788 */
+html {
+overflow-y: auto;
 }

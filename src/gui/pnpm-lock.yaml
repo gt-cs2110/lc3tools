@@ -10,16 +10,31 @@ importers:
     dependencies:
       '@vitejs/plugin-vue':
         specifier: ^5.1.0
-        version: 5.1.0(vite@5.3.5(@types/node@20.14.12))(vue@3.4.34(typescript@4.5.5))
+        version: 5.1.1(vite@5.3.5(@types/node@20.14.12))(vue@3.4.34(typescript@4.5.5))
       electron-squirrel-startup:
         specifier: ^1.0.1
         version: 1.0.1
       lc3-backend:
         specifier: file:../backend
         version: file:../backend
+      material-design-icons-iconfont:
+        specifier: ^6.7.0
+        version: 6.7.0
+      pinia:
+        specifier: ^2.2.0
+        version: 2.2.0(typescript@4.5.5)(vue@3.4.34(typescript@4.5.5))
       vue:
         specifier: ^3.4.34
         version: 3.4.34(typescript@4.5.5)
+      vue-router:
+        specifier: ^4.4.0
+        version: 4.4.0(vue@3.4.34(typescript@4.5.5))
+      vue3-ace-editor:
+        specifier: ^2.2.4
+        version: 2.2.4(ace-builds@1.35.4)(vue@3.4.34(typescript@4.5.5))
+      vuetify:
+        specifier: ^3.6.13
+        version: 3.6.13(typescript@4.5.5)(vue@3.4.34(typescript@4.5.5))
     devDependencies:
       '@electron-forge/cli':
         specifier: ^7.4.0
@@ -643,8 +658,8 @@ packages:
   '@ungap/structured-clone@1.2.0':
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
 
-  '@vitejs/plugin-vue@5.1.0':
-    resolution: {integrity: sha512-QMRxARyrdiwi1mj3AW4fLByoHTavreXq0itdEW696EihXglf1MB3D4C2gBvE0jMPH29ZjC3iK8aIaUMLf4EOGA==}
+  '@vitejs/plugin-vue@5.1.1':
+    resolution: {integrity: sha512-sDckXxlHpMsjRQbAH9WanangrfrblsOd3pNifePs+FOHjJg1jfWq5L/P0PsBRndEt3nmdUnmvieP8ULDeX5AvA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     peerDependencies:
       vite: ^5.0.0
@@ -661,6 +676,9 @@ packages:
 
   '@vue/compiler-ssr@3.4.34':
     resolution: {integrity: sha512-8TDBcLaTrFm5rnF+Qm4BlliaopJgqJ28Nsrc80qazynm5aJO+Emu7y0RWw34L8dNnTRdcVBpWzJxhGYzsoVu4g==}
+
+  '@vue/devtools-api@6.6.3':
+    resolution: {integrity: sha512-0MiMsFma/HqA6g3KLKn+AGpL1kgKhFWszC9U29NfpWK5LE7bjeXxySWJrOJ77hBz+TBrBQ7o4QJqbPbqbs8rJw==}
 
   '@vue/reactivity@3.4.34':
     resolution: {integrity: sha512-ua+Lo+wBRlBEX9TtgPOShE2JwIO7p6BTZ7t1KZVPoaBRfqbC7N3c8Mpzicx173fXxx5VXeU6ykiHo7WgLzJQDA==}
@@ -689,6 +707,9 @@ packages:
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
     engines: {node: '>= 0.6'}
+
+  ace-builds@1.35.4:
+    resolution: {integrity: sha512-r0KQclhZ/uk5a4zOqRYQkJuQuu4vFMiA6VTj54Tk4nI1TUR3iEMMppZkWbNoWEgWwv4ciDloObb9Rf4V55Qgjw==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -1015,6 +1036,15 @@ packages:
 
   debug@4.3.5:
     resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
+  debug@4.3.6:
+    resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -1853,6 +1883,9 @@ packages:
     resolution: {integrity: sha512-OkeDaAZ/bQCxeFAozM55PKcKU0yJMPGifLwV4Qgjitu+5MoAfSQN4lsLJeXZ1b8w0x+/Emda6MZgXS1jvsapng==}
     engines: {node: '>=10'}
 
+  material-design-icons-iconfont@6.7.0:
+    resolution: {integrity: sha512-lSj71DgVv20kO0kGbs42icDzbRot61gEDBLQACzkUuznRQBUYmbxzEkGU6dNBb5fRWHMaScYlAXX96HQ4/cJWA==}
+
   media-typer@0.3.0:
     resolution: {integrity: sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==}
     engines: {node: '>= 0.6'}
@@ -2192,6 +2225,18 @@ packages:
     resolution: {integrity: sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog==}
     engines: {node: '>=0.10.0'}
 
+  pinia@2.2.0:
+    resolution: {integrity: sha512-iPrIh26GMqfpUlMOGyxuDowGmYousTecbTHFwT0xZ1zJvh23oQ+Cj99ZoPQA1TnUPhU6AuRPv6/drkTCJ0VHQA==}
+    peerDependencies:
+      '@vue/composition-api': ^1.4.0
+      typescript: '>=4.4.4'
+      vue: ^2.6.14 || ^3.3.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+      typescript:
+        optional: true
+
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
@@ -2294,6 +2339,9 @@ packages:
   resedit@2.0.2:
     resolution: {integrity: sha512-UKTnq602iVe+W5SyRAQx/WdWMnlDiONfXBLFg/ur4QE4EQQ8eP7Jgm5mNXdK12kKawk1vvXPja2iXKqZiGDW6Q==}
     engines: {node: '>=14', npm: '>=7'}
+
+  resize-observer-polyfill@1.5.1:
+    resolution: {integrity: sha512-LwZrotdHOo12nQuZlHEmtuXdqGoOD0OhaxopaNFxWzInpEgaLWoVuAMbTzixuosCx2nEG58ngzW3vxdWoxIgdg==}
 
   resolve-alpn@1.2.1:
     resolution: {integrity: sha512-0a1F4l73/ZFZOakJnQ3FvkJ2+gSTQWz/r2KE5OdDY0TxPm5h4GkqkWWfM47T7HsbnOtcJVEF4epCVy6u7Q3K+g==}
@@ -2737,12 +2785,53 @@ packages:
       terser:
         optional: true
 
+  vue-demi@0.14.10:
+    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
+    engines: {node: '>=12'}
+    hasBin: true
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^3.0.0-0 || ^2.6.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+
+  vue-router@4.4.0:
+    resolution: {integrity: sha512-HB+t2p611aIZraV2aPSRNXf0Z/oLZFrlygJm+sZbdJaW6lcFqEDQwnzUBXn+DApw+/QzDU/I9TeWx9izEjTmsA==}
+    peerDependencies:
+      vue: ^3.2.0
+
+  vue3-ace-editor@2.2.4:
+    resolution: {integrity: sha512-FZkEyfpbH068BwjhMyNROxfEI8135Sc+x8ouxkMdCNkuj/Tuw83VP/gStFQqZHqljyX9/VfMTCdTqtOnJZGN8g==}
+    peerDependencies:
+      ace-builds: '*'
+      vue: ^3
+
   vue@3.4.34:
     resolution: {integrity: sha512-VZze05HWlA3ItreQ/ka7Sx7PoD0/3St8FEiSlSTVgb6l4hL+RjtP2/8g5WQBzZgyf8WG2f+g1bXzC7zggLhAJA==}
     peerDependencies:
       typescript: '*'
     peerDependenciesMeta:
       typescript:
+        optional: true
+
+  vuetify@3.6.13:
+    resolution: {integrity: sha512-Gz7jxXAkmff2m6CM0EUWOo/72TM322/3I6aDna++k1nPOW1/hNx4td1MZG4u75fzdn3r+uIe0dbF7SWuhu6DWA==}
+    engines: {node: ^12.20 || >=14.13}
+    peerDependencies:
+      typescript: '>=4.7'
+      vite-plugin-vuetify: '>=1.0.0'
+      vue: ^3.3.0
+      vue-i18n: ^9.0.0
+      webpack-plugin-vuetify: '>=2.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+      vite-plugin-vuetify:
+        optional: true
+      vue-i18n:
+        optional: true
+      webpack-plugin-vuetify:
         optional: true
 
   wcwidth@1.0.1:
@@ -3065,7 +3154,7 @@ snapshots:
     dependencies:
       '@electron-forge/shared-types': 7.4.0
       '@malept/cross-spawn-promise': 2.0.0
-      debug: 4.3.5
+      debug: 4.3.6
       fs-extra: 10.1.0
       username: 5.1.0
     transitivePeerDependencies:
@@ -3166,7 +3255,7 @@ snapshots:
 
   '@electron/notarize@2.3.2':
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.6
       fs-extra: 9.1.0
       promise-retry: 2.0.1
     transitivePeerDependencies:
@@ -3175,7 +3264,7 @@ snapshots:
   '@electron/osx-sign@1.3.1':
     dependencies:
       compare-version: 0.1.2
-      debug: 4.3.5
+      debug: 4.3.6
       fs-extra: 10.1.0
       isbinaryfile: 4.0.10
       minimist: 1.2.8
@@ -3191,7 +3280,7 @@ snapshots:
       '@electron/osx-sign': 1.3.1
       '@electron/universal': 2.0.1
       '@electron/windows-sign': 1.1.3
-      debug: 4.3.5
+      debug: 4.3.6
       extract-zip: 2.0.1
       filenamify: 4.3.0
       fs-extra: 11.2.0
@@ -3211,7 +3300,7 @@ snapshots:
     dependencies:
       '@malept/cross-spawn-promise': 2.0.0
       chalk: 4.1.2
-      debug: 4.3.5
+      debug: 4.3.6
       detect-libc: 2.0.3
       fs-extra: 10.1.0
       got: 11.8.6
@@ -3231,7 +3320,7 @@ snapshots:
     dependencies:
       '@electron/asar': 3.2.10
       '@malept/cross-spawn-promise': 2.0.0
-      debug: 4.3.5
+      debug: 4.3.6
       dir-compare: 4.2.0
       fs-extra: 11.2.0
       minimatch: 9.0.5
@@ -3242,7 +3331,7 @@ snapshots:
   '@electron/windows-sign@1.1.3':
     dependencies:
       cross-dirname: 0.1.0
-      debug: 4.3.5
+      debug: 4.3.6
       fs-extra: 11.2.0
       minimist: 1.2.8
       postject: 1.0.0-alpha.6
@@ -3328,7 +3417,7 @@ snapshots:
   '@eslint/eslintrc@2.1.4':
     dependencies:
       ajv: 6.12.6
-      debug: 4.3.5
+      debug: 4.3.6
       espree: 9.6.1
       globals: 13.24.0
       ignore: 5.3.1
@@ -3346,7 +3435,7 @@ snapshots:
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.3
-      debug: 4.3.5
+      debug: 4.3.6
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -3514,7 +3603,7 @@ snapshots:
       '@typescript-eslint/scope-manager': 5.62.0
       '@typescript-eslint/type-utils': 5.62.0(eslint@8.57.0)(typescript@4.5.5)
       '@typescript-eslint/utils': 5.62.0(eslint@8.57.0)(typescript@4.5.5)
-      debug: 4.3.5
+      debug: 4.3.6
       eslint: 8.57.0
       graphemer: 1.4.0
       ignore: 5.3.1
@@ -3531,7 +3620,7 @@ snapshots:
       '@typescript-eslint/scope-manager': 5.62.0
       '@typescript-eslint/types': 5.62.0
       '@typescript-eslint/typescript-estree': 5.62.0(typescript@4.5.5)
-      debug: 4.3.5
+      debug: 4.3.6
       eslint: 8.57.0
     optionalDependencies:
       typescript: 4.5.5
@@ -3547,7 +3636,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 5.62.0(typescript@4.5.5)
       '@typescript-eslint/utils': 5.62.0(eslint@8.57.0)(typescript@4.5.5)
-      debug: 4.3.5
+      debug: 4.3.6
       eslint: 8.57.0
       tsutils: 3.21.0(typescript@4.5.5)
     optionalDependencies:
@@ -3561,7 +3650,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 5.62.0
       '@typescript-eslint/visitor-keys': 5.62.0
-      debug: 4.3.5
+      debug: 4.3.6
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.3
@@ -3593,7 +3682,7 @@ snapshots:
 
   '@ungap/structured-clone@1.2.0': {}
 
-  '@vitejs/plugin-vue@5.1.0(vite@5.3.5(@types/node@20.14.12))(vue@3.4.34(typescript@4.5.5))':
+  '@vitejs/plugin-vue@5.1.1(vite@5.3.5(@types/node@20.14.12))(vue@3.4.34(typescript@4.5.5))':
     dependencies:
       vite: 5.3.5(@types/node@20.14.12)
       vue: 3.4.34(typescript@4.5.5)
@@ -3628,6 +3717,8 @@ snapshots:
       '@vue/compiler-dom': 3.4.34
       '@vue/shared': 3.4.34
 
+  '@vue/devtools-api@6.6.3': {}
+
   '@vue/reactivity@3.4.34':
     dependencies:
       '@vue/shared': 3.4.34
@@ -3661,6 +3752,8 @@ snapshots:
       mime-types: 2.1.35
       negotiator: 0.6.3
 
+  ace-builds@1.35.4: {}
+
   acorn-jsx@5.3.2(acorn@8.12.1):
     dependencies:
       acorn: 8.12.1
@@ -3673,7 +3766,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -4021,6 +4114,10 @@ snapshots:
     dependencies:
       ms: 2.1.2
 
+  debug@4.3.6:
+    dependencies:
+      ms: 2.1.2
+
   decompress-response@6.0.0:
     dependencies:
       mimic-response: 3.1.0
@@ -4083,7 +4180,7 @@ snapshots:
     dependencies:
       '@malept/cross-spawn-promise': 1.1.1
       asar: 3.2.0
-      debug: 4.3.5
+      debug: 4.3.6
       fs-extra: 9.1.0
       glob: 7.2.3
       lodash: 4.17.21
@@ -4357,7 +4454,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.3
-      debug: 4.3.5
+      debug: 4.3.6
       doctrine: 3.0.0
       escape-string-regexp: 4.0.0
       eslint-scope: 7.2.2
@@ -4557,7 +4654,7 @@ snapshots:
 
   flora-colossus@2.0.0:
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.6
       fs-extra: 10.1.0
     transitivePeerDependencies:
       - supports-color
@@ -4624,7 +4721,7 @@ snapshots:
 
   galactus@1.0.0:
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.6
       flora-colossus: 2.0.0
       fs-extra: 10.1.0
     transitivePeerDependencies:
@@ -4818,7 +4915,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.3.5
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -4830,7 +4927,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.5
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -5107,6 +5204,8 @@ snapshots:
     dependencies:
       escape-string-regexp: 4.0.0
     optional: true
+
+  material-design-icons-iconfont@6.7.0: {}
 
   media-typer@0.3.0: {}
 
@@ -5417,6 +5516,14 @@ snapshots:
 
   pify@2.3.0: {}
 
+  pinia@2.2.0(typescript@4.5.5)(vue@3.4.34(typescript@4.5.5)):
+    dependencies:
+      '@vue/devtools-api': 6.6.3
+      vue: 3.4.34(typescript@4.5.5)
+      vue-demi: 0.14.10(vue@3.4.34(typescript@4.5.5))
+    optionalDependencies:
+      typescript: 4.5.5
+
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
@@ -5481,7 +5588,7 @@ snapshots:
 
   read-binary-file-arch@1.0.6:
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -5518,6 +5625,8 @@ snapshots:
   resedit@2.0.2:
     dependencies:
       pe-library: 1.0.1
+
+  resize-observer-polyfill@1.5.1: {}
 
   resolve-alpn@1.2.1: {}
 
@@ -5714,7 +5823,7 @@ snapshots:
   socks-proxy-agent@7.0.0:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.5
+      debug: 4.3.6
       socks: 2.8.3
     transitivePeerDependencies:
       - supports-color
@@ -5812,7 +5921,7 @@ snapshots:
 
   sumchecker@3.0.1:
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
 
@@ -6000,6 +6109,21 @@ snapshots:
       '@types/node': 20.14.12
       fsevents: 2.3.3
 
+  vue-demi@0.14.10(vue@3.4.34(typescript@4.5.5)):
+    dependencies:
+      vue: 3.4.34(typescript@4.5.5)
+
+  vue-router@4.4.0(vue@3.4.34(typescript@4.5.5)):
+    dependencies:
+      '@vue/devtools-api': 6.6.3
+      vue: 3.4.34(typescript@4.5.5)
+
+  vue3-ace-editor@2.2.4(ace-builds@1.35.4)(vue@3.4.34(typescript@4.5.5)):
+    dependencies:
+      ace-builds: 1.35.4
+      resize-observer-polyfill: 1.5.1
+      vue: 3.4.34(typescript@4.5.5)
+
   vue@3.4.34(typescript@4.5.5):
     dependencies:
       '@vue/compiler-dom': 3.4.34
@@ -6007,6 +6131,12 @@ snapshots:
       '@vue/runtime-dom': 3.4.34
       '@vue/server-renderer': 3.4.34(vue@3.4.34(typescript@4.5.5))
       '@vue/shared': 3.4.34
+    optionalDependencies:
+      typescript: 4.5.5
+
+  vuetify@3.6.13(typescript@4.5.5)(vue@3.4.34(typescript@4.5.5)):
+    dependencies:
+      vue: 3.4.34(typescript@4.5.5)
     optionalDependencies:
       typescript: 4.5.5
 

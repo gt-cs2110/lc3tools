@@ -36,6 +36,11 @@
     "@vitejs/plugin-vue": "^5.1.0",
     "electron-squirrel-startup": "^1.0.1",
     "lc3-backend": "file:../backend",
-    "vue": "^3.4.34"
+    "material-design-icons-iconfont": "^6.7.0",
+    "pinia": "^2.2.0",
+    "vue": "^3.4.34",
+    "vue-router": "^4.4.0",
+    "vue3-ace-editor": "^2.2.4",
+    "vuetify": "^3.6.13"
   }
 }
