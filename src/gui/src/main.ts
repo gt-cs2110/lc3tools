@@ -5,8 +5,9 @@ import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
 //
 // also because this module is CJS, top-level await doesn't work
 const electronStore = import('electron-store');
+import fs from 'fs';
 import path from 'path';
-import { AutoUpdaterSendType } from './api';
+import { API, Handler, SyncHandler } from './api';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -77,13 +78,13 @@ app.on('activate', () => {
 // code. You can also put them in separate files and import them here.
 
 // electron-updater
-ipcMain.on("auto_updater", (e, text: AutoUpdaterSendType) => {
+ipcMain.on("auto_updater", ((e, text) => {
   if (text == "update_confirmed") {
     throw new Error("todo");
   } else {
     let _exhaustiveCheck: never = text;
   }
-});
+}) satisfies SyncHandler<API["autoUpdater"]["send"]>);
 
 // modals
 ipcMain.handle("show_modal", (e, kind, config) => {
@@ -96,7 +97,7 @@ ipcMain.handle("show_modal", (e, kind, config) => {
     } else if (kind === "open") {
       return dialog.showOpenDialog(config);
     }
-})
+});
 
 // config storage
 // refer to import for hacky BS
@@ -105,22 +106,42 @@ ipcMain.handle("show_modal", (e, kind, config) => {
 electronStore.then((module) => {
   const Store = module.default;
   const store = new Store();
-  ipcMain.on("config_get", (e, key: string) => {
+
+  ipcMain.on("config_get", ((e, key: string) => {
     /* @ts-ignore */
     e.returnValue = store.get(key);
-  });
-  ipcMain.on("config_set", (e, key: string, val: any) => {
+  }) satisfies SyncHandler<API["storage"]["get"]>);
+
+  ipcMain.on("config_set", ((e, key: string, val: any) => {
     /* @ts-ignore */
     store.set(key, val);
     e.returnValue = undefined;
-  });
-  ipcMain.on("config_get_all", e => {
+  }) satisfies SyncHandler<API["storage"]["set"]>);
+
+  ipcMain.on("config_get_all", (e => {
     /* @ts-ignore */
     e.returnValue = store.store;
-  });
-  ipcMain.on("config_set_all", (e, data: object) => {
+  }) satisfies SyncHandler<API["storage"]["getAll"]>);
+
+  ipcMain.on("config_set_all", ((e, data: object) => {
     /* @ts-ignore */
     store.set(data);
     e.returnValue = undefined;
-  });
+  }) satisfies SyncHandler<API["storage"]["setAll"]>);
 });
+
+// fs
+ipcMain.handle("fs_read", ((e, fp: string) => {
+  return fs.readFileSync(fp, "utf-8");
+}) satisfies Handler<API["fs"]["read"]>)
+
+ipcMain.handle("fs_write", ((e, fp: string, content: string) => {
+  fs.writeFileSync(fp, content);
+}) satisfies Handler<API["fs"]["write"]>)
+
+ipcMain.on("fs_exists", ((e, fp: string) => {
+  e.returnValue = fs.existsSync(fp);
+}) satisfies SyncHandler<API["fs"]["exists"]>)
+ipcMain.on("fs_path_basename", ((e, fp) => {
+  e.returnValue = path.basename(fp);
+}) satisfies SyncHandler<API["fs"]["basename"]>)

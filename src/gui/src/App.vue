@@ -8,7 +8,7 @@
           <v-btn
             icon
             flat
-            @click="downloadUpdate"
+            @click="downloadUpdate()"
             v-if="update_available"
           >
             <v-icon color="green" icon="info"></v-icon>
@@ -185,7 +185,7 @@
             <v-btn
               icon
               flat
-              @click="ignoreUpdate"
+              @click="ignoreUpdate()"
             >
               <v-icon icon="delete"></v-icon>
               <v-tooltip location="top" activator="parent">
@@ -207,7 +207,7 @@
             <v-btn
               icon
               flat
-              @click="updateConfirmed"
+              @click="updateConfirmed()"
             >
               <v-icon icon="thumb_up" color="green-darken-1"></v-icon>
               <v-tooltip location="top" activator="parent">
@@ -224,6 +224,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import API from "./api";
+import { LC3Settings, useSettingsStore } from "./store/settings";
 declare const api: API;
 const { lc3, autoUpdater, storage } = api;
 
@@ -238,23 +239,17 @@ const update_available = ref(false);
 const download_bar = ref(false);
 
 // Settings
-const settings = ref({
-  theme: "light",
-  numbers: "signed",
-  editor_binding: "standard",
-  ignore_privilege: false,
-  liberal_asm: false,
-  ignore_update: false,
-  run_until_halt: true,
-  clear_out_on_reload: true,
-  autocomplete: "full"
+const settings = useSettingsStore();
+settings.$patch({
+  ...storage.getAll() as LC3Settings,
+  liberal_asm: false
 });
 
 onMounted(() => {
   autoUpdater.on((message, progress) => {
     if (message === "update_available") {
         // Show the settings modal
-        update_dialog.value = !settings.value.ignore_update;
+        update_dialog.value = !settings.ignore_update;
         update_available.value = true;
       }
       if (message === "download_progress") {
@@ -266,41 +261,35 @@ onMounted(() => {
 })
 
 // Settings
-type Setting = keyof typeof settings.value | "all";
-settings.value = {
-  ...settings.value,
-  ...storage.getAll() as typeof settings,
-  liberal_asm: false
-};
-function saveSettings(setting: Setting) {
-  let settings_ = settings.value;
+type SettingKeys = keyof LC3Settings | "all";
+function saveSettings(setting: SettingKeys) {
   if (setting === "all") {
-    lc3.setIgnorePrivilege(settings_.ignore_privilege);
-    lc3.setEnableLiberalAsm(settings_.liberal_asm);
-    lc3.setRunUntilHalt(settings_.run_until_halt);
-    storage.setAll(settings_);
+    lc3.setIgnorePrivilege(settings.ignore_privilege);
+    lc3.setEnableLiberalAsm(settings.liberal_asm);
+    lc3.setRunUntilHalt(settings.run_until_halt);
+    storage.setAll(settings);
   } else {
-    if (setting === "ignore_privilege") lc3.setIgnorePrivilege(settings_.ignore_privilege);
-    if (setting === "liberal_asm") lc3.setEnableLiberalAsm(settings_.liberal_asm);
-    if (setting === "run_until_halt") lc3.setRunUntilHalt(settings_.run_until_halt);
-    storage.set(setting, settings_[setting]);
+    if (setting === "ignore_privilege") lc3.setIgnorePrivilege(settings.ignore_privilege);
+    if (setting === "liberal_asm") lc3.setEnableLiberalAsm(settings.liberal_asm);
+    if (setting === "run_until_halt") lc3.setRunUntilHalt(settings.run_until_halt);
+    storage.set(setting, settings[setting]);
   }
 }
 
 // Updater
 function updateConfirmed() {
-  settings.value.ignore_update = false;
+  settings.ignore_update = false;
   saveSettings("ignore_update");
   download_bar.value = true;
   autoUpdater.send("update_confirmed");
 }
 function downloadUpdate() {
-  settings.value.ignore_update = false;
+  settings.ignore_update = false;
   update_dialog.value = true;
   saveSettings("ignore_update");
 }
 function ignoreUpdate() {
-  settings.value.ignore_update = true;
+  settings.ignore_update = true;
   update_dialog.value = false;
   saveSettings("ignore_update");
 }

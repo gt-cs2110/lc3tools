@@ -8,7 +8,6 @@ export type AutoUpdaterBindings = {
 
 export async function showModal(type: "save", config: Electron.SaveDialogOptions): Promise<Electron.SaveDialogReturnValue>;
 export async function showModal(type: "open", config: Electron.OpenDialogOptions): Promise<Electron.OpenDialogReturnValue>;
-
 export type DialogBindings = {
     showModal: typeof showModal
 }
@@ -20,10 +19,22 @@ export type StorageBindings = {
     setAll(data: object): void;
 }
 
+export type FSBindings = {
+    async read(fp: string): Promise<string>;
+    async write(fp: string, content: string): Promise<void>;
+    exists(fp: string): boolean;
+    basename(fp: string): string;
+}
+
 export type API = {
     lc3: LC3Backend,
     autoUpdater: AutoUpdaterBindings,
     dialog: DialogBindings,
-    storage: StorageBindings
+    storage: StorageBindings,
+    fs: FSBindings
 };
+
+export type Handler<F> = (e: Electron.IpcMainInvokeEvent, ...args: Parameters<F>) => ReturnType<F> | Awaited<ReturnType<F>>;
+export type SyncHandler<F> = (e: Omit<Electron.IpcMainEvent, "returnValue"> & { returnValue: ReturnType<F> }, ...args: Parameters<F>) => void;
+
 export default API;

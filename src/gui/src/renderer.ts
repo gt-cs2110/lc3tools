@@ -47,7 +47,12 @@ const vuetify = createVuetify({
     }
 });
 
+// Pinia
+import { createPinia } from 'pinia';
+const pinia = createPinia();
+
 createApp(App)
     .use(router)
     .use(vuetify)
+    .use(pinia)
     .mount('#app');

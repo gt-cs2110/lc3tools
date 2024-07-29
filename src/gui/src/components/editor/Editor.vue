@@ -1,24 +1,65 @@
 <template>
+  <!-- Sidebar -->
+  <v-navigation-drawer permanent rail>
+    <v-list-item @click="openFile()" prepend-icon="folder_open">
+      <v-tooltip location="right" activator="parent">
+        <span>Open File</span>
+      </v-tooltip>
+    </v-list-item>
+    <v-list-item @click="saveFile()">
+      <template v-slot:prepend>
+        <v-badge color="orange-darken-2" v-model="editorContentChanged">
+          <template v-slot:badge>
+            <strong>!</strong>
+          </template>
+          <v-icon icon="save"></v-icon>
+        </v-badge>
+      </template>
+
+      <v-tooltip location="right" activator="parent">
+        <span>Save File</span>
+      </v-tooltip>
+    </v-list-item>
+    <v-list-item @click="saveFileAs()" prepend-icon="note_add">
+      <v-tooltip location="right" activator="parent">
+        <span>Save File As</span>
+      </v-tooltip>
+    </v-list-item>
+    <v-list-item @click="build()" prepend-icon="build">
+      <v-tooltip location="right" activator="parent">
+        <span v-if="activeFileStore.path === null">Assemble or Convert</span>
+        <span v-else-if="activeFileStore.path.endsWith('.asm')">Assemble</span>
+        <span v-else-if="activeFileStore.path.endsWith('.bin')">Convert</span>
+        <span v-else>Build</span>
+      </v-tooltip>
+    </v-list-item>
+    <v-list-item @click="toggleConsole()" prepend-icon="terminal">
+      <v-tooltip location="right" activator="parent">
+        <span>Toggle Console</span>
+      </v-tooltip>
+    </v-list-item>
+  </v-navigation-drawer>
   <!-- Main editor content -->
   <v-main>
+    <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
     <v-container fluid class="fill-height">
-      <v-row>
-        <v-col>
-          <h3 id="filename" class="view-header">filename</h3>
+      <v-row class="align-self-stretch flex-column" no-gutters>
+        <h3 id="filename" class="view-header">{{ filename }}</h3>
+        <v-col class="flex-grow-1 flex-shrink-0">
           <v-ace-editor
             id="ace-editor"
             class="elevation-2"
             v-model:value="editor.current_content"
             lang="lc3"
-            v-bind:theme="darkMode ? 'twilight' : 'textmate'"
-            @init="editorInit"
-            style="height: 500px"
+            v-bind:theme="editorTheme"
+            ref="aceEditorRef"
           />
+        </v-col>
+        <v-col class="flex-grow-0 flex-shrink-1" v-if="showConsole">
           <div
-            :class="{ 'hide-console': !show_console }"
             id="console"
             class="elevation-4"
-            v-html="console_str"
+            v-html="consoleStr"
           ></div>
         </v-col>
       </v-row>
@@ -27,36 +68,100 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import API from "../../api";
 import { onBeforeRouteUpdate } from "vue-router";
 // Editor
 import "./ace-cfg";
 import ace from "ace-builds";
-import { type Ace } from "ace-builds";
 import { VAceEditor } from "vue3-ace-editor";
 import { CreateLc3CompletionProvider } from "./completions";
 import Convert from "ansi-to-html";
+import { useActiveFileStore } from "../../store/active_file";
+import { useSettingsStore } from "../../store/settings";
+import { storeToRefs } from "pinia";
+import { VAceEditorInstance } from "vue3-ace-editor/types";
 
 declare const api: API;
-const { lc3, dialog } = api;
+const { lc3, dialog, fs } = api;
 
-const darkMode = true;
+const activeFileStore = useActiveFileStore();
+const settings = useSettingsStore();
+
 const editor = ref({
   original_content: "",
-  current_content: "",
-  content_changed: false,
-  // for whatever reason, i can't get template ref to cooperate
-  // so i'm just using @init to access
-  ref: null as Ace.Editor | null
+  current_content: ""
 });
-const console_str = ref("");
-const show_console = ref(false);
+const editorContentChanged = computed(() => editor.value.original_content != editor.value.current_content);
+const consoleStr = ref("");
+const showConsole = ref(false);
+
+const settingsRefs = storeToRefs(settings);
+const editorBinding = settingsRefs.editor_binding;
+const autocompleteMode = settingsRefs.autocomplete;
+const editorTheme = computed(() => ({
+  "light": "textmate",
+  "dark": "twilight"
+})[settingsRefs.theme.value]);
+const filename = computed(() => {
+  let fp = activeFileStore.path;
+  return typeof fp === "string" ? fs.basename(fp) : "Untitled";
+})
+
+const aceEditorRef = ref<VAceEditorInstance>();
+const aceEditor = computed(() => aceEditorRef.value?.getAceInstance());
+// ace editor init:
+watch(aceEditorRef, (ref) => {
+  let aceEditor = ref.getAceInstance();
+
+  aceEditor.setShowPrintMargin(false);
+  aceEditor.setOptions({
+    fontSize: "1.25em",
+    scrollPastEnd: 0.7
+  });
+  aceEditor.setOptions({
+    enableBasicAutocompletion: [
+      CreateLc3CompletionProvider(() => autocompleteMode.value)
+    ],
+    enableLiveAutocompletion: true
+  });
+  aceEditor.commands.addCommand({
+    name: "save",
+    bindKey: { win: "Ctrl-S", mac: "Cmd-S" },
+    exec: saveFile
+  });
+  aceEditor.commands.addCommand({
+    name: "build",
+    bindKey: { win: "Ctrl-Enter", mac: "Cmd-Enter" },
+    exec: build
+  });
+  aceEditor.commands.addCommand({
+    name: "open",
+    bindKey: { win: "Ctrl-O", mac: "Cmd-O" },
+    exec: (e, path) => openFile(path)
+  });
+}, { once: true });
+
+// On editor binding update:
+watch(editorBinding, binding => {
+  if (binding === "vim") {
+    aceEditor.value.setKeyboardHandler("ace/keyboard/vim");
+    ace.config.loadModule("ace/keyboard/vim", module => {
+      let VimApi = module.CodeMirror.Vim;
+      VimApi.defineEx("write", "w", function(cm: any, input: any) {
+        cm.ace.execCommand("save");
+      });
+    })
+  } else {
+    aceEditor.value.setKeyboardHandler("");
+  }
+})
 
 // autosave every 5 minutes (cool!)
 onMounted(async () => {
-  setInterval(autosaveFile, 5 * 60 * 1000)
+  setInterval(autosaveFile, 5 * 60 * 1000);
 });
+
 // handle line refs
 onBeforeRouteUpdate((to, from) => {
   if (to.hash) {
@@ -71,14 +176,22 @@ onBeforeRouteUpdate((to, from) => {
       let ecno = parseInt(ecno_str, 10);
 
       let { Range } = ace.require("ace/range");
-      editor.value.ref.gotoLine(slno, scno, true);
-      editor.value.ref.getSelection().setRange(new Range(slno, scno, elno, ecno));
+      aceEditor.value.gotoLine(slno, scno, true);
+      aceEditor.value.getSelection().setRange(new Range(slno, scno, elno, ecno));
     }
   }
 });
 
+// Methods
 function toggleConsole() {
-  show_console.value = !show_console.value;
+  showConsole.value = !showConsole.value;
+}
+async function _writeFile(fp: string, content: string | undefined = undefined) {
+  if (typeof content === "undefined") content = editor.value.current_content;
+
+  await fs.write(fp, content);
+  editor.value.original_content = content;
+  activeFileStore.path = fp;
 }
 async function saveFileAs() {
   // Todo: try catch around this
@@ -90,37 +203,31 @@ async function saveFileAs() {
   });
 
   if (!new_file.canceled) {
-    fs.writeFileSync(new_file.filePath, editor.current_content);
-    openFile(new_file.filePath);
+    await _writeFile(new_file.filePath);
   }
+
+  return !new_file.canceled;
 }
 async function saveFile() {
   // Todo: try catch around this
   // If we don't have a file, create one
-  if (this.$store.getters.activeFilePath === null) {
-    await saveFileAs();
+  let saveSuccess = true;
+  if (activeFileStore.path === null) {
+    saveSuccess = await saveFileAs();
   } else {
-    fs.writeFileSync(
-      this.$store.getters.activeFilePath,
-      this.editor.current_content
-    );
-    this.editor.original_content = this.editor.current_content;
+    await _writeFile(activeFileStore.path);
   }
-  this.build();
-}
-function autosaveFile() {
-  if (
-    this.$store.getters.activeFilePath !== null &&
-    this.editor.original_content !== this.editor.current_content
-  ) {
-    fs.writeFileSync(
-      this.$store.getters.activeFilePath,
-      this.editor.current_content
-    );
-    this.editor.original_content = this.editor.current_content;
+
+  if (saveSuccess) {
+    await build();
   }
 }
-async function openFile(path: string | undefined) {
+async function autosaveFile() {
+  if (activeFileStore.path !== null && editorContentChanged.value) {
+    await _writeFile(activeFileStore.path);
+  }
+}
+async function openFile(path: string | undefined = undefined) {
   // Todo: try catch around this
   // if not given a path, open a dialog to ask user for file
   let selected_files: string[] = [];
@@ -141,35 +248,40 @@ async function openFile(path: string | undefined) {
   // Dialog returns an array of files, we only care about the first one
   if (selected_files.length > 0) {
     let active_file = selected_files[0];
-    this.editor.original_content = this.editor.current_content = fs.readFileSync(
-      active_file,
-      "utf-8"
-    );
-    this.$store.commit("setActiveFilePath", active_file);
+    editor.value.original_content = editor.value.current_content = await fs.read(active_file);
+    activeFileStore.path = active_file;
   }
 }
 async function build() {
   // save the file if it hasn't been saved
-  if (this.editor.content_changed) {
-    this.editor.content_changed = false;
+  if (editorContentChanged.value) {
     await saveFile();
   }
 
   // show console when assembling
-  show_console.value = true;
+  showConsole.value = true;
   let success = true;
-  if (this.$store.getters.activeFilePath.endsWith(".bin")) {
+  let output = "";
+  if (activeFileStore.path === null) {
+    success = false;
+    output = "No file to build";
+  } else if (activeFileStore.path.endsWith(".bin")) {
     try {
-      lc3.convertBin(this.$store.getters.activeFilePath);
+      lc3.convertBin(activeFileStore.path);
     } catch (e) {
       success = false;
     }
+    output = lc3.getAndClearOutput();
+  } else if (activeFileStore.path.endsWith(".asm")) {
+    try {
+      lc3.assemble(activeFileStore.path);
+    } catch (e) {
+      success = false;
+    }
+    output = lc3.getAndClearOutput();
   } else {
-    try {
-      lc3.assemble(this.$store.getters.activeFilePath);
-    } catch (e) {
-      success = false;
-    }
+    success = false;
+    output = `Cannot build file ${activeFileStore.path}`;
   }
 
   // VS Code's Dark+ terminal colors.
@@ -181,132 +293,21 @@ async function build() {
     "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
     ]
   });
-  const temp_console_string = lc3.getAndClearOutput();
-
-  this.console_str = "";
-  setTimeout(() => {
-    this.console_str = convert.toHtml(temp_console_string);
-  }, 200);
+  consoleStr.value = convert.toHtml(output);
+  
   if (success) {
-    this.$store.commit("touchActiveFileBuildTime");
+    activeFileStore.touchBuildTime();
   }
-}
-function editorInit(editor: Ace.Editor) {
-  editor.setShowPrintMargin(false);
-  editor.setOptions({
-    fontSize: "1.25em",
-    scrollPastEnd: 0.7
-  });
-  editor.setOptions({
-    enableBasicAutocompletion: [
-      CreateLc3CompletionProvider(() => this.autocompleteMode)
-    ],
-    enableLiveAutocompletion: true
-  });
-  editor.commands.addCommand({
-    name: "save",
-    bindKey: { win: "Ctrl-S", mac: "Cmd-S" },
-    exec: saveFile
-  });
-  editor.commands.addCommand({
-    name: "build",
-    bindKey: { win: "Ctrl-Enter", mac: "Cmd-Enter" },
-    exec: build
-  });
-  editor.commands.addCommand({
-    name: "open",
-    bindKey: { win: "Ctrl-O", mac: "Cmd-O" },
-    exec: (e, path) => openFile(path)
-  });
 }
 </script>
 
-
-<!-- <script>
-
-export default {
-  computed: {
-    getFilename() {
-      return this.$store.getters.activeFilePath === null
-        ? "Untitled"
-        : path.basename(this.$store.getters.activeFilePath);
-    },
-    darkMode() {
-      return this.$store.getters.theme === "dark";
-    },
-    editorBinding() {
-      return this.$store.getters.editor_binding;
-    },
-    autocompleteMode() {
-      return this.$store.getters.autocomplete;
-    }
-  },
-  watch: {
-    "editor.current_content": function(newContent) {
-      // Compare against original content to see if it's changed
-      if (newContent !== this.editor.original_content) {
-        this.editor.content_changed = true;
-      } else {
-        this.editor.content_changed = false;
-      }
-    },
-    "editor.original_content": function(newContent) {
-      // Compare against original content to see if it's changed
-      if (newContent !== this.editor.original_content) {
-        this.editor.content_changed = true;
-      } else {
-        this.editor.content_changed = false;
-      }
-    },
-    editorBinding: function(binding) {
-      if (binding === "vim") {
-        this.$refs.aceEditor.editor.setKeyboardHandler("ace/keyboard/vim");
-        ace.config.loadModule("ace/keyboard/vim", function(module) {
-          var VimApi = module.CodeMirror.Vim;
-          VimApi.defineEx("write", "w", function(cm, input) {
-            cm.ace.execCommand("save");
-          });
-        });
-      } else {
-        this.$refs.aceEditor.editor.setKeyboardHandler("");
-      }
-    }
-  }
-};
-</script> -->
-
 <style>
-.ace_editor.ace_autocomplete.ace_twilight {
-  background-color: red;
-}
-
-.ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line {
-  background-color: blue;
-}
-.ace_twilight {
-  background-color: red !important;
-}
-.ace_twilight .ace_completion-highlight {
-  color: orange !important;
-}
 .ace-twilight .ace_marker-layer .ace_selection {
   background: rgb(60, 97, 146) !important;
 }
 </style>
 
 <style scoped>
-.container {
-  padding: 12px;
-}
-
-.editor-console-wrapper {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto 3fr 170px;
-  grid-row-gap: 10px;
-  overflow: hidden;
-}
-
 #filename {
   text-align: center;
 }
@@ -314,25 +315,15 @@ export default {
 #ace-editor {
   overflow: hidden;
   justify-self: center;
+  height: 100%;
 }
 
 #console {
   overflow: auto;
   font-family: Consolas, Menlo, Courier, monospace;
-  margin: 15px 10px 5px 10px;
+  margin: 15px 0 5px 0;
   padding: 10px;
   white-space: pre-wrap;
-}
-
-.hide-console-wrapper {
-  grid-template-rows: auto 3fr 0fr;
-}
-
-.hide-console {
-  display: none;
-}
-
-.text {
-  font-weight: 400;
+  height: 170px;
 }
 </style>

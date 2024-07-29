@@ -39,5 +39,19 @@ contextBridge.exposeInMainWorld("api", {
         setAll(data: object): void {
             return ipcRenderer.sendSync("config_set_all", data);
         }
+    },
+    fs: {
+        async read(fp: string): Promise<string> {
+            return ipcRenderer.invoke("fs_read", fp);
+        },
+        async write(fp: string, content: string): Promise<void> {
+            return ipcRenderer.invoke("fs_write", fp, content);
+        },
+        exists(fp: string): boolean {
+            return ipcRenderer.sendSync("fs_exists", fp);
+        },
+        basename(fp: string): string {
+            return ipcRenderer.sendSync("fs_path_basename", fp);
+        }
     }
 });
