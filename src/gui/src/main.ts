@@ -6,7 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
 // also because this module is CJS, top-level await doesn't work
 const electronStore = import('electron-store');
 import path from 'path';
-import { AutoUpdaterSendType } from './types/renderer';
+import { AutoUpdaterSendType } from './api';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {

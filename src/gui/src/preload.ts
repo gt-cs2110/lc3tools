@@ -11,31 +11,33 @@
 import { contextBridge, ipcRenderer } from "electron";
 import lc3 from "lc3-backend";
 
-contextBridge.exposeInMainWorld("lc3", lc3);
-contextBridge.exposeInMainWorld("autoUpdater", {
-    on(cb: (event: Electron.IpcRendererEvent, msg: any, progress: any) => void) {
-        ipcRenderer.on("auto_updater", cb)
+contextBridge.exposeInMainWorld("api", {
+    lc3,
+    autoUpdater: {
+        on(cb: (msg: any, progress: any) => void) {
+            ipcRenderer.on("auto_updater", (e, msg, progress) => cb(msg, progress))
+        },
+        send(s: string) {
+            ipcRenderer.send("auto_updater", s)
+        }
     },
-    send(s: string) {
-        ipcRenderer.send("auto_updater", s)
-    }
-})
-contextBridge.exposeInMainWorld("dialog", {
-    async showModal(type: string, config: any): Promise<any> {
-        return ipcRenderer.invoke("show_modal", type, config);
-    }
-})
-contextBridge.exposeInMainWorld("storage", {
-    get(k: string): any {
-        return ipcRenderer.sendSync("config_get", k);
+    dialog: {
+        async showModal(type: string, config: any): Promise<any> {
+            return ipcRenderer.invoke("show_modal", type, config);
+        }
     },
-    set(k: string, v: any): void {
-        return ipcRenderer.sendSync("config_set", k, v);
-    },
-    getAll(): object {
-        return ipcRenderer.sendSync("config_get_all");
-    },
-    setAll(data: object): void {
-        return ipcRenderer.sendSync("config_set_all", data);
+    storage: {
+        get(k: string): any {
+            return ipcRenderer.sendSync("config_get", k);
+        },
+        set(k: string, v: any): void {
+            return ipcRenderer.sendSync("config_set", k, v);
+        },
+        getAll(): object {
+            return ipcRenderer.sendSync("config_get_all");
+        },
+        setAll(data: object): void {
+            return ipcRenderer.sendSync("config_set_all", data);
+        }
     }
 });

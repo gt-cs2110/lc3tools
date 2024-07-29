@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import * as renderer from "../../types/renderer";
+import API from "../../api";
 import { onBeforeRouteUpdate } from "vue-router";
 // Editor
 import "./ace-cfg";
@@ -38,11 +38,10 @@ import { VAceEditor } from "vue3-ace-editor";
 import { CreateLc3CompletionProvider } from "./completions";
 import Convert from "ansi-to-html";
 
-declare var lc3: renderer.LC3Backend;
-declare var dialog: renderer.Dialog;
+declare const api: API;
+const { lc3, dialog } = api;
 
 const darkMode = true;
-
 const editor = ref({
   original_content: "",
   current_content: "",

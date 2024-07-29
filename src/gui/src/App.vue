@@ -223,10 +223,9 @@
   
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import * as renderer from "./types/renderer";
-declare var lc3: renderer.LC3Backend;
-declare var autoUpdater: renderer.AutoUpdaterBindings;
-declare var storage: renderer.Storage;
+import API from "./api";
+declare const api: API;
+const { lc3, autoUpdater, storage } = api;
 
 // Update download progress
 const update = ref({
@@ -252,7 +251,7 @@ const settings = ref({
 });
 
 onMounted(() => {
-  autoUpdater.on((e, message, progress) => {
+  autoUpdater.on((message, progress) => {
     if (message === "update_available") {
         // Show the settings modal
         update_dialog.value = !settings.value.ignore_update;
