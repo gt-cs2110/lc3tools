@@ -2,9 +2,7 @@
   <!-- Sidebar -->
   <v-navigation-drawer permanent rail>
     <v-list-item @click="openFile()" prepend-icon="folder_open">
-      <v-tooltip location="right" activator="parent">
-        <span>Open File</span>
-      </v-tooltip>
+      <v-tooltip location="right" activator="parent" text="Open File" />
     </v-list-item>
     <v-list-item @click="saveFile()">
       <template v-slot:prepend>
@@ -16,14 +14,10 @@
         </v-badge>
       </template>
 
-      <v-tooltip location="right" activator="parent">
-        <span>Save File</span>
-      </v-tooltip>
+      <v-tooltip location="right" activator="parent" text="Save File" />
     </v-list-item>
     <v-list-item @click="saveFileAs()" prepend-icon="note_add">
-      <v-tooltip location="right" activator="parent">
-        <span>Save File As</span>
-      </v-tooltip>
+      <v-tooltip location="right" activator="parent" text="Save File As" />
     </v-list-item>
     <v-list-item @click="build()" prepend-icon="build">
       <v-tooltip location="right" activator="parent">
@@ -34,9 +28,7 @@
       </v-tooltip>
     </v-list-item>
     <v-list-item @click="toggleConsole()" prepend-icon="terminal">
-      <v-tooltip location="right" activator="parent">
-        <span>Toggle Console</span>
-      </v-tooltip>
+      <v-tooltip location="right" activator="parent" text="Toggle Console" />
     </v-list-item>
   </v-navigation-drawer>
   <!-- Main editor content -->
