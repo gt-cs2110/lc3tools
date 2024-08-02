@@ -3,15 +3,15 @@ import { defineStore } from "pinia";
 export const useActiveFileStore = defineStore("active_file", {
   state: () => ({
     path: null as string | null,
-    last_loaded: new Date(),
-    last_built: new Date()
+    lastLoaded: new Date(),
+    lastBuilt: new Date()
   }),
   actions: {
     touchLoadTime() {
-        this.last_loaded = new Date();
+        this.lastLoaded = new Date();
     },
     touchBuildTime() {
-        this.last_built = new Date();
+        this.lastBuilt = new Date();
     },
   }
 });
