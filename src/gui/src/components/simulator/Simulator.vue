@@ -52,6 +52,7 @@
             <h3 class="view-header">Registers</h3>
             <v-data-table
               class="elevation-4 sim-data-table"
+              density="compact"
               hide-default-footer
               :items-per-page="-1"
               :items="sim.regs"
@@ -153,9 +154,8 @@
               </div>
             </div>
             <div
-              ref="consoleEl"
+              ref="consoleRef"
               class="elevation-4 console"
-              v-bind:id="darkMode ? 'console-dark' : 'console-light'"
               v-html="consoleStr"
               @keydown="handleConsoleInput"
               tabindex="0"
@@ -179,8 +179,8 @@
                   <col style="width: 10%" />
                   <col style="width: 10%" />
                   <col style="width: 10%" />
-                  <col style="width: 20%" />
-                  <col style="width: 50%" />
+                  <col style="width: 15%" />
+                  <col style="width: 45%" />
                 </colgroup>
               </template>
               <template v-slot:headers>
@@ -204,36 +204,24 @@
                   }"
                 >
                   <td class="data-cell-btn">
-                    <a @click="toggleBreakpoint(item.addr)">
+                    <v-btn icon flat block :ripple="false" @click="toggleBreakpoint(item.addr)">
                       <v-icon
-                        v-if="isBreakpointAt(item.addr)"
                         icon="report"
-                        color="red"
-                      />
-                      <v-icon 
-                        v-else
-                        icon="report"
-                        size="small"
-                        color="grey"
                         class="breakpoint-icon"
+                        :color="isBreakpointAt(item.addr) ? 'red' : 'grey'"
+                        :size="isBreakpointAt(item.addr) ? 'default' : 'small'"
                       />
-                    </a>
+                    </v-btn>
                   </td>
                   <td class="data-cell-btn">
-                    <a @click="setPC(item.addr)">
+                    <v-btn icon flat block :ripple="false" @click="setPC(item.addr)">
                       <v-icon
-                        v-if="isPCAt(item.addr)"
                         icon="play_arrow"
-                        color="blue"
-                      />
-                      <v-icon 
-                        v-else
-                        icon="play_arrow"
-                        size="small"
-                        color="grey"
                         class="pc-icon"
+                        :color="isPCAt(item.addr) ? 'blue' : 'grey'"
+                        :size="isPCAt(item.addr) ? 'default' : 'small'"
                       />
-                    </a>
+                    </v-btn>
                   </td>
                   <td class="data-cell-num">
                     <strong>{{ toHex(item.addr) }}</strong>
@@ -363,7 +351,7 @@
 import API from 'src/api';
 import { useActiveFileStore } from '../../store/active_file';
 import { useSettingsStore } from '../../store/settings';
-import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue';
+import { onActivated, onMounted, onUnmounted, ref, watch } from 'vue';
 import Convert from 'ansi-to-html';
 import { useRouter } from 'vue-router';
 declare const api: API;
@@ -400,7 +388,6 @@ const memView = ref({
 
 const isSnackBarVisible = ref(false);
 const consoleStr = ref("");
-const darkMode = computed(() => settings.theme === "dark");
 const jumpToLocInput = ref("");
 let lastLoadedFile: string | null = null;
 let pollOutputHandle: number | null = null;
@@ -431,7 +418,7 @@ const memViewWrapper = ref(null);
 watch(memViewWrapper, el => {
   el.addEventListener("wheel", handleMemoryScroll);
 }, { once: true });
-const consoleEl = ref<HTMLDivElement>(null);
+const consoleRef = ref<HTMLDivElement>(null);
 
 onMounted(() => {
   refreshMemoryPanel();
@@ -455,7 +442,7 @@ onActivated(() => {
 
 function refreshMemoryPanel() {
   memView.value.data = Array.from(
-    { length: Math.floor((window.innerHeight - 140) / 24) - 4},
+    { length: Math.floor((window.innerHeight - 140) / 25) - 4},
     () => ({
       addr: 0,
       value: 0,
@@ -729,7 +716,7 @@ function updateConsole() {
     }
     consoleStr.value += convert.toHtml(update);
     setTimeout(
-      () => (consoleEl.value.scrollTop = consoleEl.value.scrollHeight)
+      () => (consoleRef.value.scrollTop = consoleRef.value.scrollHeight)
     );
   }
 }
@@ -859,19 +846,22 @@ function toInt16(value: number) {
 }
 
 /* Generic data table styles */
-.sim-data-table * {
-  transition: background-color 0.25s ease-in-out;
+.sim-data-table {
+  /* Supercompact! */
+  --v-table-header-height: 29px;
+  --v-table-row-height: 25px;
 }
 .sim-data-table:deep(table) {
   /* Propagates this property into the <table> element of the <v-data-table> component */
   table-layout: fixed;
 }
+
+.sim-data-table tr {
+  transition: background-color 0.25s ease-in-out;
+}
 .sim-data-table thead tr {
   background-color: #00000040;
   column-gap: 5px;
-}
-.sim-data-table td, .sim-data-table th {
-  height: 24px !important;
 }
 .sim-data-table tbody tr {
   font-family: Consolas, Menlo, Courier, monospace;
@@ -891,11 +881,24 @@ function toInt16(value: number) {
 .row-disabled {
   background-color: lightgrey !important;
 }
+
 .data-cell-text {
   text-align: left !important;
 }
 .data-cell-btn {
   text-align: center !important;
+}
+.data-cell-btn > * {
+  display: block;
+  margin: auto;
+}
+.data-cell-btn * {
+  transition: color 0.2s, font-size 0.2s;
+}
+.data-cell-btn:deep(button) {
+  background-color: transparent;
+  /* Force height of buttons to be smaller than the height of each row */
+  height: calc(var(--v-table-row-height) - 1);
 }
 .data-cell-num {
   text-align: right !important;
@@ -933,6 +936,7 @@ function toInt16(value: number) {
   padding: 8px;
   overflow-y: scroll;
   white-space: pre-wrap;
+  background-color: rgb(var(--v-theme-surface));
 }
 
 .console:focus {
@@ -945,14 +949,6 @@ function toInt16(value: number) {
 }
 .console:focus::after {
   content: "\25ae";
-}
-
-#console-light {
-  background-color: white;
-}
-
-#console-dark {
-  background-color: rgba(66, 66, 66, 1);
 }
 
 /* Memory view styles */

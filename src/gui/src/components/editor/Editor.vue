@@ -36,7 +36,7 @@
     <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
     <v-container fluid class="fill-height">
       <v-row class="align-self-stretch flex-column" no-gutters>
-        <h3 id="filename" class="view-header">{{ filename }}</h3>
+        <h3 class="view-header">{{ filename }}</h3>
         <v-col class="flex-grow-1 flex-shrink-0">
           <v-ace-editor
             id="ace-editor"
@@ -106,7 +106,7 @@ const filename = computed(() => {
 
 const aceEditorRef = ref<VAceEditorInstance>();
 const aceEditor = computed(() => aceEditorRef.value?.getAceInstance());
-// ace editor init:
+// ace editor setup:
 watch(aceEditorRef, (ref) => {
   let aceEditor = ref.getAceInstance();
 
@@ -153,8 +153,8 @@ watch(editorBinding, binding => {
   }
 })
 
-// autosave every 5 minutes (cool!)
-onMounted(async () => {
+onMounted(() => {
+  // autosave every 5 minutes (cool!)
   setInterval(autosaveFile, 5 * 60 * 1000);
 });
 
@@ -313,8 +313,9 @@ export default {
 </style>
 
 <style scoped>
-#filename {
+.view-header {
   text-align: center;
+  padding-bottom: 5px;
 }
 
 #ace-editor {
@@ -330,5 +331,6 @@ export default {
   padding: 10px;
   white-space: pre-wrap;
   height: 170px;
+  background-color: rgb(var(--v-theme-surface));
 }
 </style>
