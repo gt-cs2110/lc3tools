@@ -47,7 +47,7 @@
         </template>
       </v-snackbar>
       <v-row class="align-self-stretch">
-        <v-col :cols="4" class="d-flex flex-column ga-3">
+        <v-col :cols="4" class="d-flex flex-column ga-3 h-limit">
           <div>
             <h3 class="view-header">Registers</h3>
             <v-data-table
@@ -84,11 +84,16 @@
                   <td class="data-cell-text">
                     <strong>{{ item.name.toUpperCase() }}</strong>
                   </td>
-                  <td class="data-cell-num editable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
                     <span>{{
                       toHex(item.value)
                     }}</span>
-                    <v-menu activator="parent" :close-on-content-click="false" :width="200">
+                    <v-menu 
+                      v-if="!sim.running"
+                      activator="parent" 
+                      :close-on-content-click="false" 
+                      :width="200"
+                    >
                       <v-card>
                         <v-container>
                           <v-text-field 
@@ -109,11 +114,16 @@
                       </v-card>
                     </v-menu>
                   </td>
-                  <td class="data-cell-num editable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
                     <span>{{
                       toFormattedDec(item.value)
                     }}</span>
-                    <v-menu activator="parent" :close-on-content-click="false" :width="200">
+                    <v-menu
+                      v-if="!sim.running"
+                      activator="parent" 
+                      :close-on-content-click="false" 
+                      :width="200"
+                    >
                       <v-card>
                         <v-container>
                           <v-text-field 
@@ -147,7 +157,7 @@
                 <h3 class="view-header">Console (click to focus)</h3>
               </div>
               <div id="console-clear">
-                <v-btn icon flat variant="text">
+                <v-btn icon flat variant="text" @click="clearConsole()">
                   <v-icon icon="delete_forever"></v-icon>
                   <v-tooltip location="left" activator="parent" text="Clear Console" />
                 </v-btn>
@@ -226,11 +236,16 @@
                   <td class="data-cell-num">
                     <strong>{{ toHex(item.addr) }}</strong>
                   </td>
-                  <td class="data-cell-num editable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
                     <span>{{
                       toHex(item.value)
                     }}</span>
-                    <v-menu activator="parent" :close-on-content-click="false" :width="200">
+                    <v-menu
+                      v-if="!sim.running"
+                      activator="parent" 
+                      :close-on-content-click="false" 
+                      :width="200"
+                    >
                       <v-card>
                         <v-container>
                           <v-text-field 
@@ -251,11 +266,16 @@
                       </v-card>
                     </v-menu>
                   </td>
-                  <td class="data-cell-num editable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
                     <span>{{
                       toFormattedDec(item.value)
                     }}</span>
-                    <v-menu activator="parent" :close-on-content-click="false" :width="200">
+                    <v-menu
+                      v-if="!sim.running"
+                      activator="parent" 
+                      :close-on-content-click="false" 
+                      :width="200"
+                    >
                       <v-card>
                         <v-container>
                           <v-text-field 
@@ -276,10 +296,22 @@
                       </v-card>
                     </v-menu>
                   </td>
-                  <td class="data-cell-text" @click="jumpToSource(item.label)">
+                  <td
+                    class="data-cell-text"
+                    v-bind:class="{
+                      'clickable': item.label.trim().length != 0
+                    }"
+                    @click="jumpToSource(item.label)"
+                  >
                     <i>{{ item.label }}</i>
                   </td>
-                  <td class="data-cell-text" @click="jumpToSource(item.addr)">
+                  <td 
+                    class="data-cell-text" 
+                    v-bind:class="{
+                      'clickable': item.line.trim().length != 0
+                    }"
+                    @click="jumpToSource(item.addr)"
+                  >
                     <i>{{ item.line }}</i>
                   </td>
                 </tr>
@@ -844,6 +876,9 @@ function toInt16(value: number) {
   text-align: center;
   padding-bottom: 5px;
 }
+.h-limit {
+  height: calc(100vh - 90px);
+}
 
 /* Generic data table styles */
 .sim-data-table {
@@ -904,11 +939,16 @@ function toInt16(value: number) {
   text-align: right !important;
 }
 
+tr:not(.row-disabled) .clickable {
+  cursor: pointer;
+}
 /* Console styles */
 #console-wrapper {
   display: flex;
   flex-direction: column;
   flex: 1;
+  /* Prevents console from overflowing past page */
+  min-height: 0;
 }
 
 #console-header {
@@ -956,11 +996,11 @@ function toInt16(value: number) {
   background-color: #008cff4d;
 }
 
-.breakpoint-icon:hover {
+tr:not(.row-disabled) .breakpoint-icon:hover {
   color: red !important;
 }
 
-.pc-icon:hover {
+tr:not(.row-disabled) .pc-icon:hover {
   color: #2196f3 !important;
 }
 
