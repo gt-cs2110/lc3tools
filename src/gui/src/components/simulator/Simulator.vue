@@ -295,12 +295,7 @@
                     </v-menu>
                   </td>
                   <td class="data-cell-text" @click="jumpToSource(item.label)">
-                    <v-tooltip top>
-                      <div slot="activator">
-                        <i>{{ item.label }}</i>
-                      </div>
-                      <span>{{ item.label }}</span>
-                    </v-tooltip>
+                    <i>{{ item.label }}</i>
                   </td>
                   <td class="data-cell-text" @click="jumpToSource(item.addr)">
                     <i>{{ item.line }}</i>
@@ -777,7 +772,7 @@ function jumpToSource(location: string | number) {
 
     if (typeof span !== "undefined") {
       let [slno, scno, elno, ecno] = span;
-      router.push({ name: "editor", hash: `L${slno}C${scno}-L${elno}C${ecno}` });
+      router.push({ name: "editor", hash: `#L${slno}C${scno}-L${elno}C${ecno}` });
     }
   }
 }

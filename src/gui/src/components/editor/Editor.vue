@@ -62,7 +62,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import API from "../../api";
-import { onBeforeRouteUpdate } from "vue-router";
 // Editor
 import "./ace-cfg";
 import ace from "ace-builds";
@@ -74,9 +73,14 @@ import { useSettingsStore } from "../../store/settings";
 import { storeToRefs } from "pinia";
 import { VAceEditorInstance } from "vue3-ace-editor/types";
 
-declare const api: API;
-const { lc3, dialog, fs } = api;
-
+// HACK: the line below would be written as
+// ```
+// declare const api: API;
+// const { lc3, dialog, fs } = api;
+// ```
+// however, the second <script> is interacting strangely with TypeScript,
+// so we have to write this instead
+const { lc3, dialog, fs }: API = (globalThis as any).api;
 const activeFileStore = useActiveFileStore();
 const settings = useSettingsStore();
 
@@ -152,26 +156,6 @@ watch(editorBinding, binding => {
 // autosave every 5 minutes (cool!)
 onMounted(async () => {
   setInterval(autosaveFile, 5 * 60 * 1000);
-});
-
-// handle line refs
-onBeforeRouteUpdate((to, from) => {
-  if (to.hash) {
-    // format L999C999-L999C999
-    let hash_pattern = /^#?L(\d+)C(\d+)-L(\d+)C(\d+)$/;
-    let match = to.hash.match(hash_pattern);
-    if (match) {
-      let [_, slno_str, scno_str, elno_str, ecno_str] = match;
-      let slno = parseInt(slno_str, 10);
-      let scno = parseInt(scno_str, 10);
-      let elno = parseInt(elno_str, 10);
-      let ecno = parseInt(ecno_str, 10);
-
-      let { Range } = ace.require("ace/range");
-      aceEditor.value.gotoLine(slno, scno, true);
-      aceEditor.value.getSelection().setRange(new Range(slno, scno, elno, ecno));
-    }
-  }
 });
 
 // Methods
@@ -289,6 +273,35 @@ async function build() {
   
   if (success) {
     activeFileStore.touchBuildTime();
+  }
+}
+
+defineExpose({ ace, aceEditor });
+</script>
+
+<script lang="ts">
+// Necessary because beforeRouteEnter doesn't exist in Composition API form
+// (as of Vue 3.4.34, Vue Router 4.4.0)
+export default {
+  beforeRouteEnter(to, from, next) {
+    next((vm: any) => {
+      if (to.hash) {
+        // format L999C999-L999C999
+        let hash_pattern = /^#?L(\d+)C(\d+)-L(\d+)C(\d+)$/;
+        let match = to.hash.match(hash_pattern);
+        if (match) {
+          let [_, slno_str, scno_str, elno_str, ecno_str] = match;
+          let slno = parseInt(slno_str, 10);
+          let scno = parseInt(scno_str, 10);
+          let elno = parseInt(elno_str, 10);
+          let ecno = parseInt(ecno_str, 10);
+  
+          let { Range } = vm.ace.require("ace/range");
+          vm.aceEditor.gotoLine(slno, scno, true);
+          vm.aceEditor.getSelection().setRange(new Range(slno, scno, elno, ecno));
+        }
+      }
+    })
   }
 }
 </script>
