@@ -66,10 +66,10 @@
               </template>
               <template v-slot:headers>
                 <tr>
-                  <th><strong>Registers</strong></th>
-                  <th><strong>Hex</strong></th>
-                  <th><strong>Decimal</strong></th>
-                  <th><strong>ASCII / Misc</strong></th>
+                  <th class="data-cell-text"><strong>Registers</strong></th>
+                  <th class="data-cell-num"><strong>Hex</strong></th>
+                  <th class="data-cell-num"><strong>Decimal</strong></th>
+                  <th class="data-cell-text"><strong>ASCII / Misc</strong></th>
                 </tr>
               </template>
               <template v-slot:item="{ item }">
@@ -174,24 +174,24 @@
             >
               <template v-slot:colgroup>
                 <colgroup>
-                  <col style="width: 5%" />
-                  <col style="width: 5%" />
-                  <col style="width: 9%" />
-                  <col style="width: 9%" />
-                  <col style="width: 9%" />
-                  <col style="width: 18%" />
-                  <col style="width: 45%" />
+                  <col style="width: 2em" />
+                  <col style="width: 2em" />
+                  <col style="width: 10%" />
+                  <col style="width: 10%" />
+                  <col style="width: 10%" />
+                  <col style="width: 20%" />
+                  <col style="width: 50%" />
                 </colgroup>
               </template>
               <template v-slot:headers>
                 <tr>
-                  <th><strong>BP</strong></th>
-                  <th><strong>PC</strong></th>
-                  <th><strong>Address</strong></th>
-                  <th><strong>Hex</strong></th>
-                  <th><strong>Decimal</strong></th>
-                  <th><strong>Label</strong></th>
-                  <th><strong>Instructions</strong></th>
+                  <th class="data-cell-btn"><strong>BP</strong></th>
+                  <th class="data-cell-btn"><strong>PC</strong></th>
+                  <th class="data-cell-num"><strong>Address</strong></th>
+                  <th class="data-cell-num"><strong>Hex</strong></th>
+                  <th class="data-cell-num"><strong>Decimal</strong></th>
+                  <th class="data-cell-text"><strong>Label</strong></th>
+                  <th class="data-cell-text"><strong>Instructions</strong></th>
                 </tr>
               </template>
               <template v-slot:item="{ item }">
@@ -203,11 +203,8 @@
                     'row-curr-pc': isPCAt(item.addr)
                   }"
                 >
-                  <td>
-                    <a
-                      class="text-center"
-                      @click="toggleBreakpoint(item.addr)"
-                    >
+                  <td class="data-cell-btn">
+                    <a @click="toggleBreakpoint(item.addr)">
                       <v-icon
                         v-if="isBreakpointAt(item.addr)"
                         icon="report"
@@ -222,11 +219,8 @@
                       />
                     </a>
                   </td>
-                  <td>
-                    <a
-                      class="text-center"
-                      @click="setPC(item.addr)"
-                    >
+                  <td class="data-cell-btn">
+                    <a @click="setPC(item.addr)">
                       <v-icon
                         v-if="isPCAt(item.addr)"
                         icon="play_arrow"
@@ -865,7 +859,11 @@ function toInt16(value: number) {
 }
 
 /* Generic data table styles */
-.sim-data-table {
+.sim-data-table * {
+  transition: background-color 0.25s ease-in-out;
+}
+.sim-data-table:deep(table) {
+  /* Propagates this property into the <table> element of the <v-data-table> component */
   table-layout: fixed;
 }
 .sim-data-table thead tr {
@@ -875,9 +873,14 @@ function toInt16(value: number) {
 .sim-data-table td, .sim-data-table th {
   height: 24px !important;
 }
+.sim-data-table tbody tr {
+  font-family: Consolas, Menlo, Courier, monospace;
+  /* Force row to be 1 line wide */
+  overflow: hidden;
+  white-space: nowrap;
+}
 .sim-data-table tbody tr:hover {
-  /* TODO: proper color fix */
-  background-color: green;
+  background-color: #7f7f7f4d;
 }
 .row-update-flash {
   background-color: #fff700a0;
@@ -889,12 +892,13 @@ function toInt16(value: number) {
   background-color: lightgrey !important;
 }
 .data-cell-text {
-  text-align: left;
-  font-family: Consolas, Menlo, Courier, monospace;
+  text-align: left !important;
+}
+.data-cell-btn {
+  text-align: center !important;
 }
 .data-cell-num {
-  text-align: right;
-  font-family: Consolas, Menlo, Courier, monospace;
+  text-align: right !important;
 }
 
 /* Console styles */
