@@ -60,17 +60,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
 import API from "../../api";
+import { useActiveFileStore } from "../../store/active_file";
+import { useSettingsStore } from "../../store/settings";
+// Vue stuff
+import { computed, onMounted, ref, watch } from "vue";
+import "vuetify/components";
+import { storeToRefs } from "pinia";
 // Editor
 import "./ace-cfg";
 import ace from "ace-builds";
 import { VAceEditor } from "vue3-ace-editor";
-import { CreateLc3CompletionProvider } from "./completions";
-import { useActiveFileStore } from "../../store/active_file";
-import { useSettingsStore } from "../../store/settings";
-import { storeToRefs } from "pinia";
 import { VAceEditorInstance } from "vue3-ace-editor/types";
+import { CreateLc3CompletionProvider } from "./completions";
+//
 import Console from "../Console.vue";
 
 // HACK: the line below would be written as
