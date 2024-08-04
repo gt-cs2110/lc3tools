@@ -519,23 +519,30 @@ async function openFile(path: string | undefined = undefined) {
   }
 }
 function loadFile(path: string) {
+  // pause lc3 if running
+  lc3.pause();
+
   // clear output on file (re)load
   if (settings.clear_out_on_reload) {
     clearConsole();
   }
 
-  lastLoadedFile = path;
-  
-  // load object file can fail if the object file is malformed
-  let success = true;
+  // load object file
+  // and check for load failure (i.e., if file is malformed)
+  let success;
   try {
     lc3.loadObjectFile(path);
+    success = true;
   } catch (e) {
     success = false;
   }
 
-  memView.value.start = lc3.getRegValue("pc");
-  memView.value.symTable = lc3.getCurrSymTable();
+  // If successful, set up initialization steps
+  if (success) {
+    lastLoadedFile = path;
+    memView.value.start = lc3.getRegValue("pc");
+    memView.value.symTable = lc3.getCurrSymTable();
+  }
   updateUI();
   isSnackBarVisible.value = success;
 }
@@ -544,13 +551,12 @@ function reloadFile() {
   updateUI();
 }
 function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
-  if (typeof pollOutputHandle !== "number") {
-    pollOutputHandle = setInterval(updateConsole, 50) as unknown as number;
-  }
-  
   if (!sim.value.running) {
-    lc3.clearInput();
     sim.value.running = true;
+
+    lc3.clearInput();
+    startPollOutput();
+
     return new Promise<void>((resolve, reject) => {
       let callback = (error: Error) => {
         if (error) {
@@ -575,7 +581,6 @@ function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
       }
     });
   } else {
-    lc3.pause();
     endSimulation(false);
   }
 }
@@ -589,16 +594,29 @@ function randomizeMachine() {
   clearConsole();
   updateUI();
 }
-function endSimulation(jumpToPC_: boolean) {
+
+function startPollOutput() {
+  if (typeof pollOutputHandle !== "number") {
+    pollOutputHandle = setInterval(updateConsole, 50) as unknown as number;
+  }
+}
+function stopPollOutput() {
   clearInterval(pollOutputHandle);
   pollOutputHandle = null;
+}
 
+function endSimulation(jumpToPC_: boolean) {
   lc3.clearInput();
-  sim.value.running = false;
-  updateUI(true);
-  sim.value.regs[9].value = lc3.getRegValue("pc");
+  stopPollOutput();
 
-  if (jumpToPC_) jumpToPC(false);
+  if (sim.value.running) {
+    sim.value.running = false;
+    lc3.pause();
+    updateUI(true);
+
+    sim.value.regs[9].value = lc3.getRegValue("pc");
+    if (jumpToPC_) jumpToPC(false);
+  }
 }
 function clearConsole() {
   consoleStr.value = "";
