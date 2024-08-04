@@ -210,14 +210,12 @@
 </template>
   
 <script setup lang="ts">
-import API from "./api";
 // Vue stuff
 import { onMounted, ref } from "vue";
 import "vuetify/components";
 import { LC3Settings, useSettingsStore } from "./store/settings";
 
-declare const api: API;
-const { lc3, autoUpdater, storage } = api;
+const { lc3, autoUpdater, storage } = window.api;
 
 // Update download progress
 const update = ref({

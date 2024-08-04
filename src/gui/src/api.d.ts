@@ -37,4 +37,14 @@ export type API = {
 export type Handler<F> = (e: Electron.IpcMainInvokeEvent, ...args: Parameters<F>) => ReturnType<F> | Awaited<ReturnType<F>>;
 export type SyncHandler<F> = (e: Omit<Electron.IpcMainEvent, "returnValue"> & { returnValue: ReturnType<F> }, ...args: Parameters<F>) => void;
 
+// Note: This declares the api object into the global scope.
+// However, window.api is NOT accessible in the main process (i.e., main.ts).
+// It can only be used in the files belonging to the renderer process (i.e., *.vue and renderer.ts).
+//
+// The exact implementation details of window.api are found in preload.ts.
+declare global {
+    interface Window {
+        api: API;
+    }
+}
 export default API;

@@ -380,7 +380,6 @@
 </template>
   
 <script setup lang="ts">
-import API from 'src/api';
 import { useActiveFileStore } from '../../store/active_file';
 import { useSettingsStore } from '../../store/settings';
 // Vue stuff
@@ -390,8 +389,7 @@ import "vuetify/components";
 //
 import Console from '../Console.vue';
 
-declare const api: API;
-const { lc3, dialog, fs } = api;
+const { lc3, dialog, fs } = window.api;
 
 const settings = useSettingsStore();
 const activeFileStore = useActiveFileStore();

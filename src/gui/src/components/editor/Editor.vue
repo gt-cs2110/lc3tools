@@ -60,7 +60,6 @@
 </template>
 
 <script setup lang="ts">
-import API from "../../api";
 import { useActiveFileStore } from "../../store/active_file";
 import { useSettingsStore } from "../../store/settings";
 // Vue stuff
@@ -76,14 +75,7 @@ import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
 
-// HACK: the line below would be written as
-// ```
-// declare const api: API;
-// const { lc3, dialog, fs } = api;
-// ```
-// however, the second <script> is interacting strangely with TypeScript,
-// so we have to write this instead
-const { lc3, dialog, fs }: API = (globalThis as any).api;
+const { lc3, dialog, fs } = window.api;
 const activeFileStore = useActiveFileStore();
 const settings = useSettingsStore();
 
