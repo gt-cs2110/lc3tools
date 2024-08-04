@@ -10,7 +10,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx,.vue ."
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.4.0",
@@ -25,11 +25,13 @@
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "electron": "31.3.0",
-    "eslint": "^8.0.1",
+    "eslint": "^8.57.0",
     "eslint-plugin-import": "^2.25.0",
+    "eslint-plugin-vue": "^9.27.0",
     "ts-node": "^10.0.0",
     "typescript": "~5.5.4",
-    "vite": "^5.3.5"
+    "vite": "^5.3.5",
+    "vue-eslint-parser": "^9.4.3"
   },
   "keywords": [],
   "dependencies": {

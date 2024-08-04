@@ -2,7 +2,8 @@
   "env": {
     "browser": true,
     "es6": true,
-    "node": true
+    "node": true,
+    "es2020": true
   },
   "extends": [
     "eslint:recommended",
@@ -10,7 +11,26 @@
     "plugin:@typescript-eslint/recommended",
     "plugin:import/recommended",
     "plugin:import/electron",
-    "plugin:import/typescript"
+    "plugin:import/typescript",
+    "plugin:vue/vue3-recommended"
   ],
-  "parser": "@typescript-eslint/parser"
+  "parser": "vue-eslint-parser",
+  "parserOptions": {
+    "parser": "@typescript-eslint/parser",
+    "sourceType": "module"
+  },
+  "rules": {
+    // too many false positives
+    "import/no-unresolved": "off",
+    // eslint is correct for this lint, but it's a small webapp who cares
+    "vue/multi-word-component-names": "off",
+    // typescript handles it and it's causing false positives on eslint's side
+    "no-redeclare": "off",
+    // unused variables are fine
+    "@typescript-eslint/no-unused-vars": "off",
+    // any is bad, but also there's too many APIs with missing types
+    // that would be too annoying to type.
+    // i'll trust that y'all know what y'all're doing if you do :any
+    "@typescript-eslint/no-explicit-any": "off"
+  }
 }
