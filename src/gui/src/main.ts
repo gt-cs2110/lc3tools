@@ -82,7 +82,8 @@ ipcMain.on("auto_updater", ((e, text) => {
   if (text == "update_confirmed") {
     throw new Error("todo");
   } else {
-    let _exhaustiveCheck: never = text;
+    // statically assert no other branches exist:
+    text satisfies never;
   }
 }) satisfies SyncHandler<API["autoUpdater"]["send"]>);
 

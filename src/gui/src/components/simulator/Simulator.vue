@@ -581,7 +581,8 @@ function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
       } else if (runKind === "run") {
         lc3.run(callback);
       } else {
-        let _exhaustiveCheck: never = runKind;
+        // statically assert no other branches exist:
+        runKind satisfies never;
       }
     });
   } else {
@@ -765,7 +766,8 @@ function jumpToSource(location: string | number) {
     } else if (typeof location === "number") {
       span = lc3.getAddrSourceRange(location);
     } else {
-      let _exhaustiveCheck: never = location;
+      // statically assert no other branches exist:
+      location satisfies never;
     }
 
     if (typeof span !== "undefined") {
@@ -830,7 +832,8 @@ function toFormattedDec(value: number) {
   } else if (settings.numbers === "unsigned") {
     return toUint16(value);
   } else {
-    let _exhaustiveCheck: never = settings.numbers;
+    // statically assert no other branches exist:
+    settings.numbers satisfies never;
   }
 }
 function parseInputString(value: string) {
