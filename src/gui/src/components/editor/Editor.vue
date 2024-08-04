@@ -48,11 +48,11 @@
           />
         </v-col>
         <v-col class="flex-grow-0 flex-shrink-1" v-if="showConsole">
-          <div
+          <console 
             id="console"
-            class="elevation-4"
-            v-html="consoleStr"
-          ></div>
+            v-model="consoleStr"
+            float="top"
+          />
         </v-col>
       </v-row>
     </v-container>
@@ -67,11 +67,11 @@ import "./ace-cfg";
 import ace from "ace-builds";
 import { VAceEditor } from "vue3-ace-editor";
 import { CreateLc3CompletionProvider } from "./completions";
-import Convert from "ansi-to-html";
 import { useActiveFileStore } from "../../store/active_file";
 import { useSettingsStore } from "../../store/settings";
 import { storeToRefs } from "pinia";
 import { VAceEditorInstance } from "vue3-ace-editor/types";
+import Console from "../Console.vue";
 
 // HACK: the line below would be written as
 // ```
@@ -259,17 +259,7 @@ async function build() {
     success = false;
     output = `Cannot build file ${activeFileStore.path}`;
   }
-
-  // VS Code's Dark+ terminal colors.
-  let convert = new Convert({
-    colors: [
-    "#000000", "#CD3131", "#0DBC79", "#E5E510", 
-    "#2472C8", "#BC3FBC", "#11A8CD", "#E5E5E5", 
-    "#666666", "#F14C4C", "#23D18B", "#F5F543", 
-    "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
-    ]
-  });
-  consoleStr.value = convert.toHtml(output);
+  consoleStr.value = output;
   
   if (success) {
     activeFileStore.touchBuildTime();
@@ -325,12 +315,7 @@ export default {
 }
 
 #console {
-  overflow: auto;
-  font-family: Consolas, Menlo, Courier, monospace;
   margin: 15px 0 5px 0;
-  padding: 10px;
-  white-space: pre-wrap;
   height: 170px;
-  background-color: rgb(var(--v-theme-surface));
 }
 </style>

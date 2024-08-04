@@ -163,13 +163,13 @@
                 </v-btn>
               </div>
             </div>
-            <div
-              ref="consoleRef"
-              class="elevation-4 console"
-              v-html="consoleStr"
+            <console 
+              v-model="consoleStr"
               @keydown="handleConsoleInput"
-              tabindex="0"
-            ></div>
+              float="bottom"
+              show-focus
+              show-cursor
+            />
           </div>
         </v-col>
         <v-col :cols="8" class="d-flex flex-column justify-space-between">
@@ -384,8 +384,8 @@ import API from 'src/api';
 import { useActiveFileStore } from '../../store/active_file';
 import { useSettingsStore } from '../../store/settings';
 import { onActivated, onMounted, onUnmounted, ref, watch } from 'vue';
-import Convert from 'ansi-to-html';
 import { useRouter } from 'vue-router';
+import Console from '../Console.vue';
 declare const api: API;
 const { lc3, dialog, fs } = api;
 
@@ -450,7 +450,6 @@ const memViewWrapper = ref(null);
 watch(memViewWrapper, el => {
   el.addEventListener("wheel", handleMemoryScroll);
 }, { once: true });
-const consoleRef = ref<HTMLDivElement>(null);
 
 onMounted(() => {
   refreshMemoryPanel();
@@ -714,43 +713,7 @@ function updateUI(showUpdates = false, updateReg = true) {
   updateConsole();
 }
 function updateConsole() {
-  // Console
-
-  // TODO: reduce rendundancy by having these defined once
-  // see [`Editor.vue#build`].
-
-  // VS Code's Dark+ terminal colors.
-  let convert = new Convert({
-    colors: [
-    "#000000", "#CD3131", "#0DBC79", "#E5E510", 
-    "#2472C8", "#BC3FBC", "#11A8CD", "#E5E5E5", 
-    "#666666", "#F14C4C", "#23D18B", "#F5F543", 
-    "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
-    ]
-  });
-  let update = lc3.getAndClearOutput();
-  if (update.length) {
-    // Resolve all internal backspaces first
-    while (update.match(/[^\x08\n]\x08/)) {
-      update = update.replace(/[^\x08\n]\x08/g, "");
-    }
-    let bs = 0; // backspace count
-    while (
-      update.charAt(bs) === "\x08" &&
-      bs < consoleStr.value.length &&
-      consoleStr.value.slice(-(1 + bs), -bs) !== "\n"
-    ) {
-      bs++;
-    }
-    if (bs) {
-      update = update.substring(bs);
-      consoleStr.value = consoleStr.value.slice(0, -bs);
-    }
-    consoleStr.value += convert.toHtml(update);
-    setTimeout(
-      () => (consoleRef.value.scrollTop = consoleRef.value.scrollHeight)
-    );
-  }
+  consoleStr.value += lc3.getAndClearOutput();
 }
 function toggleBreakpoint(addr: number) {
   let idx = sim.value.breakpoints.indexOf(addr);
@@ -968,27 +931,6 @@ tr:not(.row-disabled) .clickable {
 #console-clear {
   grid-column: 3;
   grid-row: 1;
-}
-
-.console {
-  flex: 1;
-  font-family: Consolas, Menlo, Courier, monospace;
-  padding: 8px;
-  overflow-y: scroll;
-  white-space: pre-wrap;
-  background-color: rgb(var(--v-theme-surface));
-}
-
-.console:focus {
-  outline: none;
-  box-shadow: 0px 0px 6px 3px rgba(33, 150, 223, 0.6) !important;
-}
-
-.console::after {
-  content: "\25af";
-}
-.console:focus::after {
-  content: "\25ae";
 }
 
 /* Memory view styles */
