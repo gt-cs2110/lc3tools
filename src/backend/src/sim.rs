@@ -83,9 +83,10 @@ impl SimController {
     /// If the execution of the executor function causes a panic, 
     /// this will cause the SimState to become poisoned.
     pub(crate) fn execute<T>(&mut self, 
-            exec: impl FnOnce(&mut Simulator) -> T + Send + 'static,
-            close: impl FnOnce(T) + Send + 'static
-        ) -> Result<(), SimAccessError> {
+        exec: impl FnOnce(&mut Simulator) -> T + Send + 'static,
+        close: impl FnOnce(T) + Send + 'static,
+        flags: SimFlags
+    ) -> Result<(), SimAccessError> {
         let _ = self.simulator()?; // assert idle
         let SimController::Idle(mut sim) = std::mem::replace(self, SimController::Poison) else {
             // this is assured by the above
@@ -93,6 +94,8 @@ impl SimController {
         };
 
         let mcr = Arc::clone(sim.mcr());
+        sim.flags = flags;
+        // Move simulator to another thread as to not block UI thread
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
             let result = exec(&mut sim);

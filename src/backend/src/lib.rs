@@ -17,7 +17,7 @@ use lc3_ensemble::sim::mem::MachineInitStrategy;
 use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
-use sim::SimController;
+use sim::{SimAccessError, SimController};
 
 static INPUT_BUFFER: LazyLock<Arc<RwLock<VecDeque<u8>>>> = LazyLock::new(Arc::default);
 static PRINT_BUFFER: LazyLock<Arc<RwLock<Vec<u8>>>> = LazyLock::new(Arc::default);
@@ -69,7 +69,23 @@ struct SimPageContents {
     obj_file: Option<ObjectFile>,
     sim_flags: SimFlags
 }
-
+impl SimPageContents {
+    /// Updates the simulator flags for the controller.
+    fn update_sim_flags(&mut self, f: impl FnOnce(&mut SimFlags)) {
+        f(&mut self.sim_flags);
+        // Apply immediately to simulator if possible.
+        // If not, this will be applied on execution or reset.
+        let Ok(sim) = self.controller.simulator() else { return };
+        sim.flags = self.sim_flags;
+    }
+    /// Executes and applies flags.
+    fn execute<T>(&mut self, 
+        exec: impl FnOnce(&mut Simulator) -> T + Send + 'static,
+        close: impl FnOnce(T) + Send + 'static
+    ) -> Result<(), SimAccessError> {
+        self.controller.execute(exec, close, self.sim_flags)
+    }
+}
 //--------- CONFIG FUNCTIONS ---------//
 
 fn init(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -93,7 +109,7 @@ fn set_run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // if run_until_halt is true, we're using virtual halt
     // i.e., these are inverses of each other
     let use_real_halt = !cx.argument::<JsBoolean>(0)?.value(&mut cx);
-    sim_contents().sim_flags.use_real_halt = use_real_halt;
+    sim_contents().update_sim_flags(|f| f.use_real_halt = use_real_halt);
     
     Ok(cx.undefined())
 }
@@ -249,7 +265,7 @@ fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
 
-    sim_contents().controller.execute(
+    sim_contents().execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
     ).or_else(|e| cx.throw_error(e.to_string()))?;
@@ -261,7 +277,7 @@ fn step_in(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents().controller.execute(
+    sim_contents().execute(
         Simulator::step_in,
         |result| finish_execution(channel, done_cb, result)
     ).or_else(|e| cx.throw_error(e.to_string()))?;
@@ -273,7 +289,7 @@ fn step_out(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents().controller.execute(
+    sim_contents().execute(
         Simulator::step_out,
         |result| finish_execution(channel, done_cb, result)
     ).or_else(|e| cx.throw_error(e.to_string()))?;
@@ -285,7 +301,7 @@ fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents().controller.execute(
+    sim_contents().execute(
         Simulator::step_over,
         |result| finish_execution(channel, done_cb, result)
     ).or_else(|e| cx.throw_error(e.to_string()))?;
