@@ -9,7 +9,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
-use lc3_ensemble::ast::reg_consts::{R0, R1, R2, R3, R4, R5, R6, R7};
+use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
 use lc3_ensemble::sim::io::BufferedIO;
@@ -100,7 +100,9 @@ fn set_enable_liberal_asm(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(enable: bool) -> Result<()>
-    // TODO: Implement ignore privilege
+    let ignore_privilege = cx.argument::<JsBoolean>(0)?.value(&mut cx);
+    sim_contents().update_sim_flags(|f| f.ignore_privilege = ignore_privilege);
+
     Ok(cx.undefined())
 }
 fn set_run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
