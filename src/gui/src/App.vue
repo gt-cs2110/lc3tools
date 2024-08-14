@@ -11,11 +11,11 @@
             @click="downloadUpdate()"
             v-if="update_available"
           >
-            <v-icon color="green" icon="info"></v-icon>
+            <v-icon color="green" :icon="mdiInformation"></v-icon>
             <v-tooltip location="bottom" activator="parent" text="Update" />
           </v-btn>
           <v-btn icon flat>
-            <v-icon icon="settings"></v-icon>
+            <v-icon :icon="mdiCog"></v-icon>
             <v-menu activator="parent" :close-on-content-click="false">
               <v-card>
                 <v-container>
@@ -137,11 +137,11 @@
         </v-app-bar-title>
         <v-tabs>
           <v-tab exact to="/editor" icon>
-            <v-icon size="x-large" icon="code"></v-icon>
+            <v-icon size="x-large" :icon="mdiCodeTags"></v-icon>
             <v-tooltip location="bottom" activator="parent" text="Editor" />
           </v-tab>
           <v-tab exact to="/simulator" icon>
-            <v-icon size="x-large" icon="memory"></v-icon>
+            <v-icon size="x-large" :icon="mdiMemory"></v-icon>
             <v-tooltip location="bottom" activator="parent" text="Simulator" />
           </v-tab>
         </v-tabs>
@@ -181,7 +181,7 @@
               flat
               @click="ignoreUpdate()"
             >
-              <v-icon icon="delete"></v-icon>
+              <v-icon :icon="mdiDelete"></v-icon>
               <v-tooltip location="top" activator="parent" text="Ignore" />
             </v-btn>
 
@@ -190,7 +190,7 @@
               flat
               @click="update_dialog = false"
             >
-              <v-icon icon="thumb_down" color="red-darken-1"></v-icon>
+              <v-icon :icon="mdiThumbDown" color="red-darken-1"></v-icon>
               <v-tooltip location="top" activator="parent" text="No" />
             </v-btn>
 
@@ -199,7 +199,7 @@
               flat
               @click="updateConfirmed()"
             >
-              <v-icon icon="thumb_up" color="green-darken-1"></v-icon>
+              <v-icon :icon="mdiThumbUp" color="green-darken-1"></v-icon>
               <v-tooltip location="top" activator="parent" text="Yes" />
             </v-btn>
           </v-card-actions>
@@ -213,6 +213,7 @@
 // Vue stuff
 import { onMounted, ref } from "vue";
 import "vuetify/components";
+import { mdiInformation, mdiCog, mdiCodeTags, mdiMemory, mdiDelete, mdiThumbDown, mdiThumbUp } from "@mdi/js";
 import { LC3Settings, useSettingsStore } from "./store/settings";
 
 const { lc3, autoUpdater, storage } = window.api;

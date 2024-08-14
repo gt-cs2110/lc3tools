@@ -1,32 +1,34 @@
 <template>
     <v-navigation-drawer permanent rail>
-    <v-list-item @click="openFile()" prepend-icon="folder_open">
+    <v-list-item @click="openFile()" :prepend-icon="mdiFolderOpen">
       <v-tooltip location="right" activator="parent" text="Open File" />
     </v-list-item>
     <v-list-item @click="toggleSimulator('run')">
       <template v-slot:prepend>
-        <v-icon v-if="!sim.running" icon="play_arrow" />
-        <v-icon v-else icon="pause" />
+        <v-icon v-if="!sim.running" :icon="mdiPlay" />
+        <v-icon v-else :icon="mdiPause" />
       </template>
       <v-tooltip location="right" activator="parent" v-if="!sim.running" text="Run" />
       <v-tooltip location="right" activator="parent" v-else text="Pause" />
     </v-list-item>
-    <v-list-item @click="reloadFile()" prepend-icon="refresh">
+    <v-list-item @click="reloadFile()" :prepend-icon="mdiRefresh">
       <v-tooltip location="right" activator="parent" text="Reload Object Files" />
     </v-list-item>
-    <v-list-item @click="toggleSimulator('over')" prepend-icon="redo">
+    <v-divider />
+    <v-list-item @click="toggleSimulator('over')" :prepend-icon="mdiDebugStepOver">
       <v-tooltip location="right" activator="parent" text="Step Over" />
     </v-list-item>
-    <v-list-item @click="toggleSimulator('in')" prepend-icon="subdirectory_arrow_right">
+    <v-list-item @click="toggleSimulator('in')" :prepend-icon="mdiDebugStepInto">
       <v-tooltip location="right" activator="parent" text="Step In" />
     </v-list-item>
-    <v-list-item @click="toggleSimulator('out')" prepend-icon="subdirectory_arrow_left">
+    <v-list-item @click="toggleSimulator('out')" :prepend-icon="mdiDebugStepOut">
       <v-tooltip location="right" activator="parent" text="Step Out" />
     </v-list-item>
-    <v-list-item @click="reinitializeMachine()" prepend-icon="power_settings_new">
+    <v-divider />
+    <v-list-item @click="reinitializeMachine()" :prepend-icon="mdiPower">
       <v-tooltip location="right" activator="parent" text="Reinitialize Machine" />
     </v-list-item>
-    <v-list-item @click="randomizeMachine()" prepend-icon="shuffle">
+    <v-list-item @click="randomizeMachine()" :prepend-icon="mdiShuffle">
       <v-tooltip location="right" activator="parent" text="Randomize Machine" />
     </v-list-item>
   </v-navigation-drawer>
@@ -158,7 +160,7 @@
               </div>
               <div id="console-clear">
                 <v-btn icon flat variant="text" @click="clearConsole()">
-                  <v-icon icon="delete_forever"></v-icon>
+                  <v-icon :icon="mdiDelete"></v-icon>
                   <v-tooltip location="left" activator="parent" text="Clear Console" />
                 </v-btn>
               </div>
@@ -216,7 +218,7 @@
                   <td class="data-cell-btn">
                     <v-btn icon flat block :ripple="false" @click="toggleBreakpoint(item.addr)">
                       <v-icon
-                        icon="report"
+                        :icon="mdiAlertOctagon"
                         class="breakpoint-icon"
                         :color="isBreakpointAt(item.addr) ? 'red' : 'grey'"
                         :size="isBreakpointAt(item.addr) ? 'default' : 'small'"
@@ -226,7 +228,7 @@
                   <td class="data-cell-btn">
                     <v-btn icon flat block :ripple="false" @click="setPC(item.addr)">
                       <v-icon
-                        icon="play_arrow"
+                        :icon="mdiPlay"
                         class="pc-icon"
                         :color="isPCAt(item.addr) ? 'blue' : 'grey'"
                         :size="isPCAt(item.addr) ? 'default' : 'small'"
@@ -344,7 +346,7 @@
                 icon
                 @click="jumpToPrevMemView()"
               >
-                <v-icon size="x-large" icon="arrow_back" />
+                <v-icon size="x-large" :icon="mdiArrowLeft" />
                 <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start - memView.data.length))" />
               </v-btn>
               <v-btn 
@@ -352,7 +354,7 @@
                 icon
                 @click="jumpToPartMemView(-5)"
               >
-                <v-icon icon="arrow_back" />
+                <v-icon :icon="mdiArrowLeft" />
                 <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start - 5))" />
               </v-btn>
               <v-btn 
@@ -360,7 +362,7 @@
                 icon
                 @click="jumpToPartMemView(+5)"
               >
-                <v-icon icon="arrow_forward" />
+                <v-icon :icon="mdiArrowRight" />
                 <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start + 5))" />
               </v-btn>
               <v-btn 
@@ -368,7 +370,7 @@
                 icon
                 @click="jumpToNextMemView()"
               >
-                <v-icon size="x-large" icon="arrow_forward" />
+                <v-icon size="x-large" :icon="mdiArrowRight" />
                 <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start + memView.data.length))" />
               </v-btn>
             </div>
@@ -388,6 +390,7 @@ import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
+import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle } from '@mdi/js';
 
 const { lc3, dialog, fs } = window.api;
 
@@ -914,7 +917,7 @@ function toInt16(value: number) {
   margin: auto;
 }
 .data-cell-btn * {
-  transition: color 0.2s, font-size 0.2s;
+  transition: color 0.1s, font-size 0.2s;
 }
 .data-cell-btn:deep(button) {
   background-color: transparent;

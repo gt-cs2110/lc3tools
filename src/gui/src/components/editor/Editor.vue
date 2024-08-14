@@ -1,7 +1,7 @@
 <template>
   <!-- Sidebar -->
   <v-navigation-drawer permanent rail>
-    <v-list-item @click="openFile()" prepend-icon="folder_open">
+    <v-list-item @click="openFile()" :prepend-icon="mdiFolderOpen">
       <v-tooltip location="right" activator="parent" text="Open File" />
     </v-list-item>
     <v-list-item @click="saveFile()">
@@ -10,16 +10,16 @@
           <template v-slot:badge>
             <strong>!</strong>
           </template>
-          <v-icon icon="save"></v-icon>
+          <v-icon :icon="mdiContentSave"></v-icon>
         </v-badge>
       </template>
 
       <v-tooltip location="right" activator="parent" text="Save File" />
     </v-list-item>
-    <v-list-item @click="saveFileAs()" prepend-icon="note_add">
+    <v-list-item @click="saveFileAs()" :prepend-icon="mdiContentSaveEdit">
       <v-tooltip location="right" activator="parent" text="Save File As" />
     </v-list-item>
-    <v-list-item @click="build()" prepend-icon="build">
+    <v-list-item @click="build()" :prepend-icon="mdiWrench">
       <v-tooltip location="right" activator="parent">
         <span v-if="activeFileStore.path === null">Assemble or Convert</span>
         <span v-else-if="activeFileStore.path.endsWith('.asm')">Assemble</span>
@@ -27,7 +27,7 @@
         <span v-else>Build</span>
       </v-tooltip>
     </v-list-item>
-    <v-list-item @click="toggleConsole()" prepend-icon="terminal">
+    <v-list-item @click="toggleConsole()" :prepend-icon="mdiConsole">
       <v-tooltip location="right" activator="parent" text="Toggle Console" />
     </v-list-item>
   </v-navigation-drawer>
@@ -74,6 +74,7 @@ import type { VAceEditorInstance } from "vue3-ace-editor/types";
 import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
+import { mdiConsole, mdiContentSave, mdiContentSaveEdit, mdiFolderOpen, mdiWrench } from "@mdi/js";
 
 const { lc3, dialog, fs } = window.api;
 const activeFileStore = useActiveFileStore();
