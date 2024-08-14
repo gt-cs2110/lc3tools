@@ -21,6 +21,10 @@ const createWindow = () => {
     width, height,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      
+      // Only allow devTools in development mode:
+      devTools: process.env.NODE_ENV === "development",
+
       // Needed to import lc3-backend in preload.ts
       // 
       // For most apps, sandboxing is the best choice. 
@@ -43,8 +47,10 @@ const createWindow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  if (process.env.NODE_ENV === "development") {
+    // Open the DevTools.
+    mainWindow.webContents.openDevTools();
+  }
 
   // Set title
   mainWindow.webContents.on("did-finish-load", () => {
