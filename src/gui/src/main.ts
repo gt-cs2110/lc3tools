@@ -16,7 +16,7 @@ if (require('electron-squirrel-startup')) {
 
 const createWindow = () => {
   // Create the browser window.
-  let { width, height } = screen.getPrimaryDisplay().size;
+  const { width, height } = screen.getPrimaryDisplay().size;
   const mainWindow = new BrowserWindow({
     width, height,
     webPreferences: {
@@ -115,23 +115,23 @@ electronStore.then((module) => {
   const store = new Store();
 
   ipcMain.on("config_get", ((e, key: string) => {
-    /* @ts-ignore */
+    /* @ts-expect-error Types broken due to CJS */
     e.returnValue = store.get(key);
   }) satisfies SyncHandler<API["storage"]["get"]>);
 
   ipcMain.on("config_set", ((e, key: string, val: any) => {
-    /* @ts-ignore */
+    /* @ts-expect-error Types broken due to CJS */
     store.set(key, val);
     e.returnValue = undefined;
   }) satisfies SyncHandler<API["storage"]["set"]>);
 
   ipcMain.on("config_get_all", (e => {
-    /* @ts-ignore */
+    /* @ts-expect-error Types broken due to CJS */
     e.returnValue = store.store;
   }) satisfies SyncHandler<API["storage"]["getAll"]>);
 
   ipcMain.on("config_set_all", ((e, data: object) => {
-    /* @ts-ignore */
+    /* @ts-expect-error Types broken due to CJS */
     store.set(data);
     e.returnValue = undefined;
   }) satisfies SyncHandler<API["storage"]["setAll"]>);

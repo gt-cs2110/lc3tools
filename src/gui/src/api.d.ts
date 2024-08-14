@@ -20,8 +20,8 @@ export type StorageBindings = {
 }
 
 export type FSBindings = {
-    async read(fp: string): Promise<string>;
-    async write(fp: string, content: string): Promise<void>;
+    read(fp: string): Promise<string>;
+    write(fp: string, content: string): Promise<void>;
     exists(fp: string): boolean;
     basename(fp: string): string;
 }
