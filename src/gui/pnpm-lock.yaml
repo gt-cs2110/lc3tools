@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@vitejs/plugin-vue':
-        specifier: ^5.1.0
-        version: 5.1.2(vite@5.4.0(@types/node@22.3.0))(vue@3.4.37(typescript@5.5.4))
       ace-builds:
         specifier: ^1.35.4
         version: 1.35.4
@@ -81,6 +78,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.1.0
         version: 8.1.0(eslint@8.57.0)(typescript@5.5.4)
+      '@vitejs/plugin-vue':
+        specifier: ^5.1.2
+        version: 5.1.2(vite@5.4.0(@types/node@22.3.0))(vue@3.4.37(typescript@5.5.4))
       electron:
         specifier: 31.3.0
         version: 31.3.0

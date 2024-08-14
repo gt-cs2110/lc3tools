@@ -26,6 +26,7 @@
     "@types/node": "^22.2.0",
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.1.0",
+    "@vitejs/plugin-vue": "^5.1.2",
     "electron": "31.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-import": "^2.25.0",
@@ -37,7 +38,6 @@
   },
   "keywords": [],
   "dependencies": {
-    "@vitejs/plugin-vue": "^5.1.0",
     "ace-builds": "^1.35.4",
     "ansi-to-html": "^0.7.2",
     "electron-squirrel-startup": "^1.0.1",
