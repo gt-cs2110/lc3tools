@@ -70,7 +70,7 @@ import { storeToRefs } from "pinia";
 import "./ace-cfg";
 import ace from "ace-builds";
 import { VAceEditor } from "vue3-ace-editor";
-import { VAceEditorInstance } from "vue3-ace-editor/types";
+import type { VAceEditorInstance } from "vue3-ace-editor/types";
 import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
