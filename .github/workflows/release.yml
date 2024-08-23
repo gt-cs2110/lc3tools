@@ -1,0 +1,100 @@
+# Based on https://sevic.dev/notes/electron-forge-publish-github/
+name: Release app
+on:
+  workflow_dispatch:
+jobs:
+  build-linux-win:
+    strategy:
+      matrix:
+        os:
+          [
+            { name: 'linux', image: 'ubuntu-latest' },
+            { name: 'windows', image: 'windows-latest' }
+          ]
+    runs-on: ${{ matrix.os.image }}
+    defaults:
+        run:
+            working-directory: ./src/gui
+    steps:
+      - name: Github checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Use Cargo
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build lc3-backend
+        run: |
+            npm install
+            npm run build
+        working-directory: ./src/backend
+      - name: Install frontend Node dependencies
+        # --install-links flag Forces lc3-backend to be installed without symlinking
+        # Can be replaced once https://github.com/electron/forge/issues/3624 is fixed.
+        run: npm install --install-links
+      - name: Publish app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npm run publish
+  build-mac:
+    strategy:
+      matrix:
+        os:
+          [
+            { name: 'macos', image: 'macos-latest' },
+            { name: 'macos-x86', image: 'macos-13' },
+          ]
+    runs-on: ${{ matrix.os.image }}
+    defaults:
+        run:
+            working-directory: ./src/gui
+    steps:
+      - name: Github checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Use Cargo
+        uses: dtolnay/rust-toolchain@stable
+        # https://github.com/electron/forge/issues/3371#issuecomment-2281115374
+        # setuptools is required to build appdmg (a dependency for creating DMGs).
+        #
+        # To install it, we set up a Python environment for both Mac builds and
+        # install via pip.
+      - name: Install Python 3.12 (macOS)
+        uses: actions/setup-python@v5
+        with:
+            python-version: '3.12' 
+        if: runner.os == 'macOS'
+      - name: Install python-setuptools (macOS)
+        if: runner.os == 'macOS'
+        run: python3 -m pip install setuptools
+      - name: Build lc3-backend
+        run: |
+            npm install
+            npm run build
+        working-directory: ./src/backend
+      - name: Install frontend Node dependencies
+        # --install-links flag Forces lc3-backend to be installed without symlinking
+        # Can be replaced once https://github.com/electron/forge/issues/3624 is fixed.
+        run: npm install --install-links
+      - name: Publish app (macOS)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        # Apps built on M1 are displayed as "damaged" if they're missing a code signature
+        # (even if they're perfectly fine).
+        #
+        # We aren't going to code-sign, but we can "ad-hoc code sign" (give a blank signature)
+        # to revert it back to the error that's usually seen on Intel Macs
+        # ("LC3Tools.app" cannot be opened because Apple cannot check it for malicious software.)
+        #
+        # This unfortunately complicates the command a bit since we have to apply codesign
+        # in the middle of the publishing process.
+        #
+        # https://github.com/electron-userland/electron-builder/issues/5850#issuecomment-1821648559
+        run: |
+            npm run package
+            codesign --force --deep -s - ./out/*/*.app
+            npm run publish -- --skip-package
