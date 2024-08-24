@@ -286,5 +286,35 @@ function ignoreUpdate() {
 </script>
 
 <style lang="css">
-@import "index.css";
+/* dark mode autocomplete menu tweaks ------------------------------ */
+.ace_editor.ace_autocomplete.ace_dark {
+    background-color: #141414 !important;
+    color: white !important;
+    border-color: gray !important;
+    color-scheme: dark;
+}
+
+.ace_editor.ace_autocomplete.ace_dark .ace_marker-layer .ace_active-line {
+    background-color: hsl(223, 30%, 19%) !important;
+}
+
+.ace_editor.ace_autocomplete.ace_dark .ace_line .ace_completion-highlight {
+    color: hsl(214deg 100% 66%);
+}
+
+/*  */
+.application {
+    font-size: 1em;
+}
+
+/* Other stuff */
+body {
+    user-select: none;
+    cursor: default;
+}
+
+/* https://stackoverflow.com/q/56973002/11984788 */
+html {
+    overflow-y: auto;
+}
 </style>
