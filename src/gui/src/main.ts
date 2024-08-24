@@ -56,6 +56,9 @@ const createWindow = () => {
   mainWindow.webContents.on("did-finish-load", () => {
     mainWindow.setTitle("LC3Tools v" + app.getVersion());
   })
+
+  // Remove menu bar for Windows/Linux
+  mainWindow.removeMenu();
 };
 
 // This method will be called when Electron has finished

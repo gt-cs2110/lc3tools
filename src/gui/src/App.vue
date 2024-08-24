@@ -315,6 +315,6 @@ body {
 
 /* https://stackoverflow.com/q/56973002/11984788 */
 html {
-    overflow-y: auto;
+    overflow-y: auto !important;
 }
 </style>

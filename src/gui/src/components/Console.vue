@@ -88,7 +88,7 @@ watch(consoleHtml, async () => {
   flex: 1;
   font-family: Consolas, Menlo, Courier, monospace;
   padding: 8px;
-  overflow-y: scroll;
+  overflow-y: auto;
   white-space: pre-wrap;
   background-color: rgb(var(--v-theme-surface));
   user-select: text;
