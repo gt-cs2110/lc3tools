@@ -86,7 +86,7 @@
                     'row-disabled': sim.running
                   }"
                 >
-                  <td class="data-cell-text">
+                  <td class="data-cell-text" @contextmenu="openRegContextMenu(item.name)">
                     <strong>{{ item.name.toUpperCase() }}</strong>
                   </td>
                   <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
@@ -665,6 +665,26 @@ function handleConsoleInput(e: KeyboardEvent) {
   e.preventDefault(); // for TAB, etc.
 }
 
+async function openRegContextMenu(name: string) {
+  if (lc3.isSimRunning()) return;
+
+  let output = await dialog.showModal("menu", ["Jump", "Copy Hex", "Copy Decimal"]);
+  let item = sim.value.regs.find((it) => it.name === name);
+  switch (output) {
+    case 0:
+      jumpToMemView(item.value);
+      break;
+    
+    // These two functions are actually pretty useless.
+    // They're only here so "Jump" isn't by itself.
+    case 1:
+      navigator.clipboard.writeText(toHex(item.value));
+      break;
+    case 2:
+      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      break;
+  }
+}
 function setDataValue(event: Event, dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
 function setDataValue(event: Event, dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
 function setDataValue(event: Event, dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {

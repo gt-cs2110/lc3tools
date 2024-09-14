@@ -136,6 +136,15 @@ ipcMain.handle("show_modal", (e, kind, config) => {
       return dialog.showOpenDialog(config);
     } else if (kind === "box") {
       return dialog.showMessageBox(config);
+    } else if (kind === "menu") {
+      return new Promise((resolve) => {
+        const template = Array.from(config ?? [], (label, i) => ({
+          label: label.toString(),
+          click: () => resolve(i)
+        }));
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({window: BrowserWindow.fromWebContents(e.sender)})
+      })
     }
 });
 

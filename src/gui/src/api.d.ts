@@ -9,6 +9,7 @@ export type AutoUpdaterBindings = {
 export async function showModal(type: "save", config: Electron.SaveDialogOptions): Promise<Electron.SaveDialogReturnValue>;
 export async function showModal(type: "open", config: Electron.OpenDialogOptions): Promise<Electron.OpenDialogReturnValue>;
 export async function showModal(type: "box", config: Electron.MessageBoxOptions): Promise<Electron.MessageBoxReturnValue>;
+export async function showModal(type: "menu", config: string[]): Promise<number>;
 export type DialogBindings = {
     showModal: typeof showModal
 }
