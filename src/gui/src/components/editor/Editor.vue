@@ -1,55 +1,103 @@
 <template>
   <!-- Sidebar -->
-  <v-navigation-drawer permanent rail>
-    <v-list-item @click="openFile()" :prepend-icon="mdiFolderOpen">
-      <v-tooltip location="right" activator="parent" text="Open File" />
+  <v-navigation-drawer
+    permanent
+    rail
+  >
+    <v-list-item
+      :prepend-icon="mdiFolderOpen"
+      @click="openFile()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Open File"
+      />
     </v-list-item>
     <v-list-item @click="saveFileThen(build)">
-      <template v-slot:prepend>
-        <v-badge color="orange-darken-2" v-model="editorContentChanged">
-          <template v-slot:badge>
+      <template #prepend>
+        <v-badge
+          v-model="editorContentChanged"
+          color="orange-darken-2"
+        >
+          <template #badge>
             <strong>!</strong>
           </template>
-          <v-icon :icon="mdiContentSave"></v-icon>
+          <v-icon :icon="mdiContentSave" />
         </v-badge>
       </template>
 
-      <v-tooltip location="right" activator="parent" text="Save File" />
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Save File"
+      />
     </v-list-item>
-    <v-list-item @click="saveFileAs()" :prepend-icon="mdiContentSaveEdit">
-      <v-tooltip location="right" activator="parent" text="Save File As" />
+    <v-list-item
+      :prepend-icon="mdiContentSaveEdit"
+      @click="saveFileAs()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Save File As"
+      />
     </v-list-item>
-    <v-list-item @click="build()" :prepend-icon="mdiWrench">
-      <v-tooltip location="right" activator="parent">
+    <v-list-item
+      :prepend-icon="mdiWrench"
+      @click="build()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+      >
         <span v-if="activeFileStore.path === null">Assemble or Convert</span>
         <span v-else-if="activeFileStore.path.endsWith('.asm')">Assemble</span>
         <span v-else-if="activeFileStore.path.endsWith('.bin')">Convert</span>
         <span v-else>Build</span>
       </v-tooltip>
     </v-list-item>
-    <v-list-item @click="toggleConsole()" :prepend-icon="mdiConsole">
-      <v-tooltip location="right" activator="parent" text="Toggle Console" />
+    <v-list-item
+      :prepend-icon="mdiConsole"
+      @click="toggleConsole()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Toggle Console"
+      />
     </v-list-item>
   </v-navigation-drawer>
   <!-- Main editor content -->
   <v-main>
     <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
-    <v-container fluid class="fill-height">
-      <v-row class="align-self-stretch flex-column" no-gutters>
-        <h3 class="view-header">{{ filename }}</h3>
+    <v-container
+      fluid
+      class="fill-height"
+    >
+      <v-row
+        class="align-self-stretch flex-column"
+        no-gutters
+      >
+        <h3 class="view-header">
+          {{ filename }}
+        </h3>
         <v-col class="flex-grow-1 flex-shrink-0">
           <v-ace-editor
             id="ace-editor"
-            class="elevation-2"
-            v-model:value="editor.current_content"
-            lang="lc3"
-            v-bind:theme="editorTheme"
             ref="aceEditorRef"
+            v-model:value="editor.current_content"
+            class="elevation-2"
+            lang="lc3"
+            :theme="editorTheme"
             @drop.prevent="dropFile"
             @dragover.prevent
           />
         </v-col>
-        <v-col class="flex-grow-0 flex-shrink-1" v-if="showConsole">
+        <v-col
+          v-if="showConsole"
+          class="flex-grow-0 flex-shrink-1"
+        >
           <console 
             id="console"
             v-model="consoleStr"

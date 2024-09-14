@@ -1,35 +1,103 @@
 <template>
-    <v-navigation-drawer permanent rail>
-    <v-list-item @click="openFile()" :prepend-icon="mdiFolderOpen">
-      <v-tooltip location="right" activator="parent" text="Open File" />
+  <v-navigation-drawer
+    permanent
+    rail
+  >
+    <v-list-item
+      :prepend-icon="mdiFolderOpen"
+      @click="openFile()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Open File"
+      />
     </v-list-item>
     <v-list-item @click="toggleSimulator('run')">
-      <template v-slot:prepend>
-        <v-icon v-if="!sim.running" :icon="mdiPlay" />
-        <v-icon v-else :icon="mdiPause" />
+      <template #prepend>
+        <v-icon
+          v-if="!sim.running"
+          :icon="mdiPlay"
+        />
+        <v-icon
+          v-else
+          :icon="mdiPause"
+        />
       </template>
-      <v-tooltip location="right" activator="parent" v-if="!sim.running" text="Run" />
-      <v-tooltip location="right" activator="parent" v-else text="Pause" />
+      <v-tooltip
+        v-if="!sim.running"
+        location="right"
+        activator="parent"
+        text="Run"
+      />
+      <v-tooltip
+        v-else
+        location="right"
+        activator="parent"
+        text="Pause"
+      />
     </v-list-item>
-    <v-list-item @click="reloadFile()" :prepend-icon="mdiRefresh">
-      <v-tooltip location="right" activator="parent" text="Reload Object Files" />
+    <v-list-item
+      :prepend-icon="mdiRefresh"
+      @click="reloadFile()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Reload Object Files"
+      />
     </v-list-item>
     <v-divider />
-    <v-list-item @click="toggleSimulator('over')" :prepend-icon="mdiDebugStepOver">
-      <v-tooltip location="right" activator="parent" text="Step Over" />
+    <v-list-item
+      :prepend-icon="mdiDebugStepOver"
+      @click="toggleSimulator('over')"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Step Over"
+      />
     </v-list-item>
-    <v-list-item @click="toggleSimulator('in')" :prepend-icon="mdiDebugStepInto">
-      <v-tooltip location="right" activator="parent" text="Step In" />
+    <v-list-item
+      :prepend-icon="mdiDebugStepInto"
+      @click="toggleSimulator('in')"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Step In"
+      />
     </v-list-item>
-    <v-list-item @click="toggleSimulator('out')" :prepend-icon="mdiDebugStepOut">
-      <v-tooltip location="right" activator="parent" text="Step Out" />
+    <v-list-item
+      :prepend-icon="mdiDebugStepOut"
+      @click="toggleSimulator('out')"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Step Out"
+      />
     </v-list-item>
     <v-divider />
-    <v-list-item @click="reinitializeMachine()" :prepend-icon="mdiPower">
-      <v-tooltip location="right" activator="parent" text="Reinitialize Machine" />
+    <v-list-item
+      :prepend-icon="mdiPower"
+      @click="reinitializeMachine()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Reinitialize Machine"
+      />
     </v-list-item>
-    <v-list-item @click="randomizeMachine()" :prepend-icon="mdiShuffle">
-      <v-tooltip location="right" activator="parent" text="Randomize Machine" />
+    <v-list-item
+      :prepend-icon="mdiShuffle"
+      @click="randomizeMachine()"
+    >
+      <v-tooltip
+        location="right"
+        activator="parent"
+        text="Randomize Machine"
+      />
     </v-list-item>
   </v-navigation-drawer>
   <!-- Main editor content -->
@@ -37,10 +105,17 @@
     @drop.prevent="dropFile"
     @dragover.prevent
   >
-    <v-container fluid class="fill-height">
-      <v-snackbar v-model="isSnackBarVisible" :timeout="2500" location="top">
+    <v-container
+      fluid
+      class="fill-height"
+    >
+      <v-snackbar
+        v-model="isSnackBarVisible"
+        :timeout="2500"
+        location="top"
+      >
         <span>Object File Loaded!</span>
-        <template v-slot:actions>
+        <template #actions>
           <v-btn
             color="red"
             flat
@@ -52,9 +127,14 @@
         </template>
       </v-snackbar>
       <v-row class="align-self-stretch">
-        <v-col :cols="4" class="d-flex flex-column ga-3 h-limit">
+        <v-col
+          :cols="4"
+          class="d-flex flex-column ga-3 h-limit"
+        >
           <div>
-            <h3 class="view-header">Registers</h3>
+            <h3 class="view-header">
+              Registers
+            </h3>
             <v-data-table
               class="elevation-4 sim-data-table"
               density="compact"
@@ -62,34 +142,48 @@
               :items-per-page="-1"
               :items="sim.regs"
             >
-              <template v-slot:colgroup>
+              <template #colgroup>
                 <colgroup>
-                  <col style="width: 20%" />
-                  <col style="width: 20%" />
-                  <col style="width: 20%" />
-                  <col style="width: 40%" />
+                  <col style="width: 20%">
+                  <col style="width: 20%">
+                  <col style="width: 20%">
+                  <col style="width: 40%">
                 </colgroup>
               </template>
-              <template v-slot:headers>
+              <template #headers>
                 <tr>
-                  <th class="data-cell-text"><strong>Registers</strong></th>
-                  <th class="data-cell-num"><strong>Hex</strong></th>
-                  <th class="data-cell-num"><strong>Decimal</strong></th>
-                  <th class="data-cell-text"><strong>ASCII / Misc</strong></th>
+                  <th class="data-cell-text">
+                    <strong>Registers</strong>
+                  </th>
+                  <th class="data-cell-num">
+                    <strong>Hex</strong>
+                  </th>
+                  <th class="data-cell-num">
+                    <strong>Decimal</strong>
+                  </th>
+                  <th class="data-cell-text">
+                    <strong>ASCII / Misc</strong>
+                  </th>
                 </tr>
               </template>
-              <template v-slot:item="{ item }">
+              <template #item="{ item }">
                 <tr
-                  v-bind:class="{
+                  :class="{
                     'row-update-flash': item.flash,
                     'row-updated': item.updated,
                     'row-disabled': sim.running
                   }"
                 >
-                  <td class="data-cell-text" @contextmenu="openRegContextMenu(item.name)">
+                  <td
+                    class="data-cell-text"
+                    @contextmenu="openRegContextMenu(item.name)"
+                  >
                     <strong>{{ item.name.toUpperCase() }}</strong>
                   </td>
-                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td
+                    class="data-cell-num clickable"
+                    @click="editValue = ($event.target as HTMLElement).textContent"
+                  >
                     <span>{{
                       toHex(item.value)
                     }}</span>
@@ -102,24 +196,26 @@
                       <v-card>
                         <v-container>
                           <v-text-field 
+                            v-model.lazy="editValue"
                             label="Hex Value"
                             variant="underlined"
+                            :rules="[rules.hex, rules.size16bit]"
                             @focus="$event.target.select()"
-                            v-model.lazy="editValue"
                             @change="
                               setDataValue($event, item, 'reg', [
                                 rules.hex,
                                 rules.size16bit
                               ])
                             "
-                            :rules="[rules.hex, rules.size16bit]"
-                          >
-                          </v-text-field>
+                          />
                         </v-container>
                       </v-card>
                     </v-menu>
                   </td>
-                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td
+                    class="data-cell-num clickable"
+                    @click="editValue = ($event.target as HTMLElement).textContent"
+                  >
                     <span>{{
                       toFormattedDec(item.value)
                     }}</span>
@@ -132,19 +228,18 @@
                       <v-card>
                         <v-container>
                           <v-text-field 
+                            v-model.lazy="editValue"
                             label="Decimal Value"
                             variant="underlined"
+                            :rules="[rules.dec, rules.size16bit]"
                             @focus="$event.target.select()"
-                            v-model.lazy="editValue"
                             @change="
                               setDataValue($event, item, 'reg', [
                                 rules.dec,
                                 rules.size16bit
                               ])
                             "
-                            :rules="[rules.dec, rules.size16bit]"
-                          >
-                          </v-text-field>
+                          />
                         </v-container>
                       </v-card>
                     </v-menu>
@@ -159,27 +254,43 @@
           <div id="console-wrapper">
             <div id="console-header">
               <div id="console-title">
-                <h3 class="view-header">Console (click to focus)</h3>
+                <h3 class="view-header">
+                  Console (click to focus)
+                </h3>
               </div>
               <div id="console-clear">
-                <v-btn icon flat variant="text" @click="clearConsole()">
-                  <v-icon :icon="mdiDelete"></v-icon>
-                  <v-tooltip location="left" activator="parent" text="Clear Console" />
+                <v-btn
+                  icon
+                  flat
+                  variant="text"
+                  @click="clearConsole()"
+                >
+                  <v-icon :icon="mdiDelete" />
+                  <v-tooltip
+                    location="left"
+                    activator="parent"
+                    text="Clear Console"
+                  />
                 </v-btn>
               </div>
             </div>
             <console 
               v-model="consoleStr"
-              @keydown="handleConsoleInput"
               float="bottom"
               show-focus
               show-cursor
+              @keydown="handleConsoleInput"
             />
           </div>
         </v-col>
-        <v-col :cols="8" class="d-flex flex-column justify-space-between">
+        <v-col
+          :cols="8"
+          class="d-flex flex-column justify-space-between"
+        >
           <div ref="memViewWrapper">
-            <h3 class="view-header">Memory</h3>
+            <h3 class="view-header">
+              Memory
+            </h3>
             <v-data-table
               class="elevation-4 sim-data-table"
               hide-default-footer
@@ -187,31 +298,45 @@
               :items-per-page="-1"
               :items="memView.data"
             >
-              <template v-slot:colgroup>
+              <template #colgroup>
                 <colgroup>
-                  <col style="width: 2em" />
-                  <col style="width: 2em" />
-                  <col style="width: 10%" />
-                  <col style="width: 10%" />
-                  <col style="width: 10%" />
-                  <col style="width: 15%" />
-                  <col style="width: 45%" />
+                  <col style="width: 2em">
+                  <col style="width: 2em">
+                  <col style="width: 10%">
+                  <col style="width: 10%">
+                  <col style="width: 10%">
+                  <col style="width: 15%">
+                  <col style="width: 45%">
                 </colgroup>
               </template>
-              <template v-slot:headers>
+              <template #headers>
                 <tr>
-                  <th class="data-cell-btn"><strong>BP</strong></th>
-                  <th class="data-cell-btn"><strong>PC</strong></th>
-                  <th class="data-cell-num"><strong>Address</strong></th>
-                  <th class="data-cell-num"><strong>Hex</strong></th>
-                  <th class="data-cell-num"><strong>Decimal</strong></th>
-                  <th class="data-cell-text"><strong>Label</strong></th>
-                  <th class="data-cell-text"><strong>Instructions</strong></th>
+                  <th class="data-cell-btn">
+                    <strong>BP</strong>
+                  </th>
+                  <th class="data-cell-btn">
+                    <strong>PC</strong>
+                  </th>
+                  <th class="data-cell-num">
+                    <strong>Address</strong>
+                  </th>
+                  <th class="data-cell-num">
+                    <strong>Hex</strong>
+                  </th>
+                  <th class="data-cell-num">
+                    <strong>Decimal</strong>
+                  </th>
+                  <th class="data-cell-text">
+                    <strong>Label</strong>
+                  </th>
+                  <th class="data-cell-text">
+                    <strong>Instructions</strong>
+                  </th>
                 </tr>
               </template>
-              <template v-slot:item="{ item }">
+              <template #item="{ item }">
                 <tr
-                  v-bind:class="{
+                  :class="{
                     'row-update-flash': item.flash,
                     'row-updated': item.updated,
                     'row-disabled': sim.running,
@@ -219,7 +344,13 @@
                   }"
                 >
                   <td class="data-cell-btn">
-                    <v-btn icon flat block :ripple="false" @click="toggleBreakpoint(item.addr)">
+                    <v-btn
+                      icon
+                      flat
+                      block
+                      :ripple="false"
+                      @click="toggleBreakpoint(item.addr)"
+                    >
                       <v-icon
                         :icon="mdiAlertOctagon"
                         class="breakpoint-icon"
@@ -229,7 +360,13 @@
                     </v-btn>
                   </td>
                   <td class="data-cell-btn">
-                    <v-btn icon flat block :ripple="false" @click="setPC(item.addr)">
+                    <v-btn
+                      icon
+                      flat
+                      block
+                      :ripple="false"
+                      @click="setPC(item.addr)"
+                    >
                       <v-icon
                         :icon="mdiPlay"
                         class="pc-icon"
@@ -241,7 +378,10 @@
                   <td class="data-cell-num">
                     <strong>{{ toHex(item.addr) }}</strong>
                   </td>
-                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td
+                    class="data-cell-num clickable"
+                    @click="editValue = ($event.target as HTMLElement).textContent"
+                  >
                     <span>{{
                       toHex(item.value)
                     }}</span>
@@ -254,24 +394,26 @@
                       <v-card>
                         <v-container>
                           <v-text-field 
+                            v-model.lazy="editValue"
                             label="Hex Value"
                             variant="underlined"
+                            :rules="[rules.hex, rules.size16bit]"
                             @focus="$event.target.select()"
-                            v-model.lazy="editValue"
                             @change="
                               setDataValue($event, item, 'mem', [
                                 rules.hex,
                                 rules.size16bit
                               ])
                             "
-                            :rules="[rules.hex, rules.size16bit]"
-                          >
-                          </v-text-field>
+                          />
                         </v-container>
                       </v-card>
                     </v-menu>
                   </td>
-                  <td class="data-cell-num clickable" @click="editValue = ($event.target as HTMLElement).textContent">
+                  <td
+                    class="data-cell-num clickable"
+                    @click="editValue = ($event.target as HTMLElement).textContent"
+                  >
                     <span>{{
                       toFormattedDec(item.value)
                     }}</span>
@@ -284,26 +426,25 @@
                       <v-card>
                         <v-container>
                           <v-text-field 
+                            v-model.lazy="editValue"
                             label="Decimal Value"
                             variant="underlined"
+                            :rules="[rules.dec, rules.size16bit]"
                             @focus="$event.target.select()"
-                            v-model.lazy="editValue"
                             @change="
                               setDataValue($event, item, 'mem', [
                                 rules.dec,
                                 rules.size16bit
                               ])
                             "
-                            :rules="[rules.dec, rules.size16bit]"
-                          >
-                          </v-text-field>
+                          />
                         </v-container>
                       </v-card>
                     </v-menu>
                   </td>
                   <td
                     class="data-cell-text"
-                    v-bind:class="{
+                    :class="{
                       'clickable': item.label.trim().length != 0
                     }"
                     @click="jumpToSource(item.label)"
@@ -312,7 +453,7 @@
                   </td>
                   <td 
                     class="data-cell-text" 
-                    v-bind:class="{
+                    :class="{
                       'clickable': item.line.trim().length != 0
                     }"
                     @click="jumpToSource(item.addr)"
@@ -327,21 +468,24 @@
           <div id="controls">
             <div id="jump-to-location">
               <v-text-field
+                v-model="jumpToLocInput"
                 single-line
                 variant="underlined"
                 label="Jump To Location"
                 @change="jumpToMemViewStr()"
-                v-model="jumpToLocInput"
-              >
-              </v-text-field>
+              />
             </div>
             <div id="jump-buttons">
               <v-btn
-                @click="jumpToPC(true)"
                 variant="text"
+                @click="jumpToPC(true)"
               >
                 <span class="title">PC</span>
-                <v-tooltip location="top" activator="parent" text="Jump to PC" />
+                <v-tooltip
+                  location="top"
+                  activator="parent"
+                  text="Jump to PC"
+                />
               </v-btn>
               
               <v-btn 
@@ -349,8 +493,15 @@
                 icon
                 @click="jumpToPrevMemView()"
               >
-                <v-icon size="x-large" :icon="mdiArrowLeft" />
-                <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start - memView.data.length))" />
+                <v-icon
+                  size="x-large"
+                  :icon="mdiArrowLeft"
+                />
+                <v-tooltip
+                  location="top"
+                  activator="parent"
+                  :text="toHex(toUint16(memView.start - memView.data.length))"
+                />
               </v-btn>
               <v-btn 
                 flat
@@ -358,7 +509,11 @@
                 @click="jumpToPartMemView(-5)"
               >
                 <v-icon :icon="mdiArrowLeft" />
-                <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start - 5))" />
+                <v-tooltip
+                  location="top"
+                  activator="parent"
+                  :text="toHex(toUint16(memView.start - 5))"
+                />
               </v-btn>
               <v-btn 
                 flat
@@ -366,15 +521,26 @@
                 @click="jumpToPartMemView(+5)"
               >
                 <v-icon :icon="mdiArrowRight" />
-                <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start + 5))" />
+                <v-tooltip
+                  location="top"
+                  activator="parent"
+                  :text="toHex(toUint16(memView.start + 5))"
+                />
               </v-btn>
               <v-btn 
                 flat
                 icon
                 @click="jumpToNextMemView()"
               >
-                <v-icon size="x-large" :icon="mdiArrowRight" />
-                <v-tooltip location="top" activator="parent" :text="toHex(toUint16(memView.start + memView.data.length))" />
+                <v-icon
+                  size="x-large"
+                  :icon="mdiArrowRight"
+                />
+                <v-tooltip
+                  location="top"
+                  activator="parent"
+                  :text="toHex(toUint16(memView.start + memView.data.length))"
+                />
               </v-btn>
             </div>
           </div>

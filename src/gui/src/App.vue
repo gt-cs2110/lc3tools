@@ -1,131 +1,191 @@
 <template>
   <div id="app">
-    <v-app id="lc3tools" v-bind:theme="settings.theme">
-      <v-app-bar density="compact" :elevation="2">
+    <v-app
+      id="lc3tools"
+      :theme="settings.theme"
+    >
+      <v-app-bar
+        density="compact"
+        :elevation="2"
+      >
         <v-app-bar-title>
           <strong>LC3</strong>Tools
           <!-- Put buttons next to title -->
           <v-btn
+            v-if="update_available"
             icon
             flat
             @click="downloadUpdate()"
-            v-if="update_available"
           >
-            <v-icon color="green" :icon="mdiInformation"></v-icon>
-            <v-tooltip location="bottom" activator="parent" text="Update" />
+            <v-icon
+              color="green"
+              :icon="mdiInformation"
+            />
+            <v-tooltip
+              location="bottom"
+              activator="parent"
+              text="Update"
+            />
           </v-btn>
-          <v-btn icon flat>
-            <v-icon :icon="mdiCog"></v-icon>
-            <v-menu activator="parent" :close-on-content-click="false">
+          <v-btn
+            icon
+            flat
+          >
+            <v-icon :icon="mdiCog" />
+            <v-menu
+              activator="parent"
+              :close-on-content-click="false"
+            >
               <v-card>
                 <v-container>
                   <!-- Should use v-row, v-col, but those are grid not flex -->
                   <div class="d-flex justify-space-between">
-                    <h3 class="flex-grow-1">Theme</h3>
+                    <h3 class="flex-grow-1">
+                      Theme
+                    </h3>
                     <v-radio-group
-                      class="flex-shrink-1"
-                      color="primary"
-                      @change="saveSettings('theme')"
                       v-model="settings.theme"
-                      inline
-                    >
-                      <v-spacer></v-spacer>
-                      <v-radio label="Light" value="light"></v-radio>
-                      <v-radio label="Dark" value="dark"></v-radio>
-                      </v-radio-group>
-                  </div>
-                  <div class="d-flex justify-space-between">
-                    <h3 class="flex-grow-1">Number View</h3>
-                    <v-radio-group
                       class="flex-shrink-1"
                       color="primary"
-                      @change="saveSettings('numbers')"
+                      inline
+                      @change="saveSettings('theme')"
+                    >
+                      <v-spacer />
+                      <v-radio
+                        label="Light"
+                        value="light"
+                      />
+                      <v-radio
+                        label="Dark"
+                        value="dark"
+                      />
+                    </v-radio-group>
+                  </div>
+                  <div class="d-flex justify-space-between">
+                    <h3 class="flex-grow-1">
+                      Number View
+                    </h3>
+                    <v-radio-group
                       v-model="settings.numbers"
+                      class="flex-shrink-1"
+                      color="primary"
                       inline
+                      @change="saveSettings('numbers')"
                     >
-                      <v-spacer></v-spacer>
-                      <v-radio label="Unsigned" value="unsigned"></v-radio>
-                      <v-radio label="Signed" value="signed"></v-radio>
+                      <v-spacer />
+                      <v-radio
+                        label="Unsigned"
+                        value="unsigned"
+                      />
+                      <v-radio
+                        label="Signed"
+                        value="signed"
+                      />
                     </v-radio-group>
                   </div>
                   <div class="d-flex justify-space-between">
-                    <h3 class="flex-grow-1">Editor Key Binding</h3>
+                    <h3 class="flex-grow-1">
+                      Editor Key Binding
+                    </h3>
                     <v-radio-group
-                      class="flex-shrink-1"
-                      color="primary"
-                      @change="saveSettings('editor_binding')"
                       v-model="settings.editor_binding"
-                      inline
-                    >
-                      <v-spacer></v-spacer>
-                      <v-radio label="Standard" value="standard"></v-radio>
-                      <v-radio label="Vim" value="vim"></v-radio>
-                    </v-radio-group>
-                  </div>
-                  <div class="d-flex justify-space-between">
-                    <h3 class="flex-grow-1">Autocomplete</h3>
-                    <v-radio-group
                       class="flex-shrink-1"
                       color="primary"
-                      @change="saveSettings('autocomplete')"
-                      v-model="settings.autocomplete"
                       inline
+                      @change="saveSettings('editor_binding')"
                     >
-                      <v-spacer></v-spacer>
-                      <v-radio label="None" value="none"></v-radio>
-                      <v-radio label="Basic" value="basic"></v-radio>
-                      <v-radio label="Full" value="full"></v-radio>
+                      <v-spacer />
+                      <v-radio
+                        label="Standard"
+                        value="standard"
+                      />
+                      <v-radio
+                        label="Vim"
+                        value="vim"
+                      />
                     </v-radio-group>
                   </div>
                   <div class="d-flex justify-space-between">
-                    <h3 class="flex-grow-1">Stop execution on reaching HALT</h3>
+                    <h3 class="flex-grow-1">
+                      Autocomplete
+                    </h3>
+                    <v-radio-group
+                      v-model="settings.autocomplete"
+                      class="flex-shrink-1"
+                      color="primary"
+                      inline
+                      @change="saveSettings('autocomplete')"
+                    >
+                      <v-spacer />
+                      <v-radio
+                        label="None"
+                        value="none"
+                      />
+                      <v-radio
+                        label="Basic"
+                        value="basic"
+                      />
+                      <v-radio
+                        label="Full"
+                        value="full"
+                      />
+                    </v-radio-group>
+                  </div>
+                  <div class="d-flex justify-space-between">
+                    <h3 class="flex-grow-1">
+                      Stop execution on reaching HALT
+                    </h3>
                     <v-switch
+                      v-model="settings.run_until_halt"
                       class="flex-shrink-1"
                       color="primary"
                       @change="saveSettings('run_until_halt')"
-                      v-model="settings.run_until_halt"
-                    >
-                    </v-switch>
+                    />
                   </div>
                   <div class="d-flex justify-space-between">
-                    <h3 class="flex-grow-1">Clear output on object file reload</h3>
+                    <h3 class="flex-grow-1">
+                      Clear output on object file reload
+                    </h3>
                     <v-switch
+                      v-model="settings.clear_out_on_reload"
                       class="flex-shrink-1"
                       color="primary"
                       @change="saveSettings('clear_out_on_reload')"
-                      v-model="settings.clear_out_on_reload"
-                    >
-                    </v-switch>
+                    />
                   </div>
                   <div class="d-flex justify-space-between">
                     <div class="flex-grow-1">
                       <h3>Ignore privileged mode</h3>
-                      <p class="text-red" v-if="settings.ignore_privilege">
+                      <p
+                        v-if="settings.ignore_privilege"
+                        class="text-red"
+                      >
                         May result in inconsistency with the grader.
                       </p>
                     </div>
                     <v-switch
+                      v-model="settings.ignore_privilege"
                       class="flex-shrink-1"
                       color="primary"
                       @change="saveSettings('ignore_privilege')"
-                      v-model="settings.ignore_privilege"
-                    >
-                    </v-switch>
+                    />
                   </div>
                   <div class="d-flex justify-space-between">
                     <div class="flex-grow-1">
                       <h3>Use less strict assembly</h3>
-                      <p class="text-red" v-if="settings.liberal_asm">
+                      <p
+                        v-if="settings.liberal_asm"
+                        class="text-red"
+                      >
                         May result in inconsistency with the grader.
                       </p>
                     </div>
                     <v-switch
+                      v-model="settings.liberal_asm"
                       class="flex-shrink-1"
                       color="primary"
                       @change="saveSettings('liberal_asm')"
-                      v-model="settings.liberal_asm"
-                    >
-                    </v-switch>
+                    />
                   </div>
                   <div class="d-flex justify-center">
                     <h4>Issues? Post on CS 2110 Ed/Piazza!</h4>
@@ -136,13 +196,35 @@
           </v-btn>
         </v-app-bar-title>
         <v-tabs>
-          <v-tab exact to="/editor" icon>
-            <v-icon size="x-large" :icon="mdiCodeTags"></v-icon>
-            <v-tooltip location="bottom" activator="parent" text="Editor" />
+          <v-tab
+            exact
+            to="/editor"
+            icon
+          >
+            <v-icon
+              size="x-large"
+              :icon="mdiCodeTags"
+            />
+            <v-tooltip
+              location="bottom"
+              activator="parent"
+              text="Editor"
+            />
           </v-tab>
-          <v-tab exact to="/simulator" icon>
-            <v-icon size="x-large" :icon="mdiMemory"></v-icon>
-            <v-tooltip location="bottom" activator="parent" text="Simulator" />
+          <v-tab
+            exact
+            to="/simulator"
+            icon
+          >
+            <v-icon
+              size="x-large"
+              :icon="mdiMemory"
+            />
+            <v-tooltip
+              location="bottom"
+              activator="parent"
+              text="Simulator"
+            />
           </v-tab>
         </v-tabs>
       </v-app-bar>
@@ -153,11 +235,18 @@
         </keep-alive>
       </router-view>
 
-      <v-dialog v-model="update_dialog" max-width="400" persistent>
+      <v-dialog
+        v-model="update_dialog"
+        max-width="400"
+        persistent
+      >
         <v-card>
-          <v-card-title v-if="!download_bar" class="headline"
-            >Update Available</v-card-title
+          <v-card-title
+            v-if="!download_bar"
+            class="headline"
           >
+            Update Available
+          </v-card-title>
 
           <v-card-text>
             {{
@@ -169,10 +258,10 @@
             }}
             <v-progress-linear
               v-if="download_bar"
-              v-bind:modelValue="
+              :model-value="
                 (update.download_transferred / update.download_size) * 100
               "
-            ></v-progress-linear>
+            />
           </v-card-text>
 
           <v-card-actions v-if="!download_bar">
@@ -181,8 +270,12 @@
               flat
               @click="ignoreUpdate()"
             >
-              <v-icon :icon="mdiDelete"></v-icon>
-              <v-tooltip location="top" activator="parent" text="Ignore" />
+              <v-icon :icon="mdiDelete" />
+              <v-tooltip
+                location="top"
+                activator="parent"
+                text="Ignore"
+              />
             </v-btn>
 
             <v-btn
@@ -190,8 +283,15 @@
               flat
               @click="update_dialog = false"
             >
-              <v-icon :icon="mdiThumbDown" color="red-darken-1"></v-icon>
-              <v-tooltip location="top" activator="parent" text="No" />
+              <v-icon
+                :icon="mdiThumbDown"
+                color="red-darken-1"
+              />
+              <v-tooltip
+                location="top"
+                activator="parent"
+                text="No"
+              />
             </v-btn>
 
             <v-btn
@@ -199,8 +299,15 @@
               flat
               @click="updateConfirmed()"
             >
-              <v-icon :icon="mdiThumbUp" color="green-darken-1"></v-icon>
-              <v-tooltip location="top" activator="parent" text="Yes" />
+              <v-icon
+                :icon="mdiThumbUp"
+                color="green-darken-1"
+              />
+              <v-tooltip
+                location="top"
+                activator="parent"
+                text="Yes"
+              />
             </v-btn>
           </v-card-actions>
         </v-card>

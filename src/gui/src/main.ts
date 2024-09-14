@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, screen, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron';
 // electron-store is ESM only, 
 // but i cba to try to convert this module from CJS to ESM,
 // so anything involving this module is going to be hacky
@@ -8,9 +8,9 @@ const electronStore = import('electron-store');
 import fs from 'fs';
 import path from 'path';
 import { API, Handler, SyncHandler } from './api';
-
+import electronSquirrelStartupFailure from 'electron-squirrel-startup';
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
+if (electronSquirrelStartupFailure) {
   app.quit();
 }
 
