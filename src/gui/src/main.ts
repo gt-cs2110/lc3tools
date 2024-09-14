@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen, shell } from 'electron';
 // electron-store is ESM only, 
 // but i cba to try to convert this module from CJS to ESM,
 // so anything involving this module is going to be hacky
@@ -57,6 +57,7 @@ const createWindow = () => {
     mainWindow.setTitle("LC3Tools v" + app.getVersion());
   })
 
+  Menu.setApplicationMenu(createMenu());
   // Remove menu bar for Windows/Linux
   mainWindow.removeMenu();
 };
@@ -83,6 +84,33 @@ app.on('activate', () => {
   }
 });
 
+const createMenu = () => {
+  // Mostly copied from: 
+  // https://github.com/electron/electron/blob/1c3a5ba5d17c18cbc1fc096d2a05fc24f2b2ddee/lib/browser/default-menu.ts#L12-L58
+  const isMac = process.platform === 'darwin';
+  const macAppMenu: Electron.MenuItemConstructorOptions = { role: 'appMenu' };
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac ? [macAppMenu] : []),
+    {
+      role: 'fileMenu',
+      submenu: [
+        // Creates a new window!
+        {
+          label: "New Window",
+          accelerator: "CommandOrControl+N",
+          click: () => createWindow()
+        },
+        isMac ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' }
+  ];
+
+  return Menu.buildFromTemplate(template);
+}
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
