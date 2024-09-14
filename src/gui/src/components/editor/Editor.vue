@@ -4,7 +4,7 @@
     <v-list-item @click="openFile()" :prepend-icon="mdiFolderOpen">
       <v-tooltip location="right" activator="parent" text="Open File" />
     </v-list-item>
-    <v-list-item @click="saveFile()">
+    <v-list-item @click="saveFileThen(build)">
       <template v-slot:prepend>
         <v-badge color="orange-darken-2" v-model="editorContentChanged">
           <template v-slot:badge>
@@ -45,6 +45,8 @@
             lang="lc3"
             v-bind:theme="editorTheme"
             ref="aceEditorRef"
+            @drop.prevent="dropFile"
+            @dragover.prevent
           />
         </v-col>
         <v-col class="flex-grow-0 flex-shrink-1" v-if="showConsole">
@@ -85,6 +87,7 @@ const editor = ref({
   current_content: ""
 });
 const editorContentChanged = computed(() => editor.value.original_content != editor.value.current_content);
+const editorIsEmpty = computed(() => editor.value.original_content === "" && editor.value.current_content === "");
 const consoleStr = ref("");
 const showConsole = ref(false);
 
@@ -121,7 +124,7 @@ watch(aceEditorRef, (ref) => {
   aceEditor.commands.addCommand({
     name: "save",
     bindKey: { win: "Ctrl-S", mac: "Cmd-S" },
-    exec: saveFile
+    exec: () => saveFileThen(build)
   });
   aceEditor.commands.addCommand({
     name: "build",
@@ -167,7 +170,6 @@ async function _writeFile(fp: string, content: string | undefined = undefined) {
   activeFileStore.path = fp;
 }
 async function saveFileAs() {
-  // Todo: try catch around this
   let new_file = await dialog.showModal("save", {
     filters: [
       { name: "Assembly", extensions: ["asm"] },
@@ -182,21 +184,24 @@ async function saveFileAs() {
   return !new_file.canceled;
 }
 async function saveFile() {
-  // Todo: try catch around this
   // If we don't have a file, create one
   let saveSuccess = true;
   if (activeFileStore.path === null) {
-    saveSuccess = await saveFileAs();
+    saveSuccess = editorIsEmpty.value || await saveFileAs();
   } else {
     await _writeFile(activeFileStore.path);
   }
 
-  if (saveSuccess) {
-    await build();
-  }
+  return saveSuccess;
 }
+// Save the current file, then do something secondary (if saving was successful).
+async function saveFileThen(f: () => void) {
+  let success = await saveFile();
+  if (success) f();
+}
+
 async function autosaveFile() {
-  if (activeFileStore.path !== null && editorContentChanged.value) {
+  if (activeFileStore.path !== null && editorContentChanged.value && !editorIsEmpty.value) {
     await _writeFile(activeFileStore.path);
   }
 }
@@ -225,6 +230,28 @@ async function openFile(path: string | undefined = undefined) {
     activeFileStore.path = active_file;
   }
 }
+async function dropFile(e: DragEvent) {
+  let file = e.dataTransfer.files[0];
+  if (file?.name.toLowerCase().endsWith("asm")) {
+    if (editorContentChanged.value) {
+      const buttons = ["Yes", "No", "Cancel"]
+      // Save warning
+      let clicked = await dialog.showModal("box", {
+        type: 'warning',
+        title: 'Confirm',
+        message: `You have unsaved changes to ${filename.value}. Would you like to save your changes?`,
+        buttons,
+        cancelId: 2
+      });
+
+      let response = buttons[clicked.response];
+      if (response === "Yes") await saveFileThen(() => openFile(file.path));
+      else if (response === "No") await openFile(file.path);
+    } else {
+      await saveFileThen(() => openFile(file.path));
+    }
+  }
+}
 async function build() {
   // save the file if it hasn't been saved
   if (editorContentChanged.value) {
@@ -238,14 +265,14 @@ async function build() {
   if (activeFileStore.path === null) {
     success = false;
     output = "No file to build";
-  } else if (activeFileStore.path.endsWith(".bin")) {
+  } else if (activeFileStore.path.toLowerCase().endsWith(".bin")) {
     try {
       lc3.convertBin(activeFileStore.path);
     } catch (e) {
       success = false;
     }
     output = lc3.getAndClearOutput();
-  } else if (activeFileStore.path.endsWith(".asm")) {
+  } else if (activeFileStore.path.toLowerCase().endsWith(".asm")) {
     try {
       lc3.assemble(activeFileStore.path);
     } catch (e) {

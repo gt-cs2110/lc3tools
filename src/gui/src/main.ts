@@ -134,6 +134,8 @@ ipcMain.handle("show_modal", (e, kind, config) => {
       return dialog.showSaveDialog(config);
     } else if (kind === "open") {
       return dialog.showOpenDialog(config);
+    } else if (kind === "box") {
+      return dialog.showMessageBox(config);
     }
 });
 

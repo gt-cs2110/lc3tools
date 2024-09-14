@@ -33,7 +33,10 @@
     </v-list-item>
   </v-navigation-drawer>
   <!-- Main editor content -->
-  <v-main>
+  <v-main
+    @drop.prevent="dropFile"
+    @dragover.prevent
+  >
     <v-container fluid class="fill-height">
       <v-snackbar v-model="isSnackBarVisible" :timeout="2500" location="top">
         <span>Object File Loaded!</span>
@@ -501,6 +504,13 @@ function handleMemoryScroll(e: WheelEvent) {
       jumpToPartMemView(Math.floor(memScrollOffset / 20));
       memScrollOffset = 0;
     }
+  }
+}
+
+async function dropFile(e: DragEvent) {
+  let file = e.dataTransfer.files[0];
+  if (file?.name.toLowerCase().endsWith("obj") && !lc3.isSimRunning()) {
+    openFile(file.path);
   }
 }
 async function openFile(path: string | undefined = undefined) {
