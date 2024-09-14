@@ -134,10 +134,10 @@ declare module "lc3-backend" {
     export function setIgnorePrivilege(status: boolean): boolean;
 
     /**
-     * Sets the run until halt configuration.
+     * Sets the pause on fatal trap configuration.
      * @param status the status to set the configuration to.
      */
-    export function setRunUntilHalt(status: boolean): boolean;
+    export function setPauseOnFatalTrap(status: boolean): boolean;
 
     /**
      * Clears the simulator console input.

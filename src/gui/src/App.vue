@@ -133,13 +133,13 @@
                   </div>
                   <div class="d-flex justify-space-between">
                     <h3 class="flex-grow-1">
-                      Stop execution on reaching HALT
+                      Pause on HALT and exceptions
                     </h3>
                     <v-switch
-                      v-model="settings.run_until_halt"
+                      v-model="settings.pause_on_fatal_trap"
                       class="flex-shrink-1"
                       color="primary"
-                      @change="saveSettings('run_until_halt')"
+                      @change="saveSettings('pause_on_fatal_trap')"
                     />
                   </div>
                   <div class="d-flex justify-space-between">
@@ -355,6 +355,10 @@ onMounted(() => {
         update.value.download_transferred = progress.transferred;
       }
   })
+
+  lc3.setIgnorePrivilege(settings.ignore_privilege);
+  lc3.setEnableLiberalAsm(settings.liberal_asm);
+  lc3.setPauseOnFatalTrap(settings.pause_on_fatal_trap);
 })
 
 // Settings
@@ -363,12 +367,12 @@ function saveSettings(setting: SettingKeys) {
   if (setting === "all") {
     lc3.setIgnorePrivilege(settings.ignore_privilege);
     lc3.setEnableLiberalAsm(settings.liberal_asm);
-    lc3.setRunUntilHalt(settings.run_until_halt);
+    lc3.setPauseOnFatalTrap(settings.pause_on_fatal_trap);
     storage.setAll(settings);
   } else {
     if (setting === "ignore_privilege") lc3.setIgnorePrivilege(settings.ignore_privilege);
     if (setting === "liberal_asm") lc3.setEnableLiberalAsm(settings.liberal_asm);
-    if (setting === "run_until_halt") lc3.setRunUntilHalt(settings.run_until_halt);
+    if (setting === "pause_on_fatal_trap") lc3.setPauseOnFatalTrap(settings.pause_on_fatal_trap);
     storage.set(setting, settings[setting]);
   }
 }

@@ -105,13 +105,13 @@ fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     Ok(cx.undefined())
 }
-fn set_run_until_halt(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+fn set_pause_on_fatal_trap(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(enable: bool) -> Result<()>
-    // the boolean flag is the run_until_halt flag.
-    // if run_until_halt is true, we're using virtual halt
+    // the boolean flag is the pause_on_fatal_trap flag.
+    // if pause_on_fatal_trap is true, we're applying "virtual" mode
     // i.e., these are inverses of each other
-    let use_real_halt = !cx.argument::<JsBoolean>(0)?.value(&mut cx);
-    sim_contents().update_sim_flags(|f| f.use_real_halt = use_real_halt);
+    let use_real_traps = !cx.argument::<JsBoolean>(0)?.value(&mut cx);
+    sim_contents().update_sim_flags(|f| f.use_real_traps = use_real_traps);
     
     Ok(cx.undefined())
 }
@@ -563,7 +563,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getMemLine", get_mem_line)?;
     cx.export_function("setMemLine", set_mem_line)?;
     cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
-    cx.export_function("setRunUntilHalt", set_run_until_halt)?;
+    cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;
     cx.export_function("clearInput", clear_input)?;
     cx.export_function("addInput", add_input)?;
     cx.export_function("getAndClearOutput", get_and_clear_output)?;
