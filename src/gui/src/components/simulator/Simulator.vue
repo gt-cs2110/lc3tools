@@ -385,7 +385,7 @@
 import { useActiveFileStore } from '../../store/active_file';
 import { useSettingsStore } from '../../store/settings';
 // Vue stuff
-import { onActivated, onMounted, onUnmounted, ref, watch } from 'vue';
+import { onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
@@ -451,7 +451,7 @@ const rules: Record<string, ValidationRule> = {
 type ValidationRule = (value: string) => boolean | string;
 const editValue = ref("");
 
-const memViewWrapper = ref(null);
+const memViewWrapper = useTemplateRef("memViewWrapper");
 watch(memViewWrapper, el => {
   el.addEventListener("wheel", handleMemoryScroll);
 }, { once: true });

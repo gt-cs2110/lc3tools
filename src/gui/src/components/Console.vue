@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import Convert from 'ansi-to-html';
-import { computed, nextTick, Ref, ref, watch } from 'vue';
+import { computed, nextTick, Ref, ref, useTemplateRef, watch } from 'vue';
 const props = defineProps<{
     float?: "top" | "bottom",
     showFocus?: boolean,
@@ -69,7 +69,7 @@ const consoleHtml = computed(() => {
 });
 
 // Handle where we're at:
-const consoleRef: Ref<HTMLDivElement> = ref(null);
+const consoleRef = useTemplateRef<HTMLDivElement>("consoleRef");
 watch(consoleHtml, async () => {
   if (props.float === "top") {
     consoleRef.value.scrollTop = 0;

@@ -63,7 +63,7 @@
 import { useActiveFileStore } from "../../store/active_file";
 import { useSettingsStore } from "../../store/settings";
 // Vue stuff
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
 import "vuetify/components";
 import { storeToRefs } from "pinia";
 // Editor
@@ -100,8 +100,9 @@ const filename = computed(() => {
   return typeof fp === "string" ? fs.basename(fp) : "Untitled";
 })
 
-const aceEditorRef = ref<VAceEditorInstance>();
+const aceEditorRef = useTemplateRef<VAceEditorInstance>("aceEditorRef");
 const aceEditor = computed(() => aceEditorRef.value?.getAceInstance());
+
 // ace editor setup:
 watch(aceEditorRef, (ref) => {
   let aceEditor = ref.getAceInstance();
