@@ -13,8 +13,8 @@ use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
 use lc3_ensemble::sim::io::BufferedIO;
-use lc3_ensemble::sim::mem::MachineInitStrategy;
-use lc3_ensemble::sim::{SimErr, SimFlags, Simulator};
+use lc3_ensemble::sim::mem::{MachineInitStrategy, Word};
+use lc3_ensemble::sim::{MemAccessCtx, SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
 use sim::{SimAccessError, SimController};
@@ -84,6 +84,22 @@ impl SimPageContents {
         close: impl FnOnce(T) + Send + 'static
     ) -> Result<(), SimAccessError> {
         self.controller.execute(exec, close, self.sim_flags)
+    }
+
+    fn read_mem(&mut self, cx: &mut FunctionContext, addr: u16) -> NeonResult<Word> {
+        let simulator = self.controller.simulator()
+            .or_else(|e| cx.throw_error(e.to_string()))?;
+
+        simulator.read_mem(addr, MemAccessCtx::omnipotent())
+            .or_else(|e| cx.throw_error(e.to_string()))
+    }
+
+    fn write_mem(&mut self, cx: &mut FunctionContext, addr: u16, word: u16) -> NeonResult<()> {
+        let simulator = self.controller.simulator()
+            .or_else(|e| cx.throw_error(e.to_string()))?;
+
+        simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent())
+            .or_else(|e| cx.throw_error(e.to_string()))
     }
 }
 //--------- CONFIG FUNCTIONS ---------//
@@ -335,7 +351,7 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
         "r6"  => simulator.reg_file[R6].get(),
         "r7"  => simulator.reg_file[R7].get(),
         "pc"  => simulator.pc,
-        "psr" => simulator.psr().0,
+        "psr" => simulator.psr().get(),
         "mcr" => {
             let mcr = simulator.mcr();
             if mcr.load(Ordering::Relaxed) { 0x8000 } else { 0x0000 }
@@ -366,11 +382,8 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         "r6"  => simulator.reg_file[R6].set(value),
         "r7"  => simulator.reg_file[R7].set(value),
         "pc"  => simulator.pc = value,
-        "psr" => { /* cannot set PSR */ },
-        "mcr" => {
-            let mcr = simulator.mcr();
-            mcr.store((value as i16) < 0, Ordering::Relaxed);
-        }
+        "psr" => sim_contents.write_mem(&mut cx, 0xFFFC, value)?,
+        "mcr" => sim_contents.write_mem(&mut cx, 0xFFFE, value)?,
         reg => cx.throw_error(format!("undefined register {reg:?}"))?
     };
     std::mem::drop(sim_contents);
@@ -385,7 +398,7 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let simulator = sim_contents.controller.simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?;
 
-    let value = simulator.mem.get_raw(addr).get();
+    let value = sim_contents.read_mem(&mut cx, addr)?.get();
     Ok(cx.number(value))
 }
 fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -397,7 +410,7 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let simulator = sim_contents.controller.simulator()
         .or_else(|e| cx.throw_error(e.to_string()))?;
 
-    simulator.mem.get_raw_mut(addr).set(value);
+    sim_contents.write_mem(&mut cx, addr, value)?;
     Ok(cx.undefined())
 }
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
