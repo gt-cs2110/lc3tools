@@ -154,6 +154,8 @@ declare module "lc3-backend" {
 
     /**
      * Adds a character to the console input.
+     * This does nothing unless the simulator is currently running.
+     * 
      * @param char The character to add. This should be ONE CHARACTER.
      */
     export function addInput(char: string): void;

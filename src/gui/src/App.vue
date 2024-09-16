@@ -37,9 +37,9 @@
               :close-on-content-click="false"
             >
               <v-card>
-                <v-container>
+                <v-container class="d-flex flex-column ga-5">
                   <!-- Should use v-row, v-col, but those are grid not flex -->
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Theme
                     </h3>
@@ -48,6 +48,7 @@
                       class="flex-shrink-1"
                       color="primary"
                       inline
+                      hide-details
                       @change="saveSettings('theme')"
                     >
                       <v-spacer />
@@ -61,7 +62,7 @@
                       />
                     </v-radio-group>
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Number View
                     </h3>
@@ -70,6 +71,7 @@
                       class="flex-shrink-1"
                       color="primary"
                       inline
+                      hide-details
                       @change="saveSettings('numbers')"
                     >
                       <v-spacer />
@@ -83,7 +85,7 @@
                       />
                     </v-radio-group>
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Editor Key Binding
                     </h3>
@@ -92,6 +94,7 @@
                       class="flex-shrink-1"
                       color="primary"
                       inline
+                      hide-details
                       @change="saveSettings('editor_binding')"
                     >
                       <v-spacer />
@@ -105,7 +108,7 @@
                       />
                     </v-radio-group>
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Autocomplete
                     </h3>
@@ -114,6 +117,7 @@
                       class="flex-shrink-1"
                       color="primary"
                       inline
+                      hide-details
                       @change="saveSettings('autocomplete')"
                     >
                       <v-spacer />
@@ -131,7 +135,7 @@
                       />
                     </v-radio-group>
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Pause on HALT and exceptions
                     </h3>
@@ -139,10 +143,11 @@
                       v-model="settings.pause_on_fatal_trap"
                       class="flex-shrink-1"
                       color="primary"
+                      hide-details
                       @change="saveSettings('pause_on_fatal_trap')"
                     />
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Clear output on object file reload
                     </h3>
@@ -150,10 +155,11 @@
                       v-model="settings.clear_out_on_reload"
                       class="flex-shrink-1"
                       color="primary"
+                      hide-details
                       @change="saveSettings('clear_out_on_reload')"
                     />
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <div class="flex-grow-1">
                       <h3>Ignore privileged mode</h3>
                       <p
@@ -167,10 +173,11 @@
                       v-model="settings.ignore_privilege"
                       class="flex-shrink-1"
                       color="primary"
+                      hide-details
                       @change="saveSettings('ignore_privilege')"
                     />
                   </div>
-                  <div class="d-flex justify-space-between">
+                  <div class="d-flex justify-space-between align-center">
                     <div class="flex-grow-1">
                       <h3>Use less strict assembly</h3>
                       <p
@@ -184,6 +191,7 @@
                       v-model="settings.liberal_asm"
                       class="flex-shrink-1"
                       color="primary"
+                      hide-details
                       @change="saveSettings('liberal_asm')"
                     />
                   </div>

@@ -132,9 +132,11 @@
           class="d-flex flex-column ga-3 h-limit"
         >
           <div>
-            <h3 class="view-header">
-              Registers
-            </h3>
+            <div class="header-bar">
+              <h3 class="header-bar-title">
+                Registers
+              </h3>
+            </div>
             <v-data-table
               class="elevation-4 sim-data-table"
               density="compact"
@@ -173,10 +175,10 @@
                     'row-updated': item.updated,
                     'row-disabled': sim.running
                   }"
+                  @contextmenu="openRegContextMenu(item)"
                 >
                   <td
                     class="data-cell-text"
-                    @contextmenu="openRegContextMenu(item.name)"
                   >
                     <strong>{{ item.name.toUpperCase() }}</strong>
                   </td>
@@ -202,7 +204,7 @@
                             :rules="[rules.hex, rules.size16bit]"
                             @focus="$event.target.select()"
                             @change="
-                              setDataValue($event, item, 'reg', [
+                              setDataValue(item, 'reg', [
                                 rules.hex,
                                 rules.size16bit
                               ])
@@ -234,7 +236,7 @@
                             :rules="[rules.dec, rules.size16bit]"
                             @focus="$event.target.select()"
                             @change="
-                              setDataValue($event, item, 'reg', [
+                              setDataValue(item, 'reg', [
                                 rules.dec,
                                 rules.size16bit
                               ])
@@ -252,27 +254,24 @@
             </v-data-table>
           </div>
           <div id="console-wrapper">
-            <div id="console-header">
-              <div id="console-title">
-                <h3 class="view-header">
-                  Console (click to focus)
-                </h3>
-              </div>
-              <div id="console-clear">
-                <v-btn
-                  icon
-                  flat
-                  variant="text"
-                  @click="clearConsole()"
-                >
-                  <v-icon :icon="mdiDelete" />
-                  <v-tooltip
-                    location="left"
-                    activator="parent"
-                    text="Clear Console"
-                  />
-                </v-btn>
-              </div>
+            <div class="header-bar">
+              <h3 class="header-bar-title">
+                Console (click to focus)
+              </h3>
+              <v-btn
+                class="header-bar-right"
+                icon
+                flat
+                variant="text"
+                @click="clearConsoleOutput()"
+              >
+                <v-icon :icon="mdiDelete" />
+                <v-tooltip
+                  location="left"
+                  activator="parent"
+                  text="Clear Console"
+                />
+              </v-btn>
             </div>
             <console 
               v-model="consoleStr"
@@ -288,9 +287,11 @@
           class="d-flex flex-column justify-space-between"
         >
           <div ref="memViewWrapper">
-            <h3 class="view-header">
-              Memory
-            </h3>
+            <div class="header-bar">
+              <h3 class="header-bar-title">
+                Memory
+              </h3>
+            </div>
             <v-data-table
               class="elevation-4 sim-data-table"
               hide-default-footer
@@ -342,6 +343,7 @@
                     'row-disabled': sim.running,
                     'row-curr-pc': isPCAt(item.addr)
                   }"
+                  @contextmenu="openMemContextMenu(item)"
                 >
                   <td class="data-cell-btn">
                     <v-btn
@@ -400,7 +402,7 @@
                             :rules="[rules.hex, rules.size16bit]"
                             @focus="$event.target.select()"
                             @change="
-                              setDataValue($event, item, 'mem', [
+                              setDataValue(item, 'mem', [
                                 rules.hex,
                                 rules.size16bit
                               ])
@@ -432,7 +434,7 @@
                             :rules="[rules.dec, rules.size16bit]"
                             @focus="$event.target.select()"
                             @change="
-                              setDataValue($event, item, 'mem', [
+                              setDataValue(item, 'mem', [
                                 rules.dec,
                                 rules.size16bit
                               ])
@@ -703,9 +705,10 @@ function loadFile(path: string) {
   // pause lc3 if running
   lc3.pause();
 
+  lc3.clearInput();
   // clear output on file (re)load
   if (settings.clear_out_on_reload) {
-    clearConsole();
+    clearConsoleOutput();
   }
 
   // load object file
@@ -735,7 +738,6 @@ function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
   if (!sim.value.running) {
     sim.value.running = true;
 
-    lc3.clearInput();
     startPollOutput();
 
     return new Promise<void>((resolve, reject) => {
@@ -768,12 +770,14 @@ function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
 }
 function reinitializeMachine() {
   lc3.reinitializeMachine();
-  clearConsole();
+  lc3.clearInput();
+  clearConsoleOutput();
   updateUI();
 }
 function randomizeMachine() {
   lc3.randomizeMachine();
-  clearConsole();
+  lc3.clearInput();
+  clearConsoleOutput();
   updateUI();
 }
 
@@ -788,7 +792,6 @@ function stopPollOutput() {
 }
 
 function endSimulation(jumpToPC_: boolean) {
-  lc3.clearInput();
   stopPollOutput();
 
   if (sim.value.running) {
@@ -800,7 +803,7 @@ function endSimulation(jumpToPC_: boolean) {
     if (jumpToPC_) jumpToPC(false);
   }
 }
-function clearConsole() {
+function clearConsoleOutput() {
   consoleStr.value = "";
   lc3.clearOutput();
 }
@@ -831,11 +834,10 @@ function handleConsoleInput(e: KeyboardEvent) {
   e.preventDefault(); // for TAB, etc.
 }
 
-async function openRegContextMenu(name: string) {
+async function openRegContextMenu(item: RegDataRow) {
   if (lc3.isSimRunning()) return;
 
   let output = await dialog.showModal("menu", ["Jump", "Copy Hex", "Copy Decimal"]);
-  let item = sim.value.regs.find((it) => it.name === name);
   switch (output) {
     case 0:
       jumpToMemView(item.value);
@@ -851,10 +853,50 @@ async function openRegContextMenu(name: string) {
       break;
   }
 }
-function setDataValue(event: Event, dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
-function setDataValue(event: Event, dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
-function setDataValue(event: Event, dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
-  let value = (event.target as HTMLInputElement).value;
+async function openMemContextMenu(item: MemDataRow) {
+  if (lc3.isSimRunning()) return;
+
+  let options = ["Jump to Address"];
+
+  let hasLabel = !!item.label;
+  let hasInstr = typeof lc3.getAddrSourceRange(item.addr) !== "undefined";
+  if (hasLabel && hasInstr) {
+    options.push("Jump to Source (Label)", "Jump to Source (Instruction)");
+  } else if (hasLabel || hasInstr) {
+    options.push("Jump to Source");
+  }
+
+  options.push("Copy Hex", "Copy Decimal");
+  let output = await dialog.showModal("menu", options);
+  switch (options[output]) {
+    case "Jump to Address":
+      jumpToMemView(item.value);
+      break;
+    
+    case "Jump to Source":
+      jumpToSource(item.label || item.addr);
+      break;
+    case "Jump to Source (Label)":
+      jumpToSource(item.label);
+      break;
+    case "Jump to Source (Instruction)":
+      jumpToSource(item.addr);
+      break;
+
+    // These two functions are actually pretty useless.
+    // They're only here so "Jump" isn't by itself.
+    case "Copy Hex":
+      navigator.clipboard.writeText(toHex(item.value));
+      break;
+    case "Copy Decimal":
+      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      break;
+  }
+}
+function setDataValue(dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
+function setDataValue(dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
+function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
+  let value = editValue.value;
   let validated = rules.every(r => r(value) === true);
   
   // Validation failed, so ignore set
@@ -1053,10 +1095,6 @@ function toInt16(value: number) {
 
 
 <style scoped>
-.view-header {
-  text-align: center;
-  padding-bottom: 5px;
-}
 .h-limit {
   height: calc(100vh - 90px);
 }
@@ -1087,6 +1125,11 @@ function toInt16(value: number) {
 }
 .sim-data-table tbody tr:hover {
   background-color: #7f7f7f4d;
+}
+.sim-data-table tbody td {
+  /* Hide overlong labels + instrs */
+  overflow: hidden;
+  white-space: nowrap;
 }
 .row-update-flash {
   background-color: #fff700a0;
@@ -1132,7 +1175,8 @@ tr:not(.row-disabled) .clickable {
   min-height: 0;
 }
 
-#console-header {
+/* A header with icons around it */
+.header-bar {
   display: grid;
   grid-template-columns: 50px auto 50px;
   grid-template-rows: 100%;
@@ -1140,13 +1184,14 @@ tr:not(.row-disabled) .clickable {
   align-items: center;
   overflow: hidden;
 }
+.header-bar-title {
+  text-align: center;
+  padding-bottom: 5px;
 
-#console-title {
   grid-column: 2;
   grid-row: 1;
 }
-
-#console-clear {
+.header-bar-right {
   grid-column: 3;
   grid-row: 1;
 }

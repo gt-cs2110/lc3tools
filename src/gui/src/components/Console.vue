@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import Convert from 'ansi-to-html';
-import { computed, nextTick, Ref, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 const props = defineProps<{
     float?: "top" | "bottom",
     showFocus?: boolean,
@@ -92,6 +92,7 @@ watch(consoleHtml, async () => {
   white-space: pre-wrap;
   background-color: rgb(var(--v-theme-surface));
   user-select: text;
+  overflow-wrap: anywhere;
 }
 
 .console.show-focus:focus {

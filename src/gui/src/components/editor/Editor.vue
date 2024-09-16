@@ -148,7 +148,7 @@ const editorTheme = computed(() => ({
 })[settingsRefs.theme.value]);
 const filename = computed(() => {
   let fp = activeFileStore.path;
-  return typeof fp === "string" ? fs.basename(fp) : "Untitled";
+  return typeof fp === "string" ? fs.basename(fp) : "\u{200B}";
 })
 
 const aceEditorRef = useTemplateRef<VAceEditorInstance>("aceEditorRef");
