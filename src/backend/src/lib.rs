@@ -1,5 +1,6 @@
 mod err;
 mod sim;
+mod cast;
 
 use std::collections::VecDeque;
 use std::io::Write;
@@ -8,6 +9,7 @@ use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
+use cast::{ResultExtJs, TryIntoJsValue};
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
@@ -87,19 +89,15 @@ impl SimPageContents {
     }
 
     fn read_mem(&mut self, cx: &mut FunctionContext, addr: u16) -> NeonResult<Word> {
-        let simulator = self.controller.simulator()
-            .or_else(|e| cx.throw_error(e.to_string()))?;
+        let simulator = self.controller.simulator().or_throw(cx)?;
 
-        simulator.read_mem(addr, MemAccessCtx::omnipotent())
-            .or_else(|e| cx.throw_error(e.to_string()))
+        simulator.read_mem(addr, MemAccessCtx::omnipotent()).or_throw(cx)
     }
 
     fn write_mem(&mut self, cx: &mut FunctionContext, addr: u16, word: u16) -> NeonResult<()> {
-        let simulator = self.controller.simulator()
-            .or_else(|e| cx.throw_error(e.to_string()))?;
+        let simulator = self.controller.simulator().or_throw(cx)?;
 
-        simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent())
-            .or_else(|e| cx.throw_error(e.to_string()))
+        simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent()).or_throw(cx)
     }
 
     fn load_obj_file(&mut self, obj: ObjectFile) {
@@ -255,7 +253,7 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
             let pc = sim_contents()
                 .controller
                 .simulator()
-                .or_else(|e| cx.throw_error(e.to_string()))?
+                .or_throw(&mut cx)?
                 .prefetch_pc();
             
             simple_reporter(&format!("{e} (instruction x{pc:04X})"))
@@ -277,7 +275,7 @@ fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     sim_contents().execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
-    ).or_else(|e| cx.throw_error(e.to_string()))?;
+    ).or_throw(&mut cx)?;
 
     Ok(cx.undefined())
 }
@@ -286,41 +284,44 @@ fn step_in(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents().execute(
-        Simulator::step_in,
-        |result| finish_execution(channel, done_cb, result)
-    ).or_else(|e| cx.throw_error(e.to_string()))?;
-
-    Ok(cx.undefined())
+    sim_contents()
+        .execute(
+            Simulator::step_in,
+            |result| finish_execution(channel, done_cb, result)
+        )
+        .or_throw(&mut cx)
+        .try_into_js(&mut cx)
 }
 fn step_out(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents().execute(
-        Simulator::step_out,
-        |result| finish_execution(channel, done_cb, result)
-    ).or_else(|e| cx.throw_error(e.to_string()))?;
-
-    Ok(cx.undefined())
+    sim_contents()
+        .execute(
+            Simulator::step_out,
+            |result| finish_execution(channel, done_cb, result)
+        )
+        .or_throw(&mut cx)
+        .try_into_js(&mut cx)
 }
 fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents().execute(
-        Simulator::step_over,
-        |result| finish_execution(channel, done_cb, result)
-    ).or_else(|e| cx.throw_error(e.to_string()))?;
-
-    Ok(cx.undefined())
+    sim_contents()
+        .execute(
+            Simulator::step_over,
+            |result| finish_execution(channel, done_cb, result)
+        )
+        .or_throw(&mut cx)
+        .try_into_js(&mut cx)
 }
 fn pause(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     sim_contents().controller.pause()
-        .or_else(|e| cx.throw_error(e.to_string()))?;
-    Ok(cx.undefined())
+        .or_throw(&mut cx)
+        .try_into_js(&mut cx)
 }
 
 fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
@@ -329,8 +330,7 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
 
     let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?;
+    let simulator = sim_contents.controller.simulator().or_throw(&mut cx)?;
 
     let value = match &*reg {
         "r0"  => simulator.reg_file[R0].get(),
@@ -360,8 +360,7 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
 
     let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?;
+    let simulator = sim_contents.controller.simulator().or_throw(&mut cx)?;
 
     match &*reg {
         "r0"  => simulator.reg_file[R0].set(value),
@@ -450,7 +449,7 @@ fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let value = sim_contents()
         .controller
         .simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?
+        .or_throw(&mut cx)?
         .breakpoints
         .insert(Breakpoint::PC(addr));
     Ok(cx.boolean(value))
@@ -462,7 +461,7 @@ fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let result = sim_contents()
         .controller
         .simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?
+        .or_throw(&mut cx)?
         .breakpoints
         .remove(&Breakpoint::PC(addr));
 
@@ -506,14 +505,11 @@ fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
         let (slno, scno) = src_info.get_pos_pair(start);
         let (elno, ecno) = src_info.get_pos_pair(end);
 
-        let array = cx.empty_array();
-        for (i, el) in [slno, scno, elno, ecno].into_iter().enumerate() {
-            let jsel = cx.number(el as f64);
-            array.set(&mut cx, i as u32, jsel)?;
-        }
-        return Ok(array.as_value(&mut cx))
+        return [slno, scno, elno, ecno]
+            .try_into_js(&mut cx)
+            .map(|e| e.upcast());
     }
-    Ok(cx.undefined().as_value(&mut cx))
+    Ok(cx.undefined().upcast())
 
 }
 fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -531,14 +527,11 @@ fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
         let (slno, scno) = src_info.get_pos_pair(start);
         let (elno, ecno) = src_info.get_pos_pair(end);
 
-        let array = cx.empty_array();
-        for (i, el) in [slno, scno, elno, ecno].into_iter().enumerate() {
-            let jsel = cx.number(el as f64);
-            array.set(&mut cx, i as u32, jsel)?;
-        }
-        return Ok(array.as_value(&mut cx));
+        return [slno, scno, elno, ecno]
+            .try_into_js(&mut cx)
+            .map(|e| e.upcast());
     }
-    Ok(cx.undefined().as_value(&mut cx))
+    Ok(cx.undefined().upcast())
 }
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
