@@ -23,12 +23,12 @@ static INPUT_BUFFER: LazyLock<Arc<RwLock<VecDeque<u8>>>> = LazyLock::new(Arc::de
 static PRINT_BUFFER: LazyLock<Arc<RwLock<Vec<u8>>>> = LazyLock::new(Arc::default);
 
 /// Creates a write guard to [`INPUT_BUFFER`].
-fn input_writer<'w>() -> RwLockWriteGuard<'w, VecDeque<u8>> {
+fn input_writer() -> RwLockWriteGuard<'static, VecDeque<u8>> {
     INPUT_BUFFER.write()
         .unwrap_or_else(|e| e.into_inner())
 }
 /// Creates a write guard to [`PRINT_BUFFER`].
-fn print_writer<'w>() -> RwLockWriteGuard<'w, Vec<u8>> {
+fn print_writer() -> RwLockWriteGuard<'static, Vec<u8>> {
     PRINT_BUFFER.write()
         .unwrap_or_else(|e| e.into_inner())
 }
@@ -37,7 +37,7 @@ fn get_buffered_io() -> BufferedIO {
     BufferedIO::with_bufs(Arc::clone(&INPUT_BUFFER), Arc::clone(&PRINT_BUFFER))
 }
 
-fn sim_contents<'g>() -> MutexGuard<'g, SimPageContents> {
+fn sim_contents() -> MutexGuard<'static, SimPageContents> {
     static SIM_CONTENTS: LazyLock<Mutex<SimPageContents>> = LazyLock::new(|| {
         Mutex::new(SimPageContents {
             controller: SimController::new(),
@@ -100,6 +100,23 @@ impl SimPageContents {
 
         simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent())
             .or_else(|e| cx.throw_error(e.to_string()))
+    }
+
+    fn load_obj_file(&mut self, obj: ObjectFile) {
+        let flags = SimFlags {
+            machine_init: get_create_strategy(false),
+            ..self.sim_flags
+        };
+        let sim = self.controller.reset(flags);
+        sim.open_io(get_buffered_io());
+        sim.load_obj_file(&obj);
+        self.obj_file.replace(obj);
+    }
+    fn reset_machine(&mut self, init: MachineInitStrategy) {
+        self.sim_flags.machine_init = init;
+        let sim = self.controller.reset(self.sim_flags);
+        sim.open_io(get_buffered_io());
+        self.obj_file.take();
     }
 }
 //--------- CONFIG FUNCTIONS ---------//
@@ -194,7 +211,7 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     }
     Ok(obj)
 }
-fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: string) -> Result<()>
     let fp = cx.argument::<JsString>(0)?.value(&mut cx);
     let in_path = AsRef::<Path>::as_ref(&fp);
@@ -206,18 +223,8 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsBoolean> {
         return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *print_writer(), &mut cx));
     };
 
-    let mut contents = sim_contents();
-
-    let flags = SimFlags {
-        machine_init: get_create_strategy(false),
-        ..contents.sim_flags
-    };
-    let sim = contents.controller.reset(flags);
-    sim.open_io(get_buffered_io());
-    sim.load_obj_file(&obj);
-    contents.obj_file.replace(obj);
-
-    Ok(cx.boolean(true))
+    sim_contents().load_obj_file(obj);
+    Ok(cx.undefined())
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
@@ -227,30 +234,14 @@ fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
-    let mut contents = sim_contents();
 
-    let flags = SimFlags {
-        machine_init: get_create_strategy(true),
-        ..contents.sim_flags
-    };
-    let sim = contents.controller.reset(flags);
-    sim.open_io(get_buffered_io());
-    contents.obj_file.take();
-    
+    sim_contents().reset_machine(get_create_strategy(true));
     Ok(cx.undefined())
 }
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
-    let mut contents = sim_contents();
 
-    let flags = SimFlags {
-        machine_init: get_create_strategy(false),
-        ..contents.sim_flags
-    };
-    let sim = contents.controller.reset(flags);
-    sim.open_io(get_buffered_io());
-    contents.obj_file.take();
-    
+    sim_contents().reset_machine(get_create_strategy(false));
     Ok(cx.undefined())
 }
 
@@ -395,10 +386,8 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
     let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?;
-
     let value = sim_contents.read_mem(&mut cx, addr)?.get();
+
     Ok(cx.number(value))
 }
 fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -407,10 +396,8 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
     
     let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?;
-
     sim_contents.write_mem(&mut cx, addr, value)?;
+
     Ok(cx.undefined())
 }
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
