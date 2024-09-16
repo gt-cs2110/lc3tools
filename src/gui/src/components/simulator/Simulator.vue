@@ -1020,7 +1020,7 @@ function psrToCC(psr: number) {
   }
 }
 function toHex(value: number) {
-  let hex = value.toString(16).toUpperCase();
+  let hex = toUint16(value).toString(16).toUpperCase();
   return `x${hex.padStart(4, "0")}`;
 }
 function toFormattedDec(value: number) {
@@ -1035,7 +1035,7 @@ function toFormattedDec(value: number) {
 }
 function parseInputString(value: string) {
   if (value.startsWith("x")) value = "0" + value;
-  return parseInt(value);
+  return toUint16(parseInt(value));
 }
 function regLabel(item: RegDataRow) {
   if (item.name === "psr") {
