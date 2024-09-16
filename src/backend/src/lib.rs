@@ -2,7 +2,7 @@ mod err;
 mod sim;
 mod cast;
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
@@ -10,7 +10,8 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
 
 use cast::{ResultExtJs, TryIntoJsValue};
-use lc3_ensemble::asm::{assemble_debug, ObjectFile};
+use lc3_ensemble::asm::{assemble_debug, ObjectFile, SourceInfo, SymbolTable};
+use lc3_ensemble::ast::asm::try_disassemble_line;
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
@@ -44,7 +45,8 @@ fn sim_contents() -> MutexGuard<'static, SimPageContents> {
         Mutex::new(SimPageContents {
             controller: SimController::new(),
             obj_file: None,
-            sim_flags: Default::default()
+            sim_flags: Default::default(),
+            mem_lines: Default::default()
         })
     });
     
@@ -66,9 +68,47 @@ fn get_create_strategy(zeroed: bool) -> MachineInitStrategy {
     }
 }
 
+// Symbol access stuff
+fn get_sym_source_from_obj(obj: &ObjectFile) -> Option<(&SymbolTable, &SourceInfo)> {
+    let sym = obj.symbol_table()?;
+    let src = sym.source_info()?;
+
+    Some((sym, src))
+}
+fn add_mem_lines_from_obj(mem_lines: &mut HashMap<u16, String>, obj: &ObjectFile) {
+    if let Some((sym, src_info)) = get_sym_source_from_obj(obj) {
+        // For each source line in the object file,
+        // if it maps to an address, add the mapping (addr, source line) to mem_lines.
+        mem_lines.extend({
+            sym.line_iter()
+                .filter_map(|(lno, addr)| {
+                    let span = src_info.line_span(lno)?;
+                    Some((addr, src_info.source()[span].to_string()))
+                })
+        });
+
+        // Update sources to better handle .stringz:
+        let labels = obj.addr_iter()
+            .filter_map(|(addr, m_val)| match m_val {
+                Some(val @ 0x0020..0x007F) => Some((addr, char::from(val as u8).to_string())),
+                _ => None
+            });
+
+        for (addr, label) in labels {
+            let new_label = match mem_lines.get(&addr) {
+                Some(orig_label) => format!("{orig_label} ({label})"),
+                None => label,
+            };
+            mem_lines.insert(addr, new_label);
+        }
+    }
+}
+//
+
 struct SimPageContents {
     controller: SimController,
     obj_file: Option<ObjectFile>,
+    mem_lines: HashMap<u16, String>,
     sim_flags: SimFlags
 }
 impl SimPageContents {
@@ -97,9 +137,27 @@ impl SimPageContents {
     fn write_mem(&mut self, cx: &mut FunctionContext, addr: u16, word: u16) -> NeonResult<()> {
         let simulator = self.controller.simulator().or_throw(cx)?;
 
-        simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent()).or_throw(cx)
-    }
+        simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent()).or_throw(cx)?;
 
+        Ok(())
+    }
+    fn get_mem_line(&self, addr: u16) -> &str {
+        self.mem_lines.get(&addr).map_or("", |s| s)
+    }
+    fn set_mem_line(&mut self, addr: u16, value: u16) {
+        let string = if (0x0020..0x007F).contains(&value) {
+            // ASCII
+            char::from(value as u8).to_string()
+        } else {
+            // Disassemble logic
+            match try_disassemble_line(value) {
+                Some(s) => format!("*{s}"),
+                None => String::new(),
+            }
+        };
+    
+        self.mem_lines.insert(addr, string);
+    }
     fn load_obj_file(&mut self, obj: ObjectFile) {
         let flags = SimFlags {
             machine_init: get_create_strategy(false),
@@ -108,6 +166,13 @@ impl SimPageContents {
         let sim = self.controller.reset(flags);
         sim.open_io(get_buffered_io());
         sim.load_obj_file(&obj);
+
+        // Set mem lines:
+        self.mem_lines.clear();
+        add_mem_lines_from_obj(&mut self.mem_lines, lc3_ensemble::sim::_os_obj_file());
+        add_mem_lines_from_obj(&mut self.mem_lines, &obj);
+        //
+        
         self.obj_file.replace(obj);
     }
     fn reset_machine(&mut self, init: MachineInitStrategy) {
@@ -115,6 +180,10 @@ impl SimPageContents {
         let sim = self.controller.reset(self.sim_flags);
         sim.open_io(get_buffered_io());
         self.obj_file.take();
+        self.mem_lines.clear();
+    }
+    fn get_sym_source(&self) -> Option<(&SymbolTable, &SourceInfo)> {
+        get_sym_source_from_obj(self.obj_file.as_ref()?)
     }
 }
 //--------- CONFIG FUNCTIONS ---------//
@@ -395,26 +464,29 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
     
     let mut sim_contents = sim_contents();
-    sim_contents.write_mem(&mut cx, addr, value)?;
+    sim_contents.write_mem(&mut cx, addr, value).try_into_js(&mut cx)
+}
+fn take_mem_changes(mut cx: FunctionContext) -> JsResult<JsArray> {
+    let mut sim_contents = sim_contents();
+    let simulator = sim_contents.controller.simulator().or_throw(&mut cx)?;
 
-    Ok(cx.undefined())
+    let changes: Vec<_> = simulator.observer.take_mem_changes().collect();
+    // Update mem lines:
+    for &addr in &changes {
+        let value = sim_contents.read_mem(&mut cx, addr)?;
+        sim_contents.set_mem_line(addr, value.get());
+    }
+    // Return mem lines:
+    changes.try_into_js(&mut cx)
 }
 fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
-    // fn(addr: u16) -> Result<String>
+    // fn(addr: u16, force_recompute: bool) -> Result<String>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
+
     let sim_contents = sim_contents();
+    let string = sim_contents.get_mem_line(addr);
     
-    'get_line: {
-        let Some(obj) = &sim_contents.obj_file else { break 'get_line };
-        let Some(sym) = obj.symbol_table() else { break 'get_line };
-        let Some(src_info) = sym.source_info() else { break 'get_line };
-    
-        let Some(lno) = sym.rev_lookup_line(addr) else { break 'get_line };
-        let Some(lspan) = src_info.line_span(lno) else { break 'get_line };
-        
-        return Ok(cx.string(&src_info.source()[lspan]))
-    }
-    Ok(cx.string(""))
+    Ok(cx.string(string))
 }
 fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(addr: u16, value: String) -> Result<()>
@@ -497,10 +569,7 @@ fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
     
     let sim_contents = sim_contents();
     'get_line: {
-        let Some(obj) = &sim_contents.obj_file else { break 'get_line };
-        let Some(sym) = obj.symbol_table() else { break 'get_line };
-        let Some(src_info) = sym.source_info() else { break 'get_line };
-    
+        let Some((sym, src_info)) = sim_contents.get_sym_source() else { break 'get_line };
         let Some(Range { start, end }) = sym.get_label_source(&label) else { break 'get_line };
         let (slno, scno) = src_info.get_pos_pair(start);
         let (elno, ecno) = src_info.get_pos_pair(end);
@@ -517,11 +586,7 @@ fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let sim_contents = sim_contents();
     'get_line: {
-        let Some(obj) = &sim_contents.obj_file else { break 'get_line };
-        let Some(sym) = obj.symbol_table() else { break 'get_line };
-        let Some(src_info) = sym.source_info() else { break 'get_line };
-    
-        
+        let Some((sym, src_info)) = sim_contents.get_sym_source() else { break 'get_line };
         let Some(lno) = sym.rev_lookup_line(addr) else { break 'get_line };
         let Some(Range { start, end }) = src_info.line_span(lno) else { break 'get_line };
         let (slno, scno) = src_info.get_pos_pair(start);
@@ -555,6 +620,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("setMemValue", set_mem_value)?;
     cx.export_function("getMemLine", get_mem_line)?;
     cx.export_function("setMemLine", set_mem_line)?;
+    cx.export_function("takeMemChanges", take_mem_changes)?;
     cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
     cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;
     cx.export_function("clearInput", clear_input)?;

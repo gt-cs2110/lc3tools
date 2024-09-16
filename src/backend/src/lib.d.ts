@@ -128,6 +128,14 @@ declare module "lc3-backend" {
     export function setMemLine(addr: number, line: string): void;
 
     /**
+     * Accesses the list of memory changes that occurred last execution.
+     * 
+     * It also wipes the list (making it empty if accessed again through this method)
+     * and updates the memory lines in accordance to the memory updates.
+     */
+    export function takeMemChanges(): number[];
+
+    /**
      * Sets the ignore privilege configuration.
      * @param status the status to set the configuration to.
      */

@@ -904,24 +904,20 @@ function updateUI(showUpdates = false, updateReg = true) {
   }
 
   // Memory
+  let updates: number[] = lc3.takeMemChanges();
   for (let i = 0; i < memView.value.data.length; i++) {
     let addr = toUint16(memView.value.start + i);
     const dataLine = memView.value.data[i];
 
-    const memVal = lc3.getMemValue(addr);
-    const prevVal = dataLine.value;
-
     dataLine.addr = addr;
-    dataLine.value = memVal;
+    dataLine.value = lc3.getMemValue(addr);
     dataLine.line = lc3.getMemLine(addr);
     // show label using symbol table
     dataLine.label = memView.value.symTable[addr]?.toUpperCase() ?? "";
   
-    // hack to highlight changed values within current display
-    // (lc3tools CLI doesn't track change "history" across all memory)
     dataLine.flash = false;
     dataLine.updated = false;
-    if (showUpdates && memVal !== prevVal) {
+    if (showUpdates && updates.includes(addr)) {
       dataLine.flash = true;
       setTimeout(() => {
         dataLine.flash = false;
