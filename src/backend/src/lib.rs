@@ -7,7 +7,7 @@ use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock, RwLockWriteGuard};
+use std::sync::{LazyLock, Mutex, MutexGuard, RwLockWriteGuard};
 
 use cast::{ResultExtJs, TryIntoJsValue};
 use lc3_ensemble::asm::{assemble_debug, ObjectFile, SourceInfo, SymbolTable};
@@ -15,29 +15,29 @@ use lc3_ensemble::ast::asm::try_disassemble_line;
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
-use lc3_ensemble::sim::io::BufferedIO;
+use lc3_ensemble::sim::device::{BufferedDisplay, BufferedKeyboard};
 use lc3_ensemble::sim::mem::{MachineInitStrategy, Word};
 use lc3_ensemble::sim::{MemAccessCtx, SimErr, SimFlags, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
 use sim::{SimAccessError, SimController};
 
-static INPUT_BUFFER: LazyLock<Arc<RwLock<VecDeque<u8>>>> = LazyLock::new(Arc::default);
-static PRINT_BUFFER: LazyLock<Arc<RwLock<Vec<u8>>>> = LazyLock::new(Arc::default);
+static INPUT_BUFFER: LazyLock<BufferedKeyboard> = LazyLock::new(BufferedKeyboard::default);
+static PRINT_BUFFER: LazyLock<BufferedDisplay>  = LazyLock::new(BufferedDisplay::default);
 
 /// Creates a write guard to [`INPUT_BUFFER`].
 fn input_writer() -> RwLockWriteGuard<'static, VecDeque<u8>> {
-    INPUT_BUFFER.write()
+    INPUT_BUFFER
+        .get_buffer()
+        .write()
         .unwrap_or_else(|e| e.into_inner())
 }
 /// Creates a write guard to [`PRINT_BUFFER`].
 fn print_writer() -> RwLockWriteGuard<'static, Vec<u8>> {
-    PRINT_BUFFER.write()
+    PRINT_BUFFER
+        .get_buffer()
+        .write()
         .unwrap_or_else(|e| e.into_inner())
-}
-/// Creates a BufferedIO value that can be set as the Simulator's IO.
-fn get_buffered_io() -> BufferedIO {
-    BufferedIO::with_bufs(Arc::clone(&INPUT_BUFFER), Arc::clone(&PRINT_BUFFER))
 }
 
 fn sim_contents() -> MutexGuard<'static, SimPageContents> {
@@ -159,28 +159,25 @@ impl SimPageContents {
         self.mem_lines.insert(addr, string);
     }
     fn load_obj_file(&mut self, obj: ObjectFile) {
-        let flags = SimFlags {
-            machine_init: get_create_strategy(false),
-            ..self.sim_flags
-        };
-        let sim = self.controller.reset(flags);
-        sim.open_io(get_buffered_io());
+        let sim = self.reset_machine(get_create_strategy(false));
         sim.load_obj_file(&obj);
-
+        
         // Set mem lines:
-        self.mem_lines.clear();
         add_mem_lines_from_obj(&mut self.mem_lines, lc3_ensemble::sim::_os_obj_file());
         add_mem_lines_from_obj(&mut self.mem_lines, &obj);
         //
-        
+
         self.obj_file.replace(obj);
     }
-    fn reset_machine(&mut self, init: MachineInitStrategy) {
+    fn reset_machine(&mut self, init: MachineInitStrategy) -> &mut Simulator {
         self.sim_flags.machine_init = init;
         let sim = self.controller.reset(self.sim_flags);
-        sim.open_io(get_buffered_io());
+        sim.device_handler.set_keyboard(INPUT_BUFFER.duplicate());
+        sim.device_handler.set_display(PRINT_BUFFER.duplicate());
         self.obj_file.take();
         self.mem_lines.clear();
+
+        sim
     }
     fn get_sym_source(&self) -> Option<(&SymbolTable, &SourceInfo)> {
         get_sym_source_from_obj(self.obj_file.as_ref()?)
