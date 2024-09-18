@@ -1,187 +1,57 @@
 mod err;
 mod sim;
 mod cast;
+mod obj;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{LazyLock, Mutex, MutexGuard, RwLockWriteGuard};
+use std::sync::{LazyLock, Mutex, MutexGuard};
 
 use cast::{ResultExtJs, TryIntoJsValue};
-use lc3_ensemble::asm::{assemble_debug, ObjectFile, SourceInfo, SymbolTable};
-use lc3_ensemble::ast::asm::try_disassemble_line;
+use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
-use lc3_ensemble::sim::device::{BufferedDisplay, BufferedKeyboard};
-use lc3_ensemble::sim::mem::{MachineInitStrategy, Word};
-use lc3_ensemble::sim::{MemAccessCtx, SimErr, SimFlags, Simulator};
+use lc3_ensemble::sim::mem::MachineInitStrategy;
+use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
 use err::{error_reporter, io_reporter, simple_reporter};
-use sim::{SimAccessError, SimController};
+use obj::ObjContents;
+use sim::SimController;
 
-static INPUT_BUFFER: LazyLock<BufferedKeyboard> = LazyLock::new(BufferedKeyboard::default);
-static PRINT_BUFFER: LazyLock<BufferedDisplay>  = LazyLock::new(BufferedDisplay::default);
+static CONTROLLER: LazyLock<Mutex<SimController>> = LazyLock::new(Mutex::default);
+static SIM_CONTENTS: LazyLock<Mutex<ObjContents>> = LazyLock::new(Mutex::default);
 
-/// Creates a write guard to [`INPUT_BUFFER`].
-fn input_writer() -> RwLockWriteGuard<'static, VecDeque<u8>> {
-    INPUT_BUFFER
-        .get_buffer()
-        .write()
-        .unwrap_or_else(|e| e.into_inner())
+fn obj_contents() -> MutexGuard<'static, ObjContents> {
+    SIM_CONTENTS.lock().unwrap_or_else(|e| e.into_inner())
 }
-/// Creates a write guard to [`PRINT_BUFFER`].
-fn print_writer() -> RwLockWriteGuard<'static, Vec<u8>> {
-    PRINT_BUFFER
-        .get_buffer()
-        .write()
-        .unwrap_or_else(|e| e.into_inner())
+fn controller() -> MutexGuard<'static, SimController> {
+    CONTROLLER.lock().unwrap_or_else(|e| e.into_inner())
 }
-
-fn sim_contents() -> MutexGuard<'static, SimPageContents> {
-    static SIM_CONTENTS: LazyLock<Mutex<SimPageContents>> = LazyLock::new(|| {
-        Mutex::new(SimPageContents {
-            controller: SimController::new(),
-            obj_file: None,
-            sim_flags: Default::default(),
-            mem_lines: Default::default()
-        })
-    });
-    
-    match SIM_CONTENTS.lock() {
-        Ok(g) => g,
-        Err(e) => {
-            // Errors don't put the page contents into an invalid state,
-            // so it should be okay to just do this
-            SIM_CONTENTS.clear_poison();
-            e.into_inner()
-        }
-    }
-}
-
-fn get_create_strategy(zeroed: bool) -> MachineInitStrategy {
-    match zeroed {
+fn reset_machine(zeroed: bool) {
+    let init = match zeroed {
         true => MachineInitStrategy::Known { value: 0 },
         false => MachineInitStrategy::Unseeded
-    }
+    };
+
+    let mut controller = controller();
+    controller.update_flags(|f| f.machine_init = init);
+    controller.reset();
+
+    obj_contents().clear();
 }
-
-// Symbol access stuff
-fn get_sym_source_from_obj(obj: &ObjectFile) -> Option<(&SymbolTable, &SourceInfo)> {
-    let sym = obj.symbol_table()?;
-    let src = sym.source_info()?;
-
-    Some((sym, src))
-}
-fn add_mem_lines_from_obj(mem_lines: &mut HashMap<u16, String>, obj: &ObjectFile) {
-    if let Some((sym, src_info)) = get_sym_source_from_obj(obj) {
-        // For each source line in the object file,
-        // if it maps to an address, add the mapping (addr, source line) to mem_lines.
-        mem_lines.extend({
-            sym.line_iter()
-                .filter_map(|(lno, addr)| {
-                    let span = src_info.line_span(lno)?;
-                    Some((addr, src_info.source()[span].to_string()))
-                })
-        });
-
-        // Update sources to better handle .stringz:
-        let labels = obj.addr_iter()
-            .filter_map(|(addr, m_val)| match m_val {
-                Some(val @ 0x0020..0x007F) => Some((addr, char::from(val as u8).to_string())),
-                _ => None
-            });
-
-        for (addr, label) in labels {
-            let new_label = match mem_lines.get(&addr) {
-                Some(orig_label) => format!("{orig_label} ({label})"),
-                None => label,
-            };
-            mem_lines.insert(addr, new_label);
-        }
-    }
-}
-//
-
-struct SimPageContents {
-    controller: SimController,
-    obj_file: Option<ObjectFile>,
-    mem_lines: HashMap<u16, String>,
-    sim_flags: SimFlags
-}
-impl SimPageContents {
-    /// Updates the simulator flags for the controller.
-    fn update_sim_flags(&mut self, f: impl FnOnce(&mut SimFlags)) {
-        f(&mut self.sim_flags);
-        // Apply immediately to simulator if possible.
-        // If not, this will be applied on execution or reset.
-        let Ok(sim) = self.controller.simulator() else { return };
-        sim.flags = self.sim_flags;
-    }
-    /// Executes and applies flags.
-    fn execute<T>(&mut self, 
-        exec: impl FnOnce(&mut Simulator) -> T + Send + 'static,
-        close: impl FnOnce(T) + Send + 'static
-    ) -> Result<(), SimAccessError> {
-        self.controller.execute(exec, close, self.sim_flags)
-    }
-
-    fn read_mem(&mut self, cx: &mut FunctionContext, addr: u16) -> NeonResult<Word> {
-        let simulator = self.controller.simulator().or_throw(cx)?;
-
-        simulator.read_mem(addr, MemAccessCtx::omnipotent()).or_throw(cx)
-    }
-
-    fn write_mem(&mut self, cx: &mut FunctionContext, addr: u16, word: u16) -> NeonResult<()> {
-        let simulator = self.controller.simulator().or_throw(cx)?;
-
-        simulator.write_mem(addr, Word::new_init(word), MemAccessCtx::omnipotent()).or_throw(cx)?;
-
-        Ok(())
-    }
-    fn get_mem_line(&self, addr: u16) -> &str {
-        self.mem_lines.get(&addr).map_or("", |s| s)
-    }
-    fn set_mem_line(&mut self, addr: u16, value: u16) {
-        let string = if (0x0020..0x007F).contains(&value) {
-            // ASCII
-            char::from(value as u8).to_string()
-        } else {
-            // Disassemble logic
-            match try_disassemble_line(value) {
-                Some(s) => format!("*{s}"),
-                None => String::new(),
-            }
-        };
+fn load_obj_file(obj: ObjectFile) {
+    reset_machine(false);
+    let mut controller = controller();
     
-        self.mem_lines.insert(addr, string);
-    }
-    fn load_obj_file(&mut self, obj: ObjectFile) {
-        let sim = self.reset_machine(get_create_strategy(false));
-        sim.load_obj_file(&obj);
-        
-        // Set mem lines:
-        add_mem_lines_from_obj(&mut self.mem_lines, lc3_ensemble::sim::_os_obj_file());
-        add_mem_lines_from_obj(&mut self.mem_lines, &obj);
-        //
+    controller.simulator()
+        .unwrap_or_else(|_| panic!("simulator should've been idle after reset"))
+        .load_obj_file(&obj);
 
-        self.obj_file.replace(obj);
-    }
-    fn reset_machine(&mut self, init: MachineInitStrategy) -> &mut Simulator {
-        self.sim_flags.machine_init = init;
-        let sim = self.controller.reset(self.sim_flags);
-        sim.device_handler.set_keyboard(INPUT_BUFFER.duplicate());
-        sim.device_handler.set_display(PRINT_BUFFER.duplicate());
-        self.obj_file.take();
-        self.mem_lines.clear();
-
-        sim
-    }
-    fn get_sym_source(&self) -> Option<(&SymbolTable, &SourceInfo)> {
-        get_sym_source_from_obj(self.obj_file.as_ref()?)
-    }
+    obj_contents().load_contents(obj);
 }
 //--------- CONFIG FUNCTIONS ---------//
 
@@ -198,7 +68,7 @@ fn set_enable_liberal_asm(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(enable: bool) -> Result<()>
     let ignore_privilege = cx.argument::<JsBoolean>(0)?.value(&mut cx);
-    sim_contents().update_sim_flags(|f| f.ignore_privilege = ignore_privilege);
+    controller().update_flags(|f| f.ignore_privilege = ignore_privilege);
 
     Ok(cx.undefined())
 }
@@ -208,7 +78,7 @@ fn set_pause_on_fatal_trap(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // if pause_on_fatal_trap is true, we're applying "virtual" mode
     // i.e., these are inverses of each other
     let use_real_traps = !cx.argument::<JsBoolean>(0)?.value(&mut cx);
-    sim_contents().update_sim_flags(|f| f.use_real_traps = use_real_traps);
+    controller().update_flags(|f| f.use_real_traps = use_real_traps);
     
     Ok(cx.undefined())
 }
@@ -217,14 +87,14 @@ fn set_pause_on_fatal_trap(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn get_and_clear_output(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn() -> Result<String>
-    let bytes = std::mem::take(&mut *print_writer());
+    let bytes = std::mem::take(&mut *controller().output_buf());
     let string = String::from_utf8_lossy(&bytes);
     Ok(cx.string(string))
 }
 
 fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> Result<()>
-    print_writer().clear();
+    controller().output_buf().clear();
     Ok(cx.undefined())
 }
 
@@ -248,14 +118,14 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(in_path).unwrap();
 
     let ast = parse_ast(&src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_writer(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     let asm = assemble_debug(ast, &src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *print_writer(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     
     std::fs::write(&out_path, asm.write_bytes())
-        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *print_writer(), &mut cx))?;
+        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
 
-    writeln!(print_writer(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
 }
 
@@ -263,17 +133,15 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     // fn () -> Result<Object>
-    let obj = cx.empty_object();
+    
+    let contents = obj_contents();
+    let mut map = HashMap::new();
 
-    let contents = sim_contents();
-    let Some(obj_file) = contents.obj_file.as_ref() else { return Ok(obj) };
-    let Some(sym) = obj_file.symbol_table() else { return Ok(obj) };
-    for (label, addr) in sym.label_iter() {
-        let key = cx.number(addr);
-        let val = cx.string(label);
-        obj.set(&mut cx, key, val)?;
+    if let Some((sym, _)) = contents.get_sym_source() {
+        map.extend(sym.label_iter().map(|(label, addr)| (addr, label)));
     }
-    Ok(obj)
+
+    map.try_into_js(&mut cx)
 }
 fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: string) -> Result<()>
@@ -284,10 +152,10 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let bytes = std::fs::read(in_path).unwrap();
     
     let Some(obj) = ObjectFile::read_bytes(&bytes) else {
-        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *print_writer(), &mut cx));
+        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
     };
-
-    sim_contents().load_obj_file(obj);
+    
+    load_obj_file(obj);
     Ok(cx.undefined())
 }
 fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -299,13 +167,13 @@ fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
 
-    sim_contents().reset_machine(get_create_strategy(true));
+    reset_machine(true);
     Ok(cx.undefined())
 }
 fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fn(err) -> ()) -> Result<()>
 
-    sim_contents().reset_machine(get_create_strategy(false));
+    reset_machine(false);
     Ok(cx.undefined())
 }
 
@@ -313,17 +181,15 @@ fn randomize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), SimErr>) {
     channel.send(move |mut cx| {
         let this = cx.undefined();
-        let arg = cx.undefined().as_value(&mut cx);
+        let arg = cx.undefined().upcast();
 
         if let Err(e) = result {
-            let pc = sim_contents()
-                .controller
-                .simulator()
+            let pc = controller().simulator()
                 .or_throw(&mut cx)?
                 .prefetch_pc();
             
             simple_reporter(&format!("{e} (instruction x{pc:04X})"))
-                .report(&mut *print_writer());
+                .report(&mut *controller().output_buf());
         }
 
         cb.into_inner(&mut cx)
@@ -338,7 +204,7 @@ fn run(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
 
-    sim_contents().execute(
+    controller().execute(
         Simulator::run,
         |result| finish_execution(channel, done_cb, result)
     ).or_throw(&mut cx)?;
@@ -350,8 +216,7 @@ fn step_in(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents()
-        .execute(
+    controller().execute(
             Simulator::step_in,
             |result| finish_execution(channel, done_cb, result)
         )
@@ -363,8 +228,7 @@ fn step_out(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents()
-        .execute(
+    controller().execute(
             Simulator::step_out,
             |result| finish_execution(channel, done_cb, result)
         )
@@ -376,8 +240,7 @@ fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let channel = cx.channel();
     let done_cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     
-    sim_contents()
-        .execute(
+    controller().execute(
             Simulator::step_over,
             |result| finish_execution(channel, done_cb, result)
         )
@@ -385,9 +248,8 @@ fn step_over(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         .try_into_js(&mut cx)
 }
 fn pause(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    sim_contents().controller.pause()
-        .or_throw(&mut cx)
-        .try_into_js(&mut cx)
+    controller().pause();
+    Ok(cx.undefined())
 }
 
 fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
@@ -395,8 +257,8 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // reg here can be R0-7, PC, PSR, MCR
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
 
-    let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator().or_throw(&mut cx)?;
+    let mut controller = controller();
+    let simulator = controller.simulator().or_throw(&mut cx)?;
 
     let value = match &*reg {
         "r0"  => simulator.reg_file[R0].get(),
@@ -415,7 +277,6 @@ fn get_reg_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
         }
         reg => cx.throw_error(format!("undefined register {reg:?}"))?
     };
-    std::mem::drop(sim_contents);
     
     Ok(cx.number(value))
 }
@@ -425,8 +286,8 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let reg = cx.argument::<JsString>(0)?.value(&mut cx);
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
 
-    let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator().or_throw(&mut cx)?;
+    let mut controller = controller();
+    let simulator = controller.simulator().or_throw(&mut cx)?;
 
     match &*reg {
         "r0"  => simulator.reg_file[R0].set(value),
@@ -438,11 +299,10 @@ fn set_reg_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         "r6"  => simulator.reg_file[R6].set(value),
         "r7"  => simulator.reg_file[R7].set(value),
         "pc"  => simulator.pc = value,
-        "psr" => sim_contents.write_mem(&mut cx, 0xFFFC, value)?,
-        "mcr" => sim_contents.write_mem(&mut cx, 0xFFFE, value)?,
+        "psr" => controller.write_mem(0xFFFC, value).or_throw(&mut cx)?,
+        "mcr" => controller.write_mem(0xFFFE, value).or_throw(&mut cx)?,
         reg => cx.throw_error(format!("undefined register {reg:?}"))?
     };
-    std::mem::drop(sim_contents);
     
     Ok(cx.undefined())
 }
@@ -450,8 +310,9 @@ fn get_mem_value(mut cx: FunctionContext) -> JsResult<JsNumber> {
     // fn (addr: u16) -> Result<u16>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
-    let mut sim_contents = sim_contents();
-    let value = sim_contents.read_mem(&mut cx, addr)?.get();
+    let value = controller().read_mem(addr)
+        .or_throw(&mut cx)?
+        .get();
 
     Ok(cx.number(value))
 }
@@ -460,18 +321,20 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let addr  = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
     
-    let mut sim_contents = sim_contents();
-    sim_contents.write_mem(&mut cx, addr, value).try_into_js(&mut cx)
+    controller().write_mem(addr, value)
+        .or_throw(&mut cx)
+        .try_into_js(&mut cx)
 }
 fn take_mem_changes(mut cx: FunctionContext) -> JsResult<JsArray> {
-    let mut sim_contents = sim_contents();
-    let simulator = sim_contents.controller.simulator().or_throw(&mut cx)?;
-
+    let mut controller = controller();
+    let mut contents = obj_contents();
+    
+    let simulator = controller.simulator().or_throw(&mut cx)?;
     let changes: Vec<_> = simulator.observer.take_mem_changes().collect();
     // Update mem lines:
     for &addr in &changes {
-        let value = sim_contents.read_mem(&mut cx, addr)?;
-        sim_contents.set_mem_line(addr, value.get());
+        let value = controller.read_mem(addr).or_throw(&mut cx)?;
+        contents.set_mem_line(addr, value.get());
     }
     // Return mem lines:
     changes.try_into_js(&mut cx)
@@ -480,8 +343,8 @@ fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
     // fn(addr: u16, force_recompute: bool) -> Result<String>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
-    let sim_contents = sim_contents();
-    let string = sim_contents.get_mem_line(addr);
+    let contents = obj_contents();
+    let string = contents.get_mem_line(addr);
     
     Ok(cx.string(string))
 }
@@ -492,7 +355,7 @@ fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
-    input_writer().clear();
+    controller().input_buf().clear();
     Ok(cx.undefined())
 }
 
@@ -500,13 +363,14 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(input: string) -> Result<()>
     // string is supposed to be char, though
     let input = cx.argument::<JsString>(0)?.value(&mut cx);
-    
+    let mut controller = controller();
+
     // ignore input requests unless they're happening while the sim is running
-    if let Err(sim::SimAccessError::NotAvailable) = sim_contents().controller.simulator() {
+    if controller.is_running() {
         let &[ch] = input.as_bytes() else {
             return cx.throw_error("more than one byte was sent at once");
         };
-        input_writer().push_back(ch);
+        controller.input_buf().push_back(ch);
     }
 
     Ok(cx.undefined())
@@ -515,24 +379,21 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn(addr: u16) -> Result<bool>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    let value = sim_contents()
-        .controller
-        .simulator()
-        .or_throw(&mut cx)?
-        .breakpoints
-        .insert(Breakpoint::PC(addr));
+    
+    let mut controller = controller();
+    let sim = controller.simulator().or_throw(&mut cx)?;
+    let value = sim.breakpoints.insert(Breakpoint::PC(addr));
+    
     Ok(cx.boolean(value))
 }
 
 fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn(addr: u16) -> Result<bool>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-    let result = sim_contents()
-        .controller
-        .simulator()
-        .or_throw(&mut cx)?
-        .breakpoints
-        .remove(&Breakpoint::PC(addr));
+
+    let mut controller = controller();
+    let sim = controller.simulator().or_throw(&mut cx)?;
+    let result = sim.breakpoints.remove(&Breakpoint::PC(addr));
 
     Ok(cx.boolean(result))
 }
@@ -545,28 +406,22 @@ fn get_inst_exec_count(mut cx: FunctionContext) -> JsResult<JsNumber> {
 
 fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn() -> Result<bool>
-    let hit = sim_contents()
-        .controller
-        .simulator()
-        .or_else(|e| cx.throw_error(e.to_string()))?
+    let mut controller = controller();
+    let hit = controller.simulator()
+        .or_throw(&mut cx)?
         .hit_breakpoint();
     
     Ok(cx.boolean(hit))
 }
 fn is_sim_running(mut cx: FunctionContext) -> JsResult<JsBoolean> {
-    let hit = sim_contents()
-        .controller
-        .simulator()
-        .is_err();
-
-    Ok(cx.boolean(hit))
+    Ok(cx.boolean(controller().is_running()))
 }
 fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
     let label = cx.argument::<JsString>(0)?.value(&mut cx);
     
-    let sim_contents = sim_contents();
+    let contents = obj_contents();
     'get_line: {
-        let Some((sym, src_info)) = sim_contents.get_sym_source() else { break 'get_line };
+        let Some((sym, src_info)) = contents.get_sym_source() else { break 'get_line };
         let Some(Range { start, end }) = sym.get_label_source(&label) else { break 'get_line };
         let (slno, scno) = src_info.get_pos_pair(start);
         let (elno, ecno) = src_info.get_pos_pair(end);
@@ -581,9 +436,9 @@ fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
 fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
-    let sim_contents = sim_contents();
+    let contents = obj_contents();
     'get_line: {
-        let Some((sym, src_info)) = sim_contents.get_sym_source() else { break 'get_line };
+        let Some((sym, src_info)) = contents.get_sym_source() else { break 'get_line };
         let Some(lno) = sym.rev_lookup_line(addr) else { break 'get_line };
         let Some(Range { start, end }) = src_info.line_span(lno) else { break 'get_line };
         let (slno, scno) = src_info.get_pos_pair(start);
