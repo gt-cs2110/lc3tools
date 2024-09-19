@@ -74,9 +74,9 @@ dependencies = [
 
 [[package]]
 name = "lc3-ensemble"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cabc37b94b9a1f9f53cd96453760c4bf11946ba03e7de7ce9218da8542e9da4"
+checksum = "5b6767cf84406b7494daeac3124d3ac0c82a53c700cf091096519d0ace757146"
 dependencies = [
  "crossbeam-channel",
  "logos",
