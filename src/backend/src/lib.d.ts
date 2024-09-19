@@ -28,8 +28,26 @@ declare module "lc3-backend" {
      * Sets the enable liberal ASM configuration.
      * @param status the status to set the configuration to
      */
-    export function setEnableLiberalAsm(status: boolean): boolean;
+    export function setEnableLiberalAsm(status: boolean): void;
     
+    /**
+     * Sets the ignore privilege configuration.
+     * @param status the status to set the configuration to.
+     */
+    export function setIgnorePrivilege(status: boolean): void;
+
+    /**
+     * Sets the pause on fatal trap configuration.
+     * @param status the status to set the configuration to.
+     */
+    export function setPauseOnFatalTrap(status: boolean): void;
+    
+    /**
+     * Sets the strict mem accesses configuration.
+     * @param status the status to set the configuration to.
+     */
+    export function setStrictMemAccesses(status: boolean): void;
+
     /**
      * Loads an object file into the simulator,
      * as well as clearing any state from the previous run.
@@ -134,18 +152,6 @@ declare module "lc3-backend" {
      * and updates the memory lines in accordance to the memory updates.
      */
     export function takeMemChanges(): number[];
-
-    /**
-     * Sets the ignore privilege configuration.
-     * @param status the status to set the configuration to.
-     */
-    export function setIgnorePrivilege(status: boolean): boolean;
-
-    /**
-     * Sets the pause on fatal trap configuration.
-     * @param status the status to set the configuration to.
-     */
-    export function setPauseOnFatalTrap(status: boolean): boolean;
 
     /**
      * Clears the simulator console input.

@@ -8,6 +8,7 @@ export type LC3Settings = {
     liberal_asm: boolean,
     ignore_update: boolean,
     pause_on_fatal_trap: boolean,
+    strict_mem_accesses: boolean,
     clear_out_on_reload: boolean,
     autocomplete: "none" | "basic" | "full"
 }
@@ -21,6 +22,7 @@ export const useSettingsStore = defineStore("settings", {
         liberal_asm: false,
         ignore_update: false,
         pause_on_fatal_trap: true,
+        strict_mem_accesses: false,
         clear_out_on_reload: true,
         autocomplete: "full"
     } as LC3Settings)

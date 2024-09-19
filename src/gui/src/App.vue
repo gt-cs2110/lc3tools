@@ -195,6 +195,18 @@
                       @change="saveSettings('liberal_asm')"
                     />
                   </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <div class="flex-grow-1">
+                      <h3>Apply strict memory access rules</h3>
+                    </div>
+                    <v-switch
+                      v-model="settings.strict_mem_accesses"
+                      class="flex-shrink-1"
+                      color="primary"
+                      hide-details
+                      @change="saveSettings('strict_mem_accesses')"
+                    />
+                  </div>
                   <div class="d-flex justify-center">
                     <h4>Issues? Post on CS 2110 Ed/Piazza!</h4>
                   </div>
@@ -350,6 +362,13 @@ settings.$patch({
   liberal_asm: false
 });
 
+const lc3SettingCalls = {
+  "ignore_privilege": lc3.setIgnorePrivilege,
+  "liberal_asm": lc3.setEnableLiberalAsm,
+  "pause_on_fatal_trap": lc3.setPauseOnFatalTrap,
+  "strict_mem_accesses": lc3.setStrictMemAccesses
+} satisfies Partial<Record<keyof LC3Settings, (status: boolean) => void>>;
+
 onMounted(() => {
   autoUpdater.on((message, progress) => {
     if (message === "update_available") {
@@ -364,23 +383,24 @@ onMounted(() => {
       }
   })
 
-  lc3.setIgnorePrivilege(settings.ignore_privilege);
-  lc3.setEnableLiberalAsm(settings.liberal_asm);
-  lc3.setPauseOnFatalTrap(settings.pause_on_fatal_trap);
+  for (let [key, f] of Object.entries(lc3SettingCalls)) {
+    f(settings[key as keyof typeof lc3SettingCalls]);
+  }
 })
 
 // Settings
 type SettingKeys = keyof LC3Settings | "all";
 function saveSettings(setting: SettingKeys) {
   if (setting === "all") {
-    lc3.setIgnorePrivilege(settings.ignore_privilege);
-    lc3.setEnableLiberalAsm(settings.liberal_asm);
-    lc3.setPauseOnFatalTrap(settings.pause_on_fatal_trap);
+    for (let [key, f] of Object.entries(lc3SettingCalls)) {
+      f(settings[key as keyof typeof lc3SettingCalls]);
+    }
     storage.setAll(settings);
   } else {
-    if (setting === "ignore_privilege") lc3.setIgnorePrivilege(settings.ignore_privilege);
-    if (setting === "liberal_asm") lc3.setEnableLiberalAsm(settings.liberal_asm);
-    if (setting === "pause_on_fatal_trap") lc3.setPauseOnFatalTrap(settings.pause_on_fatal_trap);
+    if (setting in lc3SettingCalls) {
+      let s = setting as keyof typeof lc3SettingCalls;
+      lc3SettingCalls[s](settings[s]);
+    }
     storage.set(setting, settings[setting]);
   }
 }

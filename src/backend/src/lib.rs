@@ -83,6 +83,13 @@ fn set_pause_on_fatal_trap(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     
     Ok(cx.undefined())
 }
+fn set_strict_mem_accesses(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(enable: bool) -> Result<()>
+    let strict = cx.argument::<JsBoolean>(0)?.value(&mut cx);
+    controller().update_flags(|f| f.strict = strict);
+    
+    Ok(cx.undefined())
+}
 
 //--------- CONSOLE FUNCTIONS ---------//
 
@@ -538,6 +545,9 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("assemble", assemble)?;
     cx.export_function("getCurrSymTable", get_curr_sym_table)?;
     cx.export_function("setEnableLiberalAsm", set_enable_liberal_asm)?;
+    cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
+    cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;
+    cx.export_function("setStrictMemAccesses", set_strict_mem_accesses)?;
     cx.export_function("loadObjectFile", load_object_file)?;
     cx.export_function("restartMachine", restart_machine)?;
     cx.export_function("reinitializeMachine", reinitialize_machine)?;
@@ -554,8 +564,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getMemLine", get_mem_line)?;
     cx.export_function("setMemLine", set_mem_line)?;
     cx.export_function("takeMemChanges", take_mem_changes)?;
-    cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
-    cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;
     cx.export_function("clearInput", clear_input)?;
     cx.export_function("addInput", add_input)?;
     cx.export_function("getAndClearOutput", get_and_clear_output)?;
