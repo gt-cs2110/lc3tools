@@ -10,7 +10,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx,.vue ."
+    "lint": "eslint --ext .ts,.tsx,.vue .",
+    "build-backend": "npm run --prefix ../backend build"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.4.0",
