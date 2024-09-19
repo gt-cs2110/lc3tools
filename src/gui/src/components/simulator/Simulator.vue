@@ -291,6 +291,134 @@
               <h3 class="header-bar-title">
                 Memory
               </h3>
+              <v-btn
+                class="header-bar-right"
+                icon
+                flat
+                :variant="timerBtnVariant"
+                :color="timerBtnColor"
+                @click="resetTimerInputs()"
+              >
+                <v-badge
+                  v-model="timerRemBadgeShow"
+                  location="top start"
+                >
+                  <template #badge>
+                    <strong>{{ sim.timer.remaining || '' }}</strong>
+                  </template>
+                  <v-icon :icon="mdiTimer" />
+                </v-badge>
+                <v-tooltip
+                  location="left"
+                  activator="parent"
+                  text="Configure Timer Interrupt"
+                />
+                <v-menu
+                  activator="parent"
+                  :close-on-content-click="false"
+                >
+                  <v-card>
+                    <v-container>
+                      <!-- Should use v-row, v-col, but those are grid not flex -->
+                      <div class="d-flex justify-space-between align-center ga-5">
+                        <h3 class="flex-grow-1">
+                          Enable timer interrupt
+                        </h3>
+                        <v-switch
+                          v-model="sim.timer.enabled"
+                          class="flex-shrink-1"
+                          color="primary"
+                          hide-details
+                          @change="setTimerStatus()"
+                        />
+                      </div>
+                      <div class="d-flex justify-space-between align-center ga-5">
+                        <h3 class="flex-grow-1">
+                          Hide timer badge
+                        </h3>
+                        <v-switch
+                          v-model="sim.timer.hide_badge"
+                          class="flex-shrink-1"
+                          color="primary"
+                          hide-details
+                          :disabled="!sim.timer.enabled"
+                        />
+                      </div>
+                      <v-container>
+                        <v-row>
+                          <v-col class="align-self-center">
+                            <h3>
+                              Vector
+                            </h3>
+                          </v-col>
+                          <v-col class="py-0">
+                            <v-form @submit.prevent="setTimerProperty($event, 'vect')">
+                              <v-text-field
+                                v-model="timerInputs.vect"
+                                color="primary"
+                                variant="underlined"
+                                :disabled="!sim.timer.enabled"
+                                :rules="[rules.hex, rules.size8bit]"
+                              />
+                            </v-form>
+                          </v-col>
+                        </v-row>
+                        <v-row>
+                          <v-col class="align-self-center">
+                            <h3>
+                              Priority
+                            </h3>
+                          </v-col>
+                          <v-col class="py-0">
+                            <v-form @submit.prevent="setTimerProperty($event, 'priority')">
+                              <v-text-field
+                                v-model="timerInputs.priority"
+                                color="primary"
+                                variant="underlined"
+                                :disabled="!sim.timer.enabled"
+                                :rules="[rules.dec, rangeRule(0, 7)]"
+                              />
+                            </v-form>
+                          </v-col>
+                        </v-row>
+                        <v-row>
+                          <v-col class="align-self-center">
+                            <h3>
+                              Repeat
+                            </h3>
+                          </v-col>
+                          <v-col class="py-0">
+                            <v-form @submit.prevent="setTimerProperty($event, 'max')">
+                              <v-text-field
+                                v-model="timerInputs.max"
+                                color="primary"
+                                variant="underlined"
+                                :disabled="!sim.timer.enabled"
+                                :rules="[rules.dec, rangeRule(0, 2**31 - 1)]"
+                              />
+                            </v-form>
+                          </v-col>
+                        </v-row>
+                      </v-container>
+                      <div class="d-flex justify-space-between align-center">
+                        <h3>
+                          Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
+                        </h3>
+                      </div>
+                      <div class="d-flex justify-end pt-3">
+                        <v-btn
+                          variant="flat"
+                          color="primary"
+                          :disabled="!sim.timer.enabled"
+                          @click="resetTimer"
+                        >
+                          Reset
+                        </v-btn>
+                      </div>
+                    </v-container>
+                  </v-card>
+                </v-menu>
+              </v-btn>
             </div>
             <v-data-table
               class="elevation-4 sim-data-table"
@@ -469,17 +597,19 @@
 
           <div id="controls">
             <div id="jump-to-location">
-              <v-text-field
-                v-model="jumpToLocInput"
-                single-line
-                variant="underlined"
-                label="Jump To Location"
-                @change="jumpToMemViewStr()"
-              />
+              <v-form @submit.prevent="jumpToMemViewStr()">
+                <v-text-field
+                  v-model="jumpToLocInput"
+                  single-line
+                  variant="underlined"
+                  label="Jump To Location"
+                />
+              </v-form>
             </div>
             <div id="jump-buttons">
               <v-btn
-                variant="text"
+                variant="flat"
+                class="mr-3"
                 @click="jumpToPC(true)"
               >
                 <span class="title">PC</span>
@@ -556,12 +686,12 @@
 import { useActiveFileStore } from '../../store/active_file';
 import { useSettingsStore } from '../../store/settings';
 // Vue stuff
-import { onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle } from '@mdi/js';
+import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle, mdiTimer } from '@mdi/js';
 
 const { lc3, dialog, fs } = window.api;
 
@@ -584,7 +714,15 @@ const sim = ref({
     { flash: false, updated: false, name: "mcr", value: 0 }
   ],
   breakpoints: [] as number[],
-  running: false
+  running: false,
+  timer: {
+    enabled: false,
+    hide_badge: false,
+    vect: 0x81,
+    priority: 4,
+    remaining: 0,
+    max: 0,
+  }
 })
 const memView = ref({
   start: 0x3000,
@@ -597,13 +735,32 @@ const memView = ref({
 const isSnackBarVisible = ref(false);
 const consoleStr = ref("");
 const jumpToLocInput = ref("");
+const timerInputs = ref({
+  vect: "x81",
+  priority: "4",
+  max: "50"
+});
+
+const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
+const timerBtnVariant = computed(() => {
+  if (sim.value.timer.enabled) {
+    if (!sim.value.running && sim.value.timer.remaining == 0) return "flat";
+    return "tonal";
+  }
+  return "text";
+});
+const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : undefined);
 let lastLoadedFile: string | null = null;
-let pollOutputHandle: number | null = null;
+let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
 let memScrollOffset = 0;
 
 type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
+const rangeRule = (min: number, max: number) => (value: string) => {
+  let intValue = parseInputString(value);
+  return min <= intValue && intValue <= max || `Value must be between ${min} and ${max}`;
+};
 const rules: Record<string, ValidationRule> = {
   hex(value: string) {
     return /^0?x[0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
@@ -617,6 +774,10 @@ const rules: Record<string, ValidationRule> = {
       intValue === toInt16(intValue) || intValue === toUint16(intValue) ||
       "Value must be between x0000 and xFFFF"
     );
+  },
+  size8bit(value: string) {
+    let intValue = parseInputString(value);
+    return intValue === (intValue & 0xFF) || "Value must be between x00 and xFF";
   }
 }
 type ValidationRule = (value: string) => boolean | string;
@@ -738,7 +899,7 @@ function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
   if (!sim.value.running) {
     sim.value.running = true;
 
-    startPollOutput();
+    startPollIO();
 
     return new Promise<void>((resolve, reject) => {
       let callback = (error: Error) => {
@@ -781,9 +942,12 @@ function randomizeMachine() {
   updateUI();
 }
 
-function startPollOutput() {
+function startPollIO() {
   if (typeof pollOutputHandle !== "number") {
-    pollOutputHandle = setInterval(updateConsole, 50) as unknown as number;
+    pollOutputHandle = setInterval(() => {
+      updateConsole();
+      updateTimer();
+    }, 50);
   }
 }
 function stopPollOutput() {
@@ -909,7 +1073,7 @@ function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", ru
     return;
   }
 
-  dataCell.value = parseInputString(value);
+  dataCell.value = toUint16(parseInputString(value));
   if (type === "reg" && "name" in dataCell) {
     lc3.setRegValue(dataCell.name, dataCell.value);
   } else if (type === "mem" && "addr" in dataCell) {
@@ -969,9 +1133,15 @@ function updateUI(showUpdates = false, updateReg = true) {
   }
 
   updateConsole();
+  updateTimer();
 }
 function updateConsole() {
   consoleStr.value += lc3.getAndClearOutput();
+}
+function updateTimer() {
+  if (sim.value.timer.enabled) {
+    sim.value.timer.remaining = lc3.getTimerRemaining();
+  }
 }
 function toggleBreakpoint(addr: number) {
   let idx = sim.value.breakpoints.indexOf(addr);
@@ -1047,6 +1217,43 @@ function jumpToPC(jumpIfInView: boolean) {
   if (jumpIfInView || !pcInView) jumpToMemView(pc);
 }
 
+// Timer functions
+function setTimerStatus() {
+  lc3.setTimerStatus(sim.value.timer.enabled);
+  resetTimer();
+}
+function resetTimer() {
+  lc3.resetTimer();
+  updateUI();
+}
+function resetTimerInputs() {
+  timerInputs.value = {
+    vect: "x" + lc3.getTimerVect().toString(16).padStart(2, "0"),
+    priority: String(lc3.getTimerPriority()),
+    max: String(lc3.getTimerMax())
+  }
+}
+async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, prop: keyof typeof timerInputs.value) {
+  const { valid } = await event;
+  if (!valid) return;
+
+  if (prop === "vect") {
+    let intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
+    lc3.setTimerVect(intValue);
+    sim.value.timer[prop] = intValue;
+  } else if (prop === "priority") {
+    let intValue = parseInputString(timerInputs.value[prop]);
+    lc3.setTimerPriority(intValue);
+    sim.value.timer[prop] = intValue;
+  } else if (prop === "max") {
+    let intValue = parseInputString(timerInputs.value[prop]);
+    lc3.setTimerMax(intValue);
+    sim.value.timer[prop] = intValue;
+    resetTimer();
+  } else {
+    prop satisfies never;
+  }
+}
 // Helper functions
 function psrToCC(psr: number) {
   let cc = psr & 0b111;
@@ -1073,7 +1280,7 @@ function toFormattedDec(value: number) {
 }
 function parseInputString(value: string) {
   if (value.startsWith("x")) value = "0" + value;
-  return toUint16(parseInt(value));
+  return parseInt(value);
 }
 function regLabel(item: RegDataRow) {
   if (item.name === "psr") {

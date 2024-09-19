@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLockWriteGuard};
 use std::thread::JoinHandle;
 
-use lc3_ensemble::sim::device::{BufferedDisplay, BufferedKeyboard};
+use lc3_ensemble::sim::device::{BufferedDisplay, BufferedKeyboard, TimerDevice};
 use lc3_ensemble::sim::mem::Word;
 use lc3_ensemble::sim::{MemAccessCtx, SimFlags, MCR};
 use lc3_ensemble::sim::Simulator;
@@ -35,6 +35,7 @@ pub(crate) struct SimController {
     mcr: MCR,
     input: BufferedKeyboard,
     output: BufferedDisplay,
+    timer: Arc<Mutex<TimerDevice>>
 }
 impl SimController {
     pub(crate) fn new() -> Self {
@@ -44,11 +45,13 @@ impl SimController {
         let mcr = Arc::clone(sim.mcr());
         let input = BufferedKeyboard::default();
         let output = BufferedDisplay::default();
+        let timer = Arc::default();
 
         sim.device_handler.set_keyboard(input.clone());
         sim.device_handler.set_display(output.clone());
+        sim.device_handler.add_device(Arc::clone(&timer), &[]).expect("should've been able to add timer device");
 
-        Self { simulator: Arc::new(Mutex::new(sim)), exec_join: None, flags, mcr, input, output }
+        Self { simulator: Arc::new(Mutex::new(sim)), exec_join: None, flags, mcr, input, output, timer }
     }
 
     /// Updates the simulator flags.
@@ -68,6 +71,9 @@ impl SimController {
     }
     pub(crate) fn output_buf(&self) -> RwLockWriteGuard<'_, Vec<u8>> {
         self.output.get_buffer().write().unwrap_or_else(|e| e.into_inner())
+    }
+    pub(crate) fn timer(&self) -> MutexGuard<'_, TimerDevice> {
+        self.timer.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// Accesses the simulator if it is idle.

@@ -205,4 +205,50 @@ declare module "lc3-backend" {
      * Gets the span in source code that corresponds to a given memory address.
      */
     export function getAddrSourceRange(addr: number): [start_lno: number, start_cno: number, end_lno: number, end_cno: number] | undefined;
+
+    /**
+     * Gets the amount of instructions remaining on the timer device until next interrupt.
+     */
+    export function getTimerRemaining(): number;
+    /**
+     * Sets whether the timer is enabled or not.
+     * @param status the status
+     */
+    export function setTimerStatus(status: boolean);
+    /**
+     * Resets the timer.
+     */
+    export function resetTimer();
+    /**
+     * Gets the timer's interrupt vector.
+     */
+    export function getTimerVect(): number;
+    /**
+     * Gets the timer's priority. Must be 0-7.
+     */
+    export function getTimerPriority(): number;
+    /**
+     * Gets the total time of the timer.
+     * 
+     * This is  a half-implementation, 
+     * because it only gets the minimum possible wait time.
+     */
+    export function getTimerMax(): number;
+    /**
+     * Sets the timer's interrupt vector.
+     * @param vect the vector
+     */
+    export function setTimerVect(vect: number);
+    /**
+     * Sets the timer's priority. Must be 0-7.
+     * @param priority the priority
+     */
+    export function setTimerPriority(priority: number);
+    /**
+     * Sets the total time of the timer.
+     * Every time an interrupt occurs, the timer resets to some number within this range.
+     * @param min The minimum value (inclusive)
+     * @param max The maximum value (inclusive, defaults to min)
+     */
+    export function setTimerMax(min: number, max?: number);
 }

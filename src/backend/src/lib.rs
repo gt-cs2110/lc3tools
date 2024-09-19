@@ -5,16 +5,17 @@ mod obj;
 
 use std::collections::HashMap;
 use std::io::Write;
-use std::ops::Range;
+use std::ops::{Range, RangeBounds};
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use cast::{ResultExtJs, TryIntoJsValue};
+use cast::{IntoJsValue, ResultExtJs, TryIntoJsValue};
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
 use lc3_ensemble::sim::debug::Breakpoint;
+use lc3_ensemble::sim::device::ExternalDevice;
 use lc3_ensemble::sim::mem::MachineInitStrategy;
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
@@ -414,9 +415,11 @@ fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     Ok(cx.boolean(hit))
 }
 fn is_sim_running(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    // fn() -> bool
     Ok(cx.boolean(controller().is_running()))
 }
 fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
+    // fn(label: String) -> Result<Option<usize>>
     let label = cx.argument::<JsString>(0)?.value(&mut cx);
     
     let contents = obj_contents();
@@ -434,6 +437,7 @@ fn get_label_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
 
 }
 fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
+    // fn(addr: u16) -> Result<Option<usize>>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
     let contents = obj_contents();
@@ -450,6 +454,83 @@ fn get_addr_source_range(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
     Ok(cx.undefined().upcast())
 }
+
+fn get_timer_remaining(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    // fn() -> u32
+    let controller = controller();
+    let timer = controller.timer();
+
+    Ok(timer.get_remaining().into_js(&mut cx))
+}
+fn set_timer_status(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(enabled: bool)
+    let enabled = cx.argument::<JsBoolean>(0)?.value(&mut cx);
+
+    let controller = controller();
+    controller.timer().enabled = enabled;
+    Ok(cx.undefined())
+}
+fn reset_timer(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn()
+    let controller = controller();
+    controller.timer().io_reset();
+
+    Ok(cx.undefined())
+}
+
+fn get_timer_vect(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    // fn() -> u8
+    let controller = controller();
+    let timer = controller.timer();
+    Ok(cx.number(timer.vect))
+}
+fn get_timer_priority(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    // fn() -> u8
+    let controller = controller();
+    let timer = controller.timer();
+    Ok(cx.number(timer.priority.clamp(0, 7)))
+}
+fn get_timer_max(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    // fn() -> u32
+    let controller = controller();
+    let timer = controller.timer();
+    let std::ops::Bound::Included(&max) = timer.get_range().start_bound() else { unreachable!("definition for timer") };
+    Ok(cx.number(max))
+}
+fn set_timer_vect(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(vect: u8)
+    let vect = cx.argument::<JsNumber>(0)?.value(&mut cx) as u8;
+
+    let controller = controller();
+    controller.timer().vect = vect;
+    Ok(cx.undefined())
+}
+fn set_timer_priority(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(priority: u8)
+    let priority = cx.argument::<JsNumber>(0)?.value(&mut cx) as u8;
+    if !(0..8).contains(&priority) { 
+        cx.throw_error("lc3.setTimerPriority: priority was not within the range 0-7")?;
+    }
+
+    let controller = controller();
+    controller.timer().priority = priority;
+    Ok(cx.undefined())
+}
+fn set_timer_max(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn(min: u32, max?: u32)
+    let min = cx.argument::<JsNumber>(0)?.value(&mut cx) as u32;
+    let max = match cx.argument_opt(1) {
+        Some(n) => n.downcast_or_throw::<JsNumber, _>(&mut cx)?.value(&mut cx) as u32,
+        None => min,
+    };
+
+    let controller = controller();
+    let mut timer = controller.timer();
+    timer.set_range(min..=max);
+
+    Ok(cx.undefined())
+}
+
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("init", init)?;
@@ -486,5 +567,14 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("isSimRunning", is_sim_running)?;
     cx.export_function("getLabelSourceRange", get_label_source_range)?;
     cx.export_function("getAddrSourceRange", get_addr_source_range)?;
+    cx.export_function("getTimerRemaining", get_timer_remaining)?;
+    cx.export_function("setTimerStatus", set_timer_status)?;
+    cx.export_function("resetTimer", reset_timer)?;
+    cx.export_function("getTimerVect", get_timer_vect)?;
+    cx.export_function("getTimerPriority", get_timer_priority)?;
+    cx.export_function("getTimerMax", get_timer_max)?;
+    cx.export_function("setTimerVect", set_timer_vect)?;
+    cx.export_function("setTimerPriority", set_timer_priority)?;
+    cx.export_function("setTimerMax", set_timer_max)?;
     Ok(())
 }
