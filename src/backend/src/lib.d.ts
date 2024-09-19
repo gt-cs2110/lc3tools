@@ -1,17 +1,5 @@
 declare module "lc3-backend" {
     /**
-     * Initializes any properties for the LC3 backend.
-     */
-    export function init(): void;
-
-    /**
-     * Takes a `.bin` file and creates and exports a
-     * `.obj` file out of it.
-     * @param fp The filepath of the `.bin` file
-     */
-    export function convertBin(fp: string): void;
-    
-    /**
      * Takes a `.asm` file and creates and exports a
      * `.obj` file out of it.
      * @param fp The filepath of the `.asm` file
@@ -23,12 +11,6 @@ declare module "lc3-backend" {
      * Gets the symbol table, mapping each memory address to a label.
      */
     export function getCurrSymTable(): {[addr: number]: string};
-    
-    /**
-     * Sets the enable liberal ASM configuration.
-     * @param status the status to set the configuration to
-     */
-    export function setEnableLiberalAsm(status: boolean): void;
     
     /**
      * Sets the ignore privilege configuration.
@@ -56,13 +38,6 @@ declare module "lc3-backend" {
      */
     export function loadObjectFile(fp: string): void;
     
-    /**
-     * Restarts the simulator.
-     * 
-     * This reinitializes the state of the simulator.
-     */
-    export function restartMachine(): void;
-
     /**
      * Reinitializes the simulator, 
      * wiping the object file and zeroing the state.
@@ -139,13 +114,6 @@ declare module "lc3-backend" {
     export function getMemLine(addr: number): string;
 
     /**
-     * Sets the memory line at this value (the text associated with that line).
-     * @param addr The memory location to write the line of.
-     * @param line The line to write
-     */
-    export function setMemLine(addr: number, line: string): void;
-
-    /**
      * Accesses the list of memory changes that occurred last execution.
      * 
      * It also wipes the list (making it empty if accessed again through this method)
@@ -189,11 +157,6 @@ declare module "lc3-backend" {
      * @return whether removing the breakpoint was successful
      */
     export function removeBreakpoint(addr: number): boolean;
-    /**
-     * I have no idea what this does and its output is literally unused
-     * in the simulator????
-     */
-    export function getInstExecCount(): number;
     /**
      * Checks if a breakpoint was tripped.
      */

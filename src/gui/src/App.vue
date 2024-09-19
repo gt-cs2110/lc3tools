@@ -179,24 +179,6 @@
                   </div>
                   <div class="d-flex justify-space-between align-center">
                     <div class="flex-grow-1">
-                      <h3>Use less strict assembly</h3>
-                      <p
-                        v-if="settings.liberal_asm"
-                        class="text-red"
-                      >
-                        May result in inconsistency with the grader.
-                      </p>
-                    </div>
-                    <v-switch
-                      v-model="settings.liberal_asm"
-                      class="flex-shrink-1"
-                      color="primary"
-                      hide-details
-                      @change="saveSettings('liberal_asm')"
-                    />
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <div class="flex-grow-1">
                       <h3>Apply strict memory access rules</h3>
                     </div>
                     <v-switch
@@ -357,14 +339,10 @@ const download_bar = ref(false);
 
 // Settings
 const settings = useSettingsStore();
-settings.$patch({
-  ...storage.getAll() as LC3Settings,
-  liberal_asm: false
-});
+settings.$patch(storage.getAll());
 
 const lc3SettingCalls = {
   "ignore_privilege": lc3.setIgnorePrivilege,
-  "liberal_asm": lc3.setEnableLiberalAsm,
   "pause_on_fatal_trap": lc3.setPauseOnFatalTrap,
   "strict_mem_accesses": lc3.setStrictMemAccesses
 } satisfies Partial<Record<keyof LC3Settings, (status: boolean) => void>>;

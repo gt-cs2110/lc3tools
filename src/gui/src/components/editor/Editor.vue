@@ -51,9 +51,7 @@
         location="right"
         activator="parent"
       >
-        <span v-if="activeFileStore.path === null">Assemble or Convert</span>
-        <span v-else-if="activeFileStore.path.endsWith('.asm')">Assemble</span>
-        <span v-else-if="activeFileStore.path.endsWith('.bin')">Convert</span>
+        <span v-if="activeFileStore.path === null">Assemble</span>
         <span v-else>Build</span>
       </v-tooltip>
     </v-list-item>
@@ -220,8 +218,7 @@ async function _writeFile(fp: string, content: string | undefined = undefined) {
 async function saveFileAs() {
   let new_file = await dialog.showModal("save", {
     filters: [
-      { name: "Assembly", extensions: ["asm"] },
-      { name: "Binary", extensions: ["bin"] }
+      { name: "Assembly", extensions: ["asm"] }
     ]
   });
 
@@ -261,8 +258,7 @@ async function openFile(path: string | undefined = undefined) {
     let result = await dialog.showModal("open", {
       properties: ["openFile"],
       filters: [
-        { name: "Assembly", extensions: ["asm"] },
-        { name: "Binary", extensions: ["bin"] }
+        { name: "Assembly", extensions: ["asm"] }
       ]
     });
 
@@ -313,13 +309,6 @@ async function build() {
   if (activeFileStore.path === null) {
     success = false;
     output = "No file to build";
-  } else if (activeFileStore.path.toLowerCase().endsWith(".bin")) {
-    try {
-      lc3.convertBin(activeFileStore.path);
-    } catch (e) {
-      success = false;
-    }
-    output = lc3.getAndClearOutput();
   } else if (activeFileStore.path.toLowerCase().endsWith(".asm")) {
     try {
       lc3.assemble(activeFileStore.path);

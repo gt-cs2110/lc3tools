@@ -55,17 +55,6 @@ fn load_obj_file(obj: ObjectFile) {
     obj_contents().load_contents(obj);
 }
 //--------- CONFIG FUNCTIONS ---------//
-
-fn init(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn() -> Result<()>
-    // TODO: Determine whether ensemble requires an init.
-    Ok(cx.undefined())
-}
-fn set_enable_liberal_asm(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn (enable: bool) -> Result<()>
-    // TODO: What does liberal ASM do?
-    Ok(cx.undefined())
-}
 fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn(enable: bool) -> Result<()>
     let ignore_privilege = cx.argument::<JsBoolean>(0)?.value(&mut cx);
@@ -107,15 +96,6 @@ fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 
 //--------- EDITOR/ASSEMBLER FUNCTIONS ---------//
-
-fn convert_bin(mut _cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn(fp: String) -> Result<()>
-
-    // .bin files are files that have ASCII binary instead of assembly code.
-    // Maybe will be implemented later? idk.
-    unimplemented!("ConvertBin");
-}
-
 fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: String) -> Result<()>
     let fp = cx.argument::<JsString>(0)?.value(&mut cx);
@@ -164,12 +144,6 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     };
     
     load_obj_file(obj);
-    Ok(cx.undefined())
-}
-fn restart_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn () -> Result<()>
-    // i'm not sure what the purpose of this function is
-
     Ok(cx.undefined())
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -356,11 +330,6 @@ fn get_mem_line(mut cx: FunctionContext) -> JsResult<JsString> {
     
     Ok(cx.string(string))
 }
-fn set_mem_line(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    // fn(addr: u16, value: String) -> Result<()>
-    // TODO: implement
-    Ok(cx.undefined())
-}
 fn clear_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn() -> ()
     controller().input_buf().clear();
@@ -404,12 +373,6 @@ fn remove_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let result = sim.breakpoints.remove(&Breakpoint::PC(addr));
 
     Ok(cx.boolean(result))
-}
-
-fn get_inst_exec_count(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    // fn() -> Result<usize>
-    // I have no idea what this does
-    Ok(cx.number(0))
 }
 
 fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
@@ -540,16 +503,12 @@ fn set_timer_max(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    cx.export_function("init", init)?;
-    cx.export_function("convertBin", convert_bin)?;
     cx.export_function("assemble", assemble)?;
     cx.export_function("getCurrSymTable", get_curr_sym_table)?;
-    cx.export_function("setEnableLiberalAsm", set_enable_liberal_asm)?;
     cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
     cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;
     cx.export_function("setStrictMemAccesses", set_strict_mem_accesses)?;
     cx.export_function("loadObjectFile", load_object_file)?;
-    cx.export_function("restartMachine", restart_machine)?;
     cx.export_function("reinitializeMachine", reinitialize_machine)?;
     cx.export_function("randomizeMachine", randomize_machine)?;
     cx.export_function("run", run)?;
@@ -562,7 +521,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getMemValue", get_mem_value)?;
     cx.export_function("setMemValue", set_mem_value)?;
     cx.export_function("getMemLine", get_mem_line)?;
-    cx.export_function("setMemLine", set_mem_line)?;
     cx.export_function("takeMemChanges", take_mem_changes)?;
     cx.export_function("clearInput", clear_input)?;
     cx.export_function("addInput", add_input)?;
@@ -570,7 +528,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("clearOutput", clear_output)?;
     cx.export_function("setBreakpoint", set_breakpoint)?;
     cx.export_function("removeBreakpoint", remove_breakpoint)?;
-    cx.export_function("getInstExecCount", get_inst_exec_count)?;
     cx.export_function("didHitBreakpoint", did_hit_breakpoint)?;
     cx.export_function("isSimRunning", is_sim_running)?;
     cx.export_function("getLabelSourceRange", get_label_source_range)?;

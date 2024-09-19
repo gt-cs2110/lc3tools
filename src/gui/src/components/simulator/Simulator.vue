@@ -1159,7 +1159,6 @@ function toggleBreakpoint(addr: number) {
 function setPC(addr: number) {
   if (!lc3.isSimRunning()) {
     lc3.setRegValue("pc", toUint16(addr));
-    lc3.restartMachine();
     updateUI();
   }
 }
