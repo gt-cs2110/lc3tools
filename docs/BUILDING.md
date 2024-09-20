@@ -14,16 +14,30 @@ Most modern versions of the above should work here, but as of writing, it is kno
 
 ## Steps
 
-1. First, you need to build the backend LC3 engine. You can do so with:
-   - `cd src/backend`
-   - `npm install`
-   - `npm run build`
+To build, you must be in the `src/gui` directory. Then, building is three steps:
 
-    (This step requires Node and Cargo.)
-2. Once the backend is built, you can build the frontend and package it.
-   - `cd src/gui`
-   - `npm install --install-links` (flag that lets Vite to behave with `lc3-backend`)
-   - `npm run package`
+```sh
+npm install
+npm run build-backend
+npm run package
+```
 
-   (This step requires Python on macOS.)
-3. And, you're done! The packaged build should be found in `src/gui/out/make`.
+(Note that the `build-backend` script requires Cargo and `package` requires Python on macOS).
+
+Once those three scripts are run, you're done! The packaged build should be found in `src/gui/out/make`.
+
+### Notes
+
+These are some notes about what the scripts above do. This is not at all necessary to read if you're simply trying to build an executable.
+
+`npm install`: This command installs all the required dependencies for LC3Tools, which is pretty straightforward.
+
+`npm run build-backend`: This script is equivalent to
+
+```sh
+npm run --prefix ../backend build && npm install --install-links lc3-backend@../backend
+```
+
+This runs the build script on the engine package (creating a dylib) and then reinstalls the dependency (in order to allow LC3Tools to use that dylib). Note that [due to an Electron Forge bug](https://github.com/electron/forge/issues/3624), we have to use the `--install-links` flag to make a direct copy of the data. If this bug ever gets fixed, this script should be able to be reduced to simply `npm run --prefix ../backend build`.
+
+`npm run package`: This command relies on Electron Forge's package utilities. It will make an executable and then package it into a distributable format. If you don't need to package it and would rather just have the executable directly, you can instead do `npm run make`.

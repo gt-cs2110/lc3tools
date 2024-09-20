@@ -24,15 +24,10 @@ jobs:
           node-version: 20
       - name: Use Cargo
         uses: dtolnay/rust-toolchain@stable
-      - name: Build lc3-backend
-        run: |
-            npm install
-            npm run build
-        working-directory: ./src/backend
-      - name: Install frontend Node dependencies
-        # --install-links flag Forces lc3-backend to be installed without symlinking
-        # Can be replaced once https://github.com/electron/forge/issues/3624 is fixed.
-        run: npm install --install-links
+      - name: Install dependencies
+        run: npm install
+      - name: Build backend
+        run: npm run build-backend
       - name: Publish app
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -71,15 +66,10 @@ jobs:
       - name: Install python-setuptools (macOS)
         if: runner.os == 'macOS'
         run: python3 -m pip install setuptools
-      - name: Build lc3-backend
-        run: |
-            npm install
-            npm run build
-        working-directory: ./src/backend
-      - name: Install frontend Node dependencies
-        # --install-links flag Forces lc3-backend to be installed without symlinking
-        # Can be replaced once https://github.com/electron/forge/issues/3624 is fixed.
-        run: npm install --install-links
+      - name: Install dependencies
+        run: npm install
+      - name: Build backend
+        run: npm run build-backend
       - name: Publish app (macOS)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

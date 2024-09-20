@@ -11,7 +11,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx,.vue .",
-    "build-backend": "npm run --prefix ../backend build"
+    "build-backend": "npm run --prefix ../backend build && npm install --install-links lc3-backend@../backend"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.4.0",
@@ -25,6 +25,7 @@
     "@electron-forge/publisher-github": "^7.4.0",
     "@electron/fuses": "^1.8.0",
     "@mdi/js": "^7.4.47",
+    "@neon-rs/cli": "^0.1.81",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/node": "^22.2.0",
     "@typescript-eslint/eslint-plugin": "^8.1.0",

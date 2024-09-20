@@ -72,6 +72,9 @@ importers:
       '@mdi/js':
         specifier: ^7.4.47
         version: 7.4.47
+      '@neon-rs/cli':
+        specifier: ^0.1.81
+        version: 0.1.81
       '@types/electron-squirrel-startup':
         specifier: ^1.0.2
         version: 1.0.2
@@ -130,6 +133,56 @@ packages:
   '@babel/types@7.25.6':
     resolution: {integrity: sha512-/l42B1qxpG6RdfYf343Uw1vmDjeNhneUXtzhojE7pDgfpEypmRhI6j1kr17XCVv4Cgl9HdAiQY2x0GwKm7rWCw==}
     engines: {node: '>=6.9.0'}
+
+  '@cargo-messages/android-arm-eabi@0.1.80':
+    resolution: {integrity: sha512-QawKsQCs8rYqtq8JSEQBLuX/Tb4FcMVzg8ykSxqYy0qrgunr26MCqxGSsgzTUu4S7y3OH3RXN9lD+/JJZJB81w==}
+    cpu: [arm]
+    os: [android]
+
+  '@cargo-messages/darwin-arm64@0.1.80':
+    resolution: {integrity: sha512-l7s5I90Eol597qEfbQn6P7EFyxcedRpcwjXAPOqjTR7D7dHzMIxVXeLmYeiwSUsebTeQ9FWBi5H9thxJDJdShw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@cargo-messages/darwin-x64@0.1.80':
+    resolution: {integrity: sha512-B8d5wjp3WosHh95nHX+MKHdb2n2/0PlajkuuULLy8sDPbC83mBoGQ6m15cY3g3nGiB9Wsot1GR6QkyaEVYZ5HQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@cargo-messages/linux-arm-gnueabihf@0.1.80':
+    resolution: {integrity: sha512-q4vm0QJesAzMm0iOmTOMPQjVTgkQZCr1+NKluTb4343VDRceRQ6Hb01dzT2nm7dvsZYltP38WrsLavbrbXj08Q==}
+    cpu: [arm]
+    os: [linux]
+
+  '@cargo-messages/linux-arm64-gnu@0.1.80':
+    resolution: {integrity: sha512-fz7iaDWF0dK51Dg9+UzHNMHt28jTU27OZLDXHwKhWsf6VSJUAmAaM5auwTjhUbF0HXKxueak6i4MdswyArcy3A==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@cargo-messages/linux-arm64-musl@0.1.80':
+    resolution: {integrity: sha512-jgDDHZvWg3242zGwwlw9zx/tjMZEIjzef77T68p6BYSIlqEh8Xmla7rYO7QqaxsSdhs9QcJLLrWiAzOT2bkPYg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@cargo-messages/linux-x64-gnu@0.1.80':
+    resolution: {integrity: sha512-Ku5OyfoxBdcQ7tYUyL7iBCZ46l7Tl0MDAmf9V/7D4K/NLIg02ducK1wrCQ+MaUAJu2pxu7gTgfR6SGeZtQOYoA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@cargo-messages/linux-x64-musl@0.1.80':
+    resolution: {integrity: sha512-/e5oQ6kSzEjdfzznqsMOtgqMc01MWYGI0yEn1iMwgB8K+cN9ma/sTXMVpKw7PRov2lQWCuSIhG3WZeF+PmloGA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@cargo-messages/win32-arm64-msvc@0.1.80':
+    resolution: {integrity: sha512-8f8skn92zZDhZ74nh1ODp9eqV1XsGPlHITny+BQ+pOls0b62G39ECIkcdlGVeG0qBrR+8aJ6Tnr8KjqZXv7kwQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@cargo-messages/win32-x64-msvc@0.1.80':
+    resolution: {integrity: sha512-L6sM4HDOM09egXhyYhb1X9/IJZ056HHSfmEHCnnLw0NN5eotOhQS/Mp2rBmttMs6OAPjci4ugrNnTQcqzVd0BQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -463,6 +516,10 @@ packages:
 
   '@mdi/js@7.4.47':
     resolution: {integrity: sha512-KPnNOtm5i2pMabqZxpUz7iQf+mfrYZyKCZ8QNz85czgEt7cuHcGorWfdzUMWYA0SD+a6Hn4FmJ+YhzzzjkTZrQ==}
+
+  '@neon-rs/cli@0.1.81':
+    resolution: {integrity: sha512-7mfLsXjXBEypMn+AxdIkCGJNdX2i9NWbeZgLKdOUcFrEnvQAAcx8pjtouxL3a/AFKYRu4QKucnFO3G+07aydtg==}
+    hasBin: true
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -3253,6 +3310,36 @@ snapshots:
       '@babel/helper-validator-identifier': 7.24.7
       to-fast-properties: 2.0.0
 
+  '@cargo-messages/android-arm-eabi@0.1.80':
+    optional: true
+
+  '@cargo-messages/darwin-arm64@0.1.80':
+    optional: true
+
+  '@cargo-messages/darwin-x64@0.1.80':
+    optional: true
+
+  '@cargo-messages/linux-arm-gnueabihf@0.1.80':
+    optional: true
+
+  '@cargo-messages/linux-arm64-gnu@0.1.80':
+    optional: true
+
+  '@cargo-messages/linux-arm64-musl@0.1.80':
+    optional: true
+
+  '@cargo-messages/linux-x64-gnu@0.1.80':
+    optional: true
+
+  '@cargo-messages/linux-x64-musl@0.1.80':
+    optional: true
+
+  '@cargo-messages/win32-arm64-msvc@0.1.80':
+    optional: true
+
+  '@cargo-messages/win32-x64-msvc@0.1.80':
+    optional: true
+
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
@@ -3771,6 +3858,19 @@ snapshots:
       cross-spawn: 7.0.3
 
   '@mdi/js@7.4.47': {}
+
+  '@neon-rs/cli@0.1.81':
+    optionalDependencies:
+      '@cargo-messages/android-arm-eabi': 0.1.80
+      '@cargo-messages/darwin-arm64': 0.1.80
+      '@cargo-messages/darwin-x64': 0.1.80
+      '@cargo-messages/linux-arm-gnueabihf': 0.1.80
+      '@cargo-messages/linux-arm64-gnu': 0.1.80
+      '@cargo-messages/linux-arm64-musl': 0.1.80
+      '@cargo-messages/linux-x64-gnu': 0.1.80
+      '@cargo-messages/linux-x64-musl': 0.1.80
+      '@cargo-messages/win32-arm64-msvc': 0.1.80
+      '@cargo-messages/win32-x64-msvc': 0.1.80
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
