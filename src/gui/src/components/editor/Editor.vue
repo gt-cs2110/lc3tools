@@ -289,10 +289,10 @@ async function dropFile(e: DragEvent) {
       });
 
       let response = buttons[clicked.response];
-      if (response === "Yes") await saveFileThen(() => openFile(file.path));
-      else if (response === "No") await openFile(file.path);
+      if (response === "Yes") await saveFileThen(() => openFile(fs.getPath(file)));
+      else if (response === "No") await openFile(fs.getPath(file));
     } else {
-      await saveFileThen(() => openFile(file.path));
+      await saveFileThen(() => openFile(fs.getPath(file)));
     }
   }
 }

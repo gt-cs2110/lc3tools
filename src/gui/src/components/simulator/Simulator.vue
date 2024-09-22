@@ -839,7 +839,7 @@ function handleMemoryScroll(e: WheelEvent) {
 async function dropFile(e: DragEvent) {
   let file = e.dataTransfer.files[0];
   if (file?.name.toLowerCase().endsWith("obj") && !lc3.isSimRunning()) {
-    openFile(file.path);
+    openFile(fs.getPath(file));
   }
 }
 async function openFile(path: string | undefined = undefined) {

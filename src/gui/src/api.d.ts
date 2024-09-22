@@ -26,6 +26,7 @@ export type FSBindings = {
     write(fp: string, content: string): Promise<void>;
     exists(fp: string): boolean;
     basename(fp: string): string;
+    getPath(f: File): string;
 }
 
 export type API = {
