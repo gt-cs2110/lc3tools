@@ -25,12 +25,6 @@ declare module "lc3-backend" {
     export function setPauseOnFatalTrap(status: boolean): void;
     
     /**
-     * Sets the strict mem accesses configuration.
-     * @param status the status to set the configuration to.
-     */
-    export function setStrictMemAccesses(status: boolean): void;
-
-    /**
      * Loads an object file into the simulator,
      * as well as clearing any state from the previous run.
      * 

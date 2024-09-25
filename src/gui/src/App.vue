@@ -177,18 +177,6 @@
                       @change="saveSettings('ignore_privilege')"
                     />
                   </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <div class="flex-grow-1">
-                      <h3>Apply strict memory access rules</h3>
-                    </div>
-                    <v-switch
-                      v-model="settings.strict_mem_accesses"
-                      class="flex-shrink-1"
-                      color="primary"
-                      hide-details
-                      @change="saveSettings('strict_mem_accesses')"
-                    />
-                  </div>
                   <div class="d-flex justify-center">
                     <h4>Issues? Post on CS 2110 Ed/Piazza!</h4>
                   </div>
@@ -343,8 +331,7 @@ settings.$patch(storage.getAll());
 
 const lc3SettingCalls = {
   "ignore_privilege": lc3.setIgnorePrivilege,
-  "pause_on_fatal_trap": lc3.setPauseOnFatalTrap,
-  "strict_mem_accesses": lc3.setStrictMemAccesses
+  "pause_on_fatal_trap": lc3.setPauseOnFatalTrap
 } satisfies Partial<Record<keyof LC3Settings, (status: boolean) => void>>;
 
 onMounted(() => {
