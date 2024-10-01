@@ -1,8 +1,7 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerDMG } from "@electron-forge/maker-dmg";
-import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerRpm } from '@electron-forge/maker-rpm';
+import { MakerFlatpak } from "@electron-forge/maker-flatpak";
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
@@ -14,7 +13,16 @@ const config: ForgeConfig = {
     icon: "static/icons/icon"
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerDMG(), new MakerRpm({}), new MakerDeb({})],
+  makers: [new MakerSquirrel({}), new MakerDMG(), new MakerFlatpak({
+    // Override the default settings:
+    // Uses `org.freedesktop.Platform//24.08` and `org.freedesktop.SDK//24.08` instead of `19.08`
+    // Removes external dependency zypak, since it's present on `org.electronjs.Electron2.BaseApp`
+    options: {
+      runtimeVersion: "24.08",
+      files: [],
+      modules: []
+    }
+  })],
   publishers: [new PublisherGithub({
     repository: {
       owner: "endorpersand",

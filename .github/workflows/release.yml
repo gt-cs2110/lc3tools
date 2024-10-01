@@ -3,12 +3,44 @@ name: Release app
 on:
   workflow_dispatch:
 jobs:
-  build-linux-win:
+  build-linux:
     strategy:
       matrix:
         os:
           [
-            { name: 'linux', image: 'ubuntu-latest' },
+            { name: 'linux', image: 'ubuntu-latest' }
+          ]
+    runs-on: ${{ matrix.os.image }}
+    defaults:
+        run:
+            working-directory: ./src/gui
+    steps:
+      - name: Github checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Use Cargo
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Flatpak dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder elfutils
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Install dependencies
+        run: npm install
+      - name: Build backend
+        run: npm run build-backend
+      - name: Publish app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: DEBUG=@malept/flatpak-bundler* npm run publish
+  build-win:
+    strategy:
+      matrix:
+        os:
+          [
             { name: 'windows', image: 'windows-latest' }
           ]
     runs-on: ${{ matrix.os.image }}
@@ -62,9 +94,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
             python-version: '3.12' 
-        if: runner.os == 'macOS'
       - name: Install python-setuptools (macOS)
-        if: runner.os == 'macOS'
         run: python3 -m pip install setuptools
       - name: Install dependencies
         run: npm install
