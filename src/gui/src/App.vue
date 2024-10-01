@@ -221,10 +221,7 @@
 
       <router-view v-slot="{ Component }">
         <keep-alive>
-          <!-- Wrap in a div so that element can always be switched out -->
-          <div class="d-contents">
-            <component :is="Component" />
-          </div>
+          <component :is="Component" />
         </keep-alive>
       </router-view>
 

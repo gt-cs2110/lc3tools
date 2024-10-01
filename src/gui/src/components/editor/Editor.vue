@@ -1,110 +1,112 @@
 <template>
-  <!-- Sidebar -->
-  <v-navigation-drawer
-    permanent
-    rail
-  >
-    <v-list-item
-      :prepend-icon="mdiFolderOpen"
-      @click="openFile()"
+  <div class="contents">
+    <!-- Sidebar -->
+    <v-navigation-drawer
+      permanent
+      rail
     >
-      <v-tooltip
-        location="right"
-        activator="parent"
-        text="Open File"
-      />
-    </v-list-item>
-    <v-list-item @click="saveFileThen(build)">
-      <template #prepend>
-        <v-badge
-          v-model="editorContentChanged"
-          color="orange-darken-2"
-        >
-          <template #badge>
-            <strong>!</strong>
-          </template>
-          <v-icon :icon="mdiContentSave" />
-        </v-badge>
-      </template>
+      <v-list-item
+        :prepend-icon="mdiFolderOpen"
+        @click="openFile()"
+      >
+        <v-tooltip
+          location="right"
+          activator="parent"
+          text="Open File"
+        />
+      </v-list-item>
+      <v-list-item @click="saveFileThen(build)">
+        <template #prepend>
+          <v-badge
+            v-model="editorContentChanged"
+            color="orange-darken-2"
+          >
+            <template #badge>
+              <strong>!</strong>
+            </template>
+            <v-icon :icon="mdiContentSave" />
+          </v-badge>
+        </template>
 
-      <v-tooltip
-        location="right"
-        activator="parent"
-        text="Save File"
-      />
-    </v-list-item>
-    <v-list-item
-      :prepend-icon="mdiContentSaveEdit"
-      @click="saveFileAs()"
-    >
-      <v-tooltip
-        location="right"
-        activator="parent"
-        text="Save File As"
-      />
-    </v-list-item>
-    <v-list-item
-      :prepend-icon="mdiWrench"
-      @click="build()"
-    >
-      <v-tooltip
-        location="right"
-        activator="parent"
+        <v-tooltip
+          location="right"
+          activator="parent"
+          text="Save File"
+        />
+      </v-list-item>
+      <v-list-item
+        :prepend-icon="mdiContentSaveEdit"
+        @click="saveFileAs()"
       >
-        <span v-if="activeFileStore.path === null">Assemble</span>
-        <span v-else>Build</span>
-      </v-tooltip>
-    </v-list-item>
-    <v-list-item
-      :prepend-icon="mdiConsole"
-      @click="toggleConsole()"
-    >
-      <v-tooltip
-        location="right"
-        activator="parent"
-        text="Toggle Console"
-      />
-    </v-list-item>
-  </v-navigation-drawer>
-  <!-- Main editor content -->
-  <v-main>
-    <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
-    <v-container
-      fluid
-      class="fill-height"
-    >
-      <v-row
-        class="align-self-stretch flex-column"
-        no-gutters
+        <v-tooltip
+          location="right"
+          activator="parent"
+          text="Save File As"
+        />
+      </v-list-item>
+      <v-list-item
+        :prepend-icon="mdiWrench"
+        @click="build()"
       >
-        <h3 class="view-header">
-          {{ filename }}
-        </h3>
-        <v-col class="flex-grow-1 flex-shrink-0">
-          <v-ace-editor
-            id="ace-editor"
-            ref="aceEditorRef"
-            v-model:value="editor.current_content"
-            class="elevation-2"
-            lang="lc3"
-            :theme="editorTheme"
-            @drop.prevent="dropFile"
-            @dragover.prevent
-          />
-        </v-col>
-        <v-col
-          v-if="showConsole"
-          class="flex-grow-0 flex-shrink-1"
+        <v-tooltip
+          location="right"
+          activator="parent"
         >
-          <console 
-            id="console"
-            v-model="consoleStr"
-            float="top"
-          />
-        </v-col>
-      </v-row>
-    </v-container>
-  </v-main>
+          <span v-if="activeFileStore.path === null">Assemble</span>
+          <span v-else>Build</span>
+        </v-tooltip>
+      </v-list-item>
+      <v-list-item
+        :prepend-icon="mdiConsole"
+        @click="toggleConsole()"
+      >
+        <v-tooltip
+          location="right"
+          activator="parent"
+          text="Toggle Console"
+        />
+      </v-list-item>
+    </v-navigation-drawer>
+    <!-- Main editor content -->
+    <v-main>
+      <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
+      <v-container
+        fluid
+        class="fill-height"
+      >
+        <v-row
+          class="align-self-stretch flex-column"
+          no-gutters
+        >
+          <h3 class="view-header">
+            {{ filename }}
+          </h3>
+          <v-col class="flex-grow-1 flex-shrink-0">
+            <v-ace-editor
+              id="ace-editor"
+              ref="aceEditorRef"
+              v-model:value="editor.current_content"
+              class="elevation-2"
+              lang="lc3"
+              :theme="editorTheme"
+              @drop.prevent="dropFile"
+              @dragover.prevent
+            />
+          </v-col>
+          <v-col
+            v-if="showConsole"
+            class="flex-grow-0 flex-shrink-1"
+          >
+            <console 
+              id="console"
+              v-model="consoleStr"
+              float="top"
+            />
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -378,5 +380,9 @@ export default {
 #console {
   margin: 15px 0 5px 0;
   height: 170px;
+}
+
+.contents {
+  display: contents;
 }
 </style>
