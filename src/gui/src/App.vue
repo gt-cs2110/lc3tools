@@ -221,7 +221,10 @@
 
       <router-view v-slot="{ Component }">
         <keep-alive>
-          <component :is="Component" />
+          <!-- Wrap in a div so that element can always be switched out -->
+          <div class="d-contents">
+            <component :is="Component" />
+          </div>
         </keep-alive>
       </router-view>
 
@@ -420,5 +423,9 @@ body {
 /* https://stackoverflow.com/q/56973002/11984788 */
 html {
     overflow-y: auto !important;
+}
+
+.d-contents {
+  display: contents;
 }
 </style>
