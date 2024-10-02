@@ -9,8 +9,11 @@ Refer to [INSTALL.md](./INSTALL.md) to see the available prebuilt binaries and t
 - Cargo
 - Node
 - Python and `python-setuptools` (macOS)
+- `flatpak`, `flatpak-builder`, `elfutils` (Linux)
 
-Most modern versions of the above should work here, but as of writing, it is known to work on Cargo 1.80.0, Node 22.8.0, and Python 3.12.
+Most modern versions of the above should work here, but as of writing, it is known to work on: Cargo 1.80.0, Node 22.8.0, and Python 3.12.
+
+(For Linux, make sure to setup the `flathub` repo: `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo`).
 
 ## Steps
 

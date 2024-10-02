@@ -5,7 +5,7 @@ Check out the [releases page](https://github.com/endorpersand/lc3tools/releases)
 - Windows (`.exe`)
 - macOS (Intel, `.dmg`)
 - macOS (Apple Silicon, `.dmg`)
-- Linux (`.rpm`, `.deb`)
+- Linux (`.flatpak`)
 
 If your version of LC3Tools is too old or a version for your operating system is not available, you can manually build LC3Tools. Instructions to do so can be found [here](./BUILDING.md).
 

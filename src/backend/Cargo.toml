@@ -14,5 +14,5 @@ crate-type = ["cdylib"]
 [dependencies]
 ariadne = "0.4.0"
 crossbeam-channel = "0.5.12"
-lc3-ensemble = "0.7.1"
+lc3-ensemble = "0.7.2"
 neon = "1"

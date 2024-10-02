@@ -58,8 +58,6 @@ const createWindow = () => {
   })
 
   Menu.setApplicationMenu(createMenu());
-  // Remove menu bar for Windows/Linux
-  mainWindow.removeMenu();
 };
 
 // This method will be called when Electron has finished
