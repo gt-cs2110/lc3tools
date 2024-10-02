@@ -23,7 +23,7 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       
       // Only allow devTools in development mode:
-      devTools: true,
+      devTools: process.env.NODE_ENV === "development",
 
       // Needed to import lc3-backend in preload.ts
       // 
