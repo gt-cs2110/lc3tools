@@ -20,7 +20,18 @@ const config: ForgeConfig = {
     options: {
       runtimeVersion: "24.08",
       files: [],
-      modules: []
+      modules: [
+        {
+          name: "zypak",
+          "sources": [
+            {
+              type: "git",
+              url: "https://github.com/refi64/zypak",
+              tag: "v2024.01.17"
+            }
+          ]
+        }
+      ]
     }
   })],
   publishers: [new PublisherGithub({
