@@ -1,124 +1,55 @@
 {
   "name": "LC3Tools",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "author": "gt-cs2110",
   "description": "LC3Tools frontend",
   "license": "MIT",
-  "main": "./dist/electron/main.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gt-cs2110/lc3tools.git"
-  },
+  "main": ".vite/build/main.js",
   "scripts": {
-    "build": "node .electron-vue/build.js && electron-builder",
-    "build:dir": "node .electron-vue/build.js && electron-builder --dir",
-    "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",
-    "build:web": "cross-env BUILD_TARGET=web node .electron-vue/build.js",
-    "dev": "node .electron-vue/dev-runner.js",
-    "pack": "npm run pack:main && npm run pack:renderer",
-    "pack:main": "cross-env NODE_ENV=production webpack --progress --colors --config .electron-vue/webpack.main.config.js",
-    "pack:renderer": "cross-env NODE_ENV=production webpack --progress --colors --config .electron-vue/webpack.renderer.config.js",
-    "postinstall": "electron-builder install-app-deps",
-    "lc3": "yarn add file:./local_modules/lc3interface",
-    "release": "node .electron-vue/build.js && electron-builder --publish always"
-  },
-  "extraResources": "",
-  "buildResources": "static",
-  "build": {
-    "productName": "LC3Tools",
-    "appId": "org.devtools.lc3tools",
-    "directories": {
-      "output": "build"
-    },
-    "files": [
-      "dist/electron/**/*",
-      "static/icons/*"
-    ],
-    "dmg": {
-      "contents": [
-        {
-          "x": 410,
-          "y": 150,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 130,
-          "y": 150,
-          "type": "file"
-        }
-      ]
-    },
-    "mac": {
-      "icon": "static/icons/icon.icns",
-      "category": "public.app-category.developer-tools",
-      "target": "dmg"
-    },
-    "win": {
-      "icon": "static/icons/icon.ico",
-      "target": [
-        "nsis",
-        "portable"
-      ]
-    },
-    "linux": {
-      "icon": "static/icons",
-      "category": "Development",
-      "target": "AppImage"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "gt-cs2110",
-      "repo": "lc3tools"
-    }
-  },
-  "dependencies": {
-    "axios": "^0.21.1",
-    "electron-log": "^2.2.17",
-    "electron-storage": "^1.0.7",
-    "electron-updater": "^6.1.8",
-    "lc3interface": "file:./local_modules/lc3interface",
-    "material-design-icons-iconfont": "^6.7.0",
-    "vue": "^2.6.12",
-    "vue-electron": "^1.0.6",
-    "vue-electron-storage": "^1.0.1",
-    "vue-router": "^3.4.9",
-    "vue2-ace-editor-electron": "^0.0.4",
-    "vuetify": "^1.5.24",
-    "vuex": "^2.3.1"
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
+    "lint": "eslint --ext .ts,.tsx,.vue .",
+    "build-backend": "npm run --prefix ../backend build && npm install --install-links lc3-backend@../backend"
   },
   "devDependencies": {
-    "babel-core": "^6.25.0",
-    "babel-loader": "^7.1.1",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-env": "^1.6.0",
-    "babel-preset-stage-0": "^6.24.1",
-    "babel-register": "^6.24.1",
-    "babili-webpack-plugin": "^0.1.2",
-    "cfonts": "^1.1.3",
-    "chalk": "^2.1.0",
-    "copy-webpack-plugin": "^4.0.1",
-    "cross-env": "^5.0.5",
-    "css-loader": "^0.28.4",
-    "del": "^3.0.0",
-    "devtron": "^1.4.0",
-    "electron": "13",
-    "electron-builder": "^24.6.4",
-    "electron-debug": "^1.5.0",
-    "electron-devtools-installer": "^3.2.0",
-    "extract-text-webpack-plugin": "^3.0.0",
-    "file-loader": "^0.11.2",
-    "html-webpack-plugin": "^2.30.1",
-    "multispinner": "^0.2.1",
-    "node-loader": "^0.6.0",
-    "style-loader": "^0.18.2",
-    "url-loader": "^0.5.9",
-    "vue-html-loader": "^1.2.4",
-    "vue-loader": "^13.0.5",
-    "vue-style-loader": "^3.0.1",
-    "vue-template-compiler": "^2.6.12",
-    "webpack": "^3.5.2",
-    "webpack-dev-server": "^2.7.1",
-    "webpack-hot-middleware": "^2.18.2"
+    "@electron-forge/cli": "~7.4.0",
+    "@electron-forge/maker-dmg": "~7.4.0",
+    "@electron-forge/maker-flatpak": "~7.4.0",
+    "@electron-forge/maker-squirrel": "~7.4.0",
+    "@electron-forge/plugin-auto-unpack-natives": "~7.4.0",
+    "@electron-forge/plugin-fuses": "~7.4.0",
+    "@electron-forge/plugin-vite": "~7.4.0",
+    "@electron-forge/publisher-github": "~7.4.0",
+    "@electron/fuses": "^1.8.0",
+    "@mdi/js": "^7.4.47",
+    "@neon-rs/cli": "^0.1.81",
+    "@types/electron-squirrel-startup": "^1.0.2",
+    "@types/node": "^22.7.4",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "@vitejs/plugin-vue": "^5.1.4",
+    "electron": "32.1.2",
+    "eslint": "^8.57.1",
+    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-vue": "^9.28.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.5.4",
+    "vite": "^5.4.8",
+    "vue-eslint-parser": "^9.4.3"
+  },
+  "keywords": [],
+  "dependencies": {
+    "ace-builds": "^1.36.2",
+    "ansi-to-html": "^0.7.2",
+    "electron-squirrel-startup": "^1.0.1",
+    "electron-store": "^10.0.0",
+    "lc3-backend": "file:../backend",
+    "pinia": "^2.2.4",
+    "vue": "^3.5.10",
+    "vue-router": "^4.4.5",
+    "vue3-ace-editor": "^2.2.4",
+    "vuetify": "^3.7.2"
   }
 }

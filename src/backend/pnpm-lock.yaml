@@ -1,0 +1,87 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@neon-rs/cli':
+        specifier: 0.1.73
+        version: 0.1.73
+
+packages:
+
+  '@cargo-messages/android-arm-eabi@0.1.72':
+    resolution: {integrity: sha512-gGZxIM1mj+Y5x+ULND6ZCNr7f70OJi9wDlycSK8hGONy9wrChN6JAIHryddC5cqcwlYAoQ6IDcDFElnhAYbybA==}
+    cpu: [arm]
+    os: [android]
+
+  '@cargo-messages/darwin-arm64@0.1.72':
+    resolution: {integrity: sha512-EAzN5MLaXPljZKZDO5qR+aBs44eSq2ZbEnS7AI/FziE3MzeXbrGOS3fLba5+7yWPFXJyZolXzePm8N1EBv8ovg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@cargo-messages/darwin-x64@0.1.72':
+    resolution: {integrity: sha512-RLo6j8s3nYbjdd1LDct4wamfChyRit7zokUuxtIYCu9XOlltkN5vnj1vwnrPvoqCMZ/7CbbuHFwSTn9A71de/w==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@cargo-messages/linux-arm-gnueabihf@0.1.72':
+    resolution: {integrity: sha512-tHsRshuzfjrX6SDW3jg6al8vMNLTMgczGnVYl5RuBZf/yrAUuwe30KxA9ge6w6mW6Ox797DyBchzAc9OLgTgmQ==}
+    cpu: [arm]
+    os: [linux]
+
+  '@cargo-messages/linux-x64-gnu@0.1.72':
+    resolution: {integrity: sha512-VGtL6CCnUbhsP4aYuBNT5kfrAL7o0qjrxw97a+ax13t+nJd26tVEEIKHMu5drvvS/Nm/hn7sLT8zMnnCv0pvHg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@cargo-messages/win32-arm64-msvc@0.1.72':
+    resolution: {integrity: sha512-V93Cgz39K+yqa3MveNbhh29pYCp8izK5uEavjPoxlNxAbsMCWH+s0verGDdUcfGxjR1H2V7oZ4FszPqR2SqMRQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@cargo-messages/win32-x64-msvc@0.1.72':
+    resolution: {integrity: sha512-knz3uSrO0OSbq3U5VWfCY8FB4NsM43BOWLZ7x4sfaMOC1XWv+IyvDdkLe6DhJx8KUw46KIAimYs9YROrp6l46Q==}
+    cpu: [x64]
+    os: [win32]
+
+  '@neon-rs/cli@0.1.73':
+    resolution: {integrity: sha512-1kv8S/feB6UQWQQwsnGfkSkEBOtlFDNExnioL81E2BwvUWgjQPaseHgpi2EpWVgsPUgur5eBm4QowmlpWkD4/w==}
+    hasBin: true
+
+snapshots:
+
+  '@cargo-messages/android-arm-eabi@0.1.72':
+    optional: true
+
+  '@cargo-messages/darwin-arm64@0.1.72':
+    optional: true
+
+  '@cargo-messages/darwin-x64@0.1.72':
+    optional: true
+
+  '@cargo-messages/linux-arm-gnueabihf@0.1.72':
+    optional: true
+
+  '@cargo-messages/linux-x64-gnu@0.1.72':
+    optional: true
+
+  '@cargo-messages/win32-arm64-msvc@0.1.72':
+    optional: true
+
+  '@cargo-messages/win32-x64-msvc@0.1.72':
+    optional: true
+
+  '@neon-rs/cli@0.1.73':
+    optionalDependencies:
+      '@cargo-messages/android-arm-eabi': 0.1.72
+      '@cargo-messages/darwin-arm64': 0.1.72
+      '@cargo-messages/darwin-x64': 0.1.72
+      '@cargo-messages/linux-arm-gnueabihf': 0.1.72
+      '@cargo-messages/linux-x64-gnu': 0.1.72
+      '@cargo-messages/win32-arm64-msvc': 0.1.72
+      '@cargo-messages/win32-x64-msvc': 0.1.72
