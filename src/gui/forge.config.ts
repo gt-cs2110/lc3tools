@@ -32,7 +32,7 @@ const config: ForgeConfig = {
           ]
         }
       ],
-      id: "io.github.gt-cs2110.lc3tools"
+      id: "io.github.gt_cs2110.lc3tools"
     }
   })],
   publishers: [new PublisherGithub({
