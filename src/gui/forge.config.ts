@@ -10,7 +10,21 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: "static/icons/icon"
+    icon: "static/icons/icon",
+    osxSign: {
+      identity: process.env.SIGNING_IDENTITY,
+      preAutoEntitlements: false,
+      optionsForFile: (filePath) => {
+        return {
+            entitlements: "entitlements.plist",
+        };
+      },
+    },
+    osxNotarize: {
+      appleId: process.env.NOTARIZE_EMAIL,
+      appleIdPassword: process.env.NOTARIZE_PASSWORD,
+      teamId: process.env.TEAM_ID,
+    },
   },
   rebuildConfig: {},
   makers: [new MakerSquirrel({}), new MakerDMG(), new MakerFlatpak({

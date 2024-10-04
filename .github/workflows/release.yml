@@ -115,21 +115,52 @@ jobs:
         run: npm install
       - name: Build backend
         run: npm run build-backend
+      - name: Install Apple certificate
+        # https://docs.github.com/en/actions/use-cases-and-examples/deploying/installing-an-apple-certificate-on-macos-runners-for-xcode-development#add-a-step-to-your-workflow
+        # We're not uploading to MAS, so we do not include BUILD_PROVISION_PROFILE_BASE64.
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
       - name: Publish app (macOS)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Apps built on M1 are displayed as "damaged" if they're missing a code signature
-        # (even if they're perfectly fine).
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          NOTARIZE_EMAIL: ${{ secrets.NOTARIZE_EMAIL }}
+          NOTARIZE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        # Note to future developers:
+        # If we ever lose the Apple dev profile,
+        # we can return to an ad-hoc signature to get the program to work with warnings.
         #
-        # We aren't going to code-sign, but we can "ad-hoc code sign" (give a blank signature)
-        # to revert it back to the error that's usually seen on Intel Macs
+        # To do so, remove the `Install the Apple certificate and provisioning profile` step,
+        # and replace this step with:
+        #  run: |
+        #      npm run package
+        #      codesign --force --deep -s - ./out/*/*.app
+        #      npm run publish -- --skip-package
+        #
+        # This reverts the program to the error that is usually seen on Intel Macs:
         # ("LC3Tools.app" cannot be opened because Apple cannot check it for malicious software.)
-        #
-        # This unfortunately complicates the command a bit since we have to apply codesign
-        # in the middle of the publishing process.
         #
         # https://github.com/electron-userland/electron-builder/issues/5850#issuecomment-1821648559
         run: |
-            npm run package
-            codesign --force --deep -s - ./out/*/*.app
-            npm run publish -- --skip-package
+            npm run publish
