@@ -51,6 +51,7 @@
     "electron-store": "^10.0.0",
     "lc3-backend": "file:../backend",
     "pinia": "^2.2.4",
+    "update-electron-app": "^3.0.0",
     "vue": "^3.5.10",
     "vue-router": "^4.4.5",
     "vue3-ace-editor": "^2.2.4",

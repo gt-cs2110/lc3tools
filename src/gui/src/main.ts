@@ -9,10 +9,14 @@ import fs from 'fs';
 import path from 'path';
 import { API, Handler, SyncHandler } from './api';
 import electronSquirrelStartupFailure from 'electron-squirrel-startup';
+import { updateElectronApp } from 'update-electron-app';
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (electronSquirrelStartupFailure) {
   app.quit();
 }
+// Auto-updater.
+updateElectronApp();
 
 const createWindow = () => {
   // Create the browser window.
