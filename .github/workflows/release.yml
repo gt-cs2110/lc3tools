@@ -1,7 +1,9 @@
-# Based on https://sevic.dev/notes/electron-forge-publish-github/
 name: Release app
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 jobs:
   build-linux:
     strategy:
@@ -24,17 +26,30 @@ jobs:
       - name: Use Cargo
         uses: dtolnay/rust-toolchain@stable
       - name: Install Flatpak dependencies
+        # Needed to build the Flatpak.
+        #
+        # Also, during make, electron-forge will install Electron app dependencies, namely:
+        # - org.freedesktop.Platform
+        # - org.freedesktop.SDK
+        # - org.electronjs.Electron2.BaseApp, and
+        # - https://github.com/refi64/zypak (yes, it pulls a git repo)
+        #
+        # I *would* install them here, but the bundler seems to require a specific version 
+        # and doing it here would be *annoying*.
+        #
+        # If you wish to change the version of any of those dependencies, do it in forge.config.ts.
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder elfutils
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          git config --global protocol.file.allow always
       - name: Install dependencies
         run: npm install
       - name: Build backend
         run: npm run build-backend
       - name: Publish app
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: DEBUG=@malept/flatpak-bundler* npm run publish
   build-win:
     strategy:
@@ -62,7 +77,7 @@ jobs:
         run: npm run build-backend
       - name: Publish app
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run publish
   build-mac:
     strategy:
@@ -102,7 +117,7 @@ jobs:
         run: npm run build-backend
       - name: Publish app (macOS)
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Apps built on M1 are displayed as "damaged" if they're missing a code signature
         # (even if they're perfectly fine).
         #

@@ -16,14 +16,14 @@ const config: ForgeConfig = {
   makers: [new MakerSquirrel({}), new MakerDMG(), new MakerFlatpak({
     // Override the default settings:
     // Uses `org.freedesktop.Platform//24.08` and `org.freedesktop.SDK//24.08` instead of `19.08`
-    // Removes external dependency zypak, since it's present on `org.electronjs.Electron2.BaseApp`
+    // Uses zypak v2024.01.17 instead of the default (v2021).
     options: {
       runtimeVersion: "24.08",
       files: [],
       modules: [
         {
           name: "zypak",
-          "sources": [
+          sources: [
             {
               type: "git",
               url: "https://github.com/refi64/zypak",
@@ -31,12 +31,13 @@ const config: ForgeConfig = {
             }
           ]
         }
-      ]
+      ],
+      id: "io.github.gt-cs2110.lc3tools"
     }
   })],
   publishers: [new PublisherGithub({
     repository: {
-      owner: "endorpersand",
+      owner: "gt-cs2110",
       name: "lc3tools"
     },
     prerelease: true,

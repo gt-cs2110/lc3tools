@@ -13,6 +13,10 @@
     "lint": "eslint --ext .ts,.tsx,.vue .",
     "build-backend": "npm run --prefix ../backend build && npm install --install-links lc3-backend@../backend"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gt-cs2110/lc3tools.git"
+  },
   "devDependencies": {
     "@electron-forge/cli": "~7.4.0",
     "@electron-forge/maker-dmg": "~7.4.0",

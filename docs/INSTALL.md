@@ -1,6 +1,6 @@
 # Installation
 
-Check out the [releases page](https://github.com/endorpersand/lc3tools/releases) to see recent prebuilt binaries for various systems. The following are provided:
+Check out the [releases page](https://github.com/gt-cs2110/lc3tools/releases) to see recent prebuilt binaries for various systems. The following are provided:
 
 - Windows (`.exe`)
 - macOS (Intel, `.dmg`)
