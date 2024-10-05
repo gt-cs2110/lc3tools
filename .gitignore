@@ -52,21 +52,9 @@ x64/*
 # Ignore test cases
 *.asm
 
-# Ignore generated files
-backend/src/parser_gen/*
-backend/src/configured_paths.h
-
-# Ignore GUI files
-frontend/gui/setup_token.sh
-frontend/gui/.DS_Store
-frontend/gui/dist/electron/*
-frontend/gui/dist/web/*
-frontend/gui/build/*
-frontend/gui/!build/icons
-frontend/gui/node_modules/
-frontend/gui/npm-debug.log
-frontend/gui/npm-debug.log.*
-frontend/gui/thumbs.db
-frontend/gui/!.gitkeep
-frontend/gui/local_modules/lc3interface/build/
-frontend/gui/local_modules/lc3interface/build/
+# NPM lock
+# Committing this file causes issues with cross-compiled builds
+# because it creates a platform-dependent lockfile.
+#
+# https://github.com/npm/cli/issues/4828
+package-lock.json
