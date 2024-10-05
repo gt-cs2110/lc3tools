@@ -12,22 +12,6 @@
           <strong>LC3</strong>Tools
           <!-- Put buttons next to title -->
           <v-btn
-            v-if="update_available"
-            icon
-            flat
-            @click="downloadUpdate()"
-          >
-            <v-icon
-              color="green"
-              :icon="mdiInformation"
-            />
-            <v-tooltip
-              location="bottom"
-              activator="parent"
-              text="Update"
-            />
-          </v-btn>
-          <v-btn
             icon
             flat
           >
@@ -224,106 +208,18 @@
           <component :is="Component" />
         </keep-alive>
       </router-view>
-
-      <v-dialog
-        v-model="update_dialog"
-        max-width="400"
-        persistent
-      >
-        <v-card>
-          <v-card-title
-            v-if="!download_bar"
-            class="headline"
-          >
-            Update Available
-          </v-card-title>
-
-          <v-card-text>
-            {{
-              download_bar
-                ? "Downloading at " +
-                  (update.download_speed / 1024).toFixed(0) +
-                  " KB/s"
-                : "Would you like to update now?"
-            }}
-            <v-progress-linear
-              v-if="download_bar"
-              :model-value="
-                (update.download_transferred / update.download_size) * 100
-              "
-            />
-          </v-card-text>
-
-          <v-card-actions v-if="!download_bar">
-            <v-btn
-              icon
-              flat
-              @click="ignoreUpdate()"
-            >
-              <v-icon :icon="mdiDelete" />
-              <v-tooltip
-                location="top"
-                activator="parent"
-                text="Ignore"
-              />
-            </v-btn>
-
-            <v-btn
-              icon
-              flat
-              @click="update_dialog = false"
-            >
-              <v-icon
-                :icon="mdiThumbDown"
-                color="red-darken-1"
-              />
-              <v-tooltip
-                location="top"
-                activator="parent"
-                text="No"
-              />
-            </v-btn>
-
-            <v-btn
-              icon
-              flat
-              @click="updateConfirmed()"
-            >
-              <v-icon
-                :icon="mdiThumbUp"
-                color="green-darken-1"
-              />
-              <v-tooltip
-                location="top"
-                activator="parent"
-                text="Yes"
-              />
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
     </v-app>
   </div>
 </template>
   
 <script setup lang="ts">
 // Vue stuff
-import { onMounted, ref } from "vue";
+import { onMounted } from "vue";
 import "vuetify/components";
-import { mdiInformation, mdiCog, mdiCodeTags, mdiMemory, mdiDelete, mdiThumbDown, mdiThumbUp } from "@mdi/js";
+import { mdiCog, mdiCodeTags, mdiMemory } from "@mdi/js";
 import { LC3Settings, useSettingsStore } from "./store/settings";
 
-const { lc3, autoUpdater, storage } = window.api;
-
-// Update download progress
-const update = ref({
-  download_speed: 0,
-  download_transferred: 0,
-  download_size: 0
-});
-const update_dialog = ref(false);
-const update_available = ref(false);
-const download_bar = ref(false);
+const { lc3, storage } = window.api;
 
 // Settings
 const settings = useSettingsStore();
@@ -335,19 +231,6 @@ const lc3SettingCalls = {
 } satisfies Partial<Record<keyof LC3Settings, (status: boolean) => void>>;
 
 onMounted(() => {
-  autoUpdater.on((message, progress) => {
-    if (message === "update_available") {
-        // Show the settings modal
-        update_dialog.value = !settings.ignore_update;
-        update_available.value = true;
-      }
-      if (message === "download_progress") {
-        update.value.download_speed = progress.bytesPerSecond;
-        update.value.download_size = progress.total;
-        update.value.download_transferred = progress.transferred;
-      }
-  })
-
   for (let [key, f] of Object.entries(lc3SettingCalls)) {
     f(settings[key as keyof typeof lc3SettingCalls]);
   }
@@ -368,24 +251,6 @@ function saveSettings(setting: SettingKeys) {
     }
     storage.set(setting, settings[setting]);
   }
-}
-
-// Updater
-function updateConfirmed() {
-  settings.ignore_update = false;
-  saveSettings("ignore_update");
-  download_bar.value = true;
-  autoUpdater.send("update_confirmed");
-}
-function downloadUpdate() {
-  settings.ignore_update = false;
-  update_dialog.value = true;
-  saveSettings("ignore_update");
-}
-function ignoreUpdate() {
-  settings.ignore_update = true;
-  update_dialog.value = false;
-  saveSettings("ignore_update");
 }
 </script>
 

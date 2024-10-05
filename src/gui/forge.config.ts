@@ -2,6 +2,7 @@ import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerDMG } from "@electron-forge/maker-dmg";
 import { MakerFlatpak } from "@electron-forge/maker-flatpak";
+import { MakerZIP } from "@electron-forge/maker-zip";
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
@@ -10,10 +11,24 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: "static/icons/icon"
+    icon: "static/icons/icon",
+    osxSign: {
+      identity: process.env.SIGNING_IDENTITY,
+      preAutoEntitlements: false,
+      optionsForFile: (filePath) => {
+        return {
+            entitlements: "entitlements.plist",
+        };
+      },
+    },
+    osxNotarize: {
+      appleId: process.env.NOTARIZE_EMAIL,
+      appleIdPassword: process.env.NOTARIZE_PASSWORD,
+      teamId: process.env.TEAM_ID,
+    },
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerDMG(), new MakerFlatpak({
+  makers: [new MakerSquirrel({}), new MakerDMG(), new MakerZIP({}, ['darwin', 'linux']), new MakerFlatpak({
     // Override the default settings:
     // Uses `org.freedesktop.Platform//24.08` and `org.freedesktop.SDK//24.08` instead of `19.08`
     // Uses zypak v2024.01.17 instead of the default (v2021).

@@ -14,14 +14,6 @@ import lc3 from "lc3-backend";
 
 contextBridge.exposeInMainWorld("api", {
     lc3,
-    autoUpdater: {
-        on(cb: (msg: any, progress: any) => void) {
-            ipcRenderer.on("auto_updater", (e, msg, progress) => cb(msg, progress))
-        },
-        send(s: string) {
-            ipcRenderer.send("auto_updater", s)
-        }
-    },
     dialog: {
         async showModal(type: string, config: any): Promise<any> {
             return ipcRenderer.invoke("show_modal", type, config);

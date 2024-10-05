@@ -9,10 +9,14 @@ import fs from 'fs';
 import path from 'path';
 import { API, Handler, SyncHandler } from './api';
 import electronSquirrelStartupFailure from 'electron-squirrel-startup';
+import { updateElectronApp } from 'update-electron-app';
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (electronSquirrelStartupFailure) {
   app.quit();
 }
+// Auto-updater.
+updateElectronApp();
 
 const createWindow = () => {
   // Create the browser window.
@@ -111,16 +115,6 @@ const createMenu = () => {
 }
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
-
-// electron-updater
-ipcMain.on("auto_updater", ((e, text) => {
-  if (text == "update_confirmed") {
-    throw new Error("todo");
-  } else {
-    // statically assert no other branches exist:
-    text satisfies never;
-  }
-}) satisfies SyncHandler<API["autoUpdater"]["send"]>);
 
 // modals
 ipcMain.handle("show_modal", (e, kind, config) => {
