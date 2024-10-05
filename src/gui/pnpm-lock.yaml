@@ -45,10 +45,16 @@ importers:
       '@electron-forge/cli':
         specifier: ~7.4.0
         version: 7.4.0(encoding@0.1.13)
+      '@electron-forge/maker-deb':
+        specifier: ~7.4.0
+        version: 7.4.0
       '@electron-forge/maker-dmg':
         specifier: ~7.4.0
         version: 7.4.0
       '@electron-forge/maker-flatpak':
+        specifier: ~7.4.0
+        version: 7.4.0
+      '@electron-forge/maker-rpm':
         specifier: ~7.4.0
         version: 7.4.0
       '@electron-forge/maker-squirrel':
@@ -208,12 +214,20 @@ packages:
     resolution: {integrity: sha512-LwWS4VPdwjISl1KpLhmM1Qr1M3sRTTQ/RsX+GlFd7cQ1W/FsgxMjaTG4Od1d+a5CGVTh3s6X2g99TSUfxjOveg==}
     engines: {node: '>= 16.4.0'}
 
+  '@electron-forge/maker-deb@7.4.0':
+    resolution: {integrity: sha512-npWea3IpGeu96xNqJpsCOYX6V4E+HY6u/okeTUzUOMX96UteT14MecdUefMam158glRTX84k2ryh7WcBoOa4mg==}
+    engines: {node: '>= 16.4.0'}
+
   '@electron-forge/maker-dmg@7.4.0':
     resolution: {integrity: sha512-xRCMNtnpvQNwrDYvwbVFegnErnIMpHGZANrjwushlH9+Fsu60DFvf5s3AVkgsYdQTqlY7wYRG1mziYZmRlPAIw==}
     engines: {node: '>= 16.4.0'}
 
   '@electron-forge/maker-flatpak@7.4.0':
     resolution: {integrity: sha512-YWmPBr8bbzEMD4Drar8KXE0A7phopcWWo/i1br44Aeg5soygmcWgatUYe1a5jKDPOgXiV7TfJUwhXbljYAhlFw==}
+    engines: {node: '>= 16.4.0'}
+
+  '@electron-forge/maker-rpm@7.4.0':
+    resolution: {integrity: sha512-N64Yh/K/91GzIk28T1jKsCGgYaquDuhXcEJW+TkVyP5tPZ9aTz9SjXLBxAg8WhcroArAZEsVyPOFKthmFzAUuA==}
     engines: {node: '>= 16.4.0'}
 
   '@electron-forge/maker-squirrel@7.4.0':
@@ -1321,9 +1335,21 @@ packages:
     resolution: {integrity: sha512-mYbP+6i+nHMIm0WZHXgGdmmXMe+KXncl6jZYQNcCF9C1WsNA9C5SZ2VP4TLQMSIoFO+X4ugkMEA5uld1bmyEvA==}
     engines: {node: '>= 10.0.0'}
 
+  electron-installer-debian@3.2.0:
+    resolution: {integrity: sha512-58ZrlJ1HQY80VucsEIG9tQ//HrTlG6sfofA3nRGr6TmkX661uJyu4cMPPh6kXW+aHdq/7+q25KyQhDrXvRL7jw==}
+    engines: {node: '>= 10.0.0'}
+    os: [darwin, linux]
+    hasBin: true
+
   electron-installer-dmg@4.0.0:
     resolution: {integrity: sha512-g3W6XnyUa7QGrAF7ViewHdt6bXV2KYU1Pm1CY3pZpp+H6mOjCHHAhf/iZAxtaX1ERCb+SQHz7xSsAHuNH9I8ZQ==}
     engines: {node: '>= 12.13.0'}
+    hasBin: true
+
+  electron-installer-redhat@3.4.0:
+    resolution: {integrity: sha512-gEISr3U32Sgtj+fjxUAlSDo3wyGGq6OBx7rF5UdpIgbnpUvMN4W5uYb0ThpnAZ42VEJh/3aODQXHbFS4f5J3Iw==}
+    engines: {node: '>= 10.0.0'}
+    os: [darwin, linux]
     hasBin: true
 
   electron-squirrel-startup@1.0.1:
@@ -1678,6 +1704,10 @@ packages:
     resolution: {integrity: sha512-R1fam6D4CyKQGNlvJne4dkNF+PvUUl7TAJInvTGa9fti9qAv95quQz29GXapA4d8Ec266mJJxFVh82M4GIIGDQ==}
     engines: {node: '>= 12'}
 
+  gar@1.0.4:
+    resolution: {integrity: sha512-w4n9cPWyP7aHxKxYHFQMegj7WIAsL/YX/C4Bs5Rr8s1H9M1rNtRWRsw+ovYMkXDQ5S4ZbYHsHAPmevPjPgw44w==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
   gauge@4.0.4:
     resolution: {integrity: sha512-f9m+BEN5jkg6a0fZjleidjN51VE1X+mPFQ2DJ0uv1V39oCLCbsGe6yjbBnp7eK7z/+GAon99a3nHuqbuuthyPg==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
@@ -1692,6 +1722,10 @@ packages:
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
+
+  get-folder-size@2.0.1:
+    resolution: {integrity: sha512-+CEb+GDCM7tkOS2wdMKTn9vU7DgnKUTuDlehkNJKNSovdCOVxs14OfKCk4cvSaR3za4gj+OBdl9opPN9xrJ0zA==}
+    hasBin: true
 
   get-installed-path@2.1.1:
     resolution: {integrity: sha512-Qkn9eq6tW5/q9BDVdMpB8tOHljX9OSP0jRC5TRNVA4qRc839t4g8KQaR8t0Uv0EFVL0MlyG7m/ofjEgAROtYsA==}
@@ -2891,6 +2925,9 @@ packages:
   text-table@0.2.0:
     resolution: {integrity: sha512-N+8UisAXDGk8PFXP4HAzVR9nbfmVJ3zYLAWiTIoqC5v5isinhr+r5uaO8+7r3BMfuNIufIsA7RdpVgacC2cSpw==}
 
+  tiny-each-async@2.0.3:
+    resolution: {integrity: sha512-5ROII7nElnAirvFn8g7H7MtpfV1daMcyfTGQwsn/x2VtyV+VPiO5CjReCJtWLvoKTDEDmZocf3cNPraiMnBXLA==}
+
   tmp-promise@3.0.3:
     resolution: {integrity: sha512-RwM7MoPojPxsOBYnyd2hy0bxtIlVrihNs9pj5SUvY8Zz1sQcQG2tG1hSr8PDxfgEB8RNKDhqbIlroIarSNDNsQ==}
 
@@ -3397,6 +3434,16 @@ snapshots:
       - bluebird
       - supports-color
 
+  '@electron-forge/maker-deb@7.4.0':
+    dependencies:
+      '@electron-forge/maker-base': 7.4.0
+      '@electron-forge/shared-types': 7.4.0
+    optionalDependencies:
+      electron-installer-debian: 3.2.0
+    transitivePeerDependencies:
+      - bluebird
+      - supports-color
+
   '@electron-forge/maker-dmg@7.4.0':
     dependencies:
       '@electron-forge/maker-base': 7.4.0
@@ -3415,6 +3462,16 @@ snapshots:
       fs-extra: 10.1.0
     optionalDependencies:
       '@malept/electron-installer-flatpak': 0.11.4
+    transitivePeerDependencies:
+      - bluebird
+      - supports-color
+
+  '@electron-forge/maker-rpm@7.4.0':
+    dependencies:
+      '@electron-forge/maker-base': 7.4.0
+      '@electron-forge/shared-types': 7.4.0
+    optionalDependencies:
+      electron-installer-redhat: 3.4.0
     transitivePeerDependencies:
       - bluebird
       - supports-color
@@ -4757,12 +4814,39 @@ snapshots:
       - supports-color
     optional: true
 
+  electron-installer-debian@3.2.0:
+    dependencies:
+      '@malept/cross-spawn-promise': 1.1.1
+      debug: 4.3.7
+      electron-installer-common: 0.10.3
+      fs-extra: 9.1.0
+      get-folder-size: 2.0.1
+      lodash: 4.17.21
+      word-wrap: 1.2.5
+      yargs: 16.2.0
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
+
   electron-installer-dmg@4.0.0:
     dependencies:
       debug: 4.3.7
       minimist: 1.2.8
     optionalDependencies:
       appdmg: 0.6.6
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
+
+  electron-installer-redhat@3.4.0:
+    dependencies:
+      '@malept/cross-spawn-promise': 1.1.1
+      debug: 4.3.7
+      electron-installer-common: 0.10.3
+      fs-extra: 9.1.0
+      lodash: 4.17.21
+      word-wrap: 1.2.5
+      yargs: 16.2.0
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -5311,6 +5395,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  gar@1.0.4:
+    optional: true
+
   gauge@4.0.4:
     dependencies:
       aproba: 2.0.0
@@ -5333,6 +5420,12 @@ snapshots:
     optional: true
 
   get-caller-file@2.0.5: {}
+
+  get-folder-size@2.0.1:
+    dependencies:
+      gar: 1.0.4
+      tiny-each-async: 2.0.3
+    optional: true
 
   get-installed-path@2.1.1:
     dependencies:
@@ -6596,6 +6689,9 @@ snapshots:
     optional: true
 
   text-table@0.2.0: {}
+
+  tiny-each-async@2.0.3:
+    optional: true
 
   tmp-promise@3.0.3:
     dependencies:
