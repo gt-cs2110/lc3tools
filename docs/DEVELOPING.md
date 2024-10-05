@@ -60,9 +60,7 @@ This project releases several different types of distributables for different pl
 
 The preferred Linux distributable is `.flatpak`.
 
-AppImages are not supported out-of-the-box on Electron Forge, and we do not wish to maintain additional `.deb` and `.rpm` executables.
-
-*That being said*, the `.flatpak` maker provided by Electron Forge has a lot of quirks, so here's some notes.
+There are also `.deb` and `.rpm` executables available (AppImages are not supported out-of-the-box on Electron Forge). The `.flatpak` maker provided by Electron Forge has a lot of quirks, so here's some notes.
 
 Here is every dependency required by Electron Forge's `.flatpak` maker:
 

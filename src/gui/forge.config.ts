@@ -1,7 +1,9 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerDMG } from "@electron-forge/maker-dmg";
 import { MakerFlatpak } from "@electron-forge/maker-flatpak";
+import { MakerRpm } from "@electron-forge/maker-rpm";
+import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
@@ -28,28 +30,35 @@ const config: ForgeConfig = {
     },
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerDMG(), new MakerZIP({}, ['darwin', 'linux']), new MakerFlatpak({
-    // Override the default settings:
-    // Uses `org.freedesktop.Platform//24.08` and `org.freedesktop.SDK//24.08` instead of `19.08`
-    // Uses zypak v2024.01.17 instead of the default (v2021).
-    options: {
-      runtimeVersion: "24.08",
-      files: [],
-      modules: [
-        {
-          name: "zypak",
-          sources: [
-            {
-              type: "git",
-              url: "https://github.com/refi64/zypak",
-              tag: "v2024.01.17"
-            }
-          ]
-        }
-      ],
-      id: "io.github.gt_cs2110.lc3tools"
-    }
-  })],
+  makers: [
+    new MakerSquirrel({}), 
+    new MakerDMG(), 
+    new MakerZIP({}, ['darwin', 'linux']), 
+    new MakerDeb({}),
+    new MakerRpm({}),
+    new MakerFlatpak({
+      // Override the default settings:
+      // Uses `org.freedesktop.Platform//24.08` and `org.freedesktop.SDK//24.08` instead of `19.08`
+      // Uses zypak v2024.01.17 instead of the default (v2021).
+      options: {
+        runtimeVersion: "24.08",
+        files: [],
+        modules: [
+          {
+            name: "zypak",
+            sources: [
+              {
+                type: "git",
+                url: "https://github.com/refi64/zypak",
+                tag: "v2024.01.17"
+              }
+            ]
+          }
+        ],
+        id: "io.github.gt_cs2110.lc3tools"
+      }
+    })
+  ],
   publishers: [new PublisherGithub({
     repository: {
       owner: "gt-cs2110",
