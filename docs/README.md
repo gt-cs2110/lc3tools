@@ -2,7 +2,7 @@
 
 LC3Tools is a modern set of tools to build code for and simulate the LC-3 system described in *Introduction to Computing* by Dr. Yale Patt and Dr. Sanjay Patel.
 
-This project is a fork of the original LC3Tools ([repository](https://github.com/chiragsakhuja/lc3tools)) created by Chirag Sakhuja to better fit the instruction of Georgia Tech's CS 2110 course.
+This project is a fork of the original LC3Tools ([repository](https://github.com/chiragsakhuja/lc3tools), created by Chirag Sakhuja) to better fit the instruction of Georgia Tech's CS 2110 course.
 
 This project's aims are similar to that of the original, namely:
 
