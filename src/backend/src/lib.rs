@@ -11,6 +11,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
 use cast::{IntoJsValue, ResultExtJs, TryIntoJsValue};
+use lc3_ensemble::asm::encoding::{BinaryFormat, ObjFileFormat, TextFormat};
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
@@ -32,6 +33,14 @@ fn obj_contents() -> MutexGuard<'static, ObjContents> {
 fn controller() -> MutexGuard<'static, SimController> {
     CONTROLLER.lock().unwrap_or_else(|e| e.into_inner())
 }
+
+pub fn deserialize_obj_file(bytes: Vec<u8>) -> Option<ObjectFile> {
+    match String::from_utf8(bytes) {
+        Ok(s) => TextFormat::deserialize(&s),
+        Err(e) => BinaryFormat::deserialize(e.as_bytes()),
+    }
+}
+
 fn reset_machine(zeroed: bool) {
     let init = match zeroed {
         true => MachineInitStrategy::Known { value: 0 },
@@ -100,10 +109,10 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let ast = parse_ast(&src)
         .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
-    let asm = assemble_debug(ast, &src)
+    let obj = assemble_debug(ast, &src)
         .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     
-    std::fs::write(&out_path, asm.write_bytes())
+    std::fs::write(&out_path, TextFormat::serialize(&obj))
         .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
 
     writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
@@ -130,9 +139,9 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let in_path = AsRef::<Path>::as_ref(&fp);
     
     // should be unreachable cause frontend validates IO
-    let bytes = std::fs::read(in_path).unwrap();
+    let bytes = std::fs::read(in_path).or_throw(&mut cx)?;
     
-    let Some(obj) = ObjectFile::read_bytes(&bytes) else {
+    let Some(obj) = deserialize_obj_file(bytes) else {
         return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
     };
     
