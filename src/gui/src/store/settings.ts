@@ -7,7 +7,8 @@ export type LC3Settings = {
     ignore_privilege: boolean,
     pause_on_fatal_trap: boolean,
     clear_out_on_reload: boolean,
-    autocomplete: "none" | "basic" | "full"
+    autocomplete: "none" | "basic" | "full",
+    reduce_flashing: boolean,
 }
 
 export const useSettingsStore = defineStore("settings", {
@@ -18,6 +19,7 @@ export const useSettingsStore = defineStore("settings", {
         ignore_privilege: false,
         pause_on_fatal_trap: false,
         clear_out_on_reload: true,
-        autocomplete: "full"
+        autocomplete: "full",
+        reduce_flashing: false
     } as LC3Settings)
 });

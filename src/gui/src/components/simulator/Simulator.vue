@@ -1,5 +1,10 @@
 <template>
-  <div class="contents">
+  <div 
+    class="contents sim-top"
+    :class="{
+      'reduce-flashing': settings.reduce_flashing
+    }"
+  >
     <v-navigation-drawer
       permanent
       rail
@@ -1319,7 +1324,9 @@ function toInt16(value: number) {
 }
 
 .sim-data-table tr {
-  transition: background-color 0.25s ease-in-out;
+  transition: 
+    background-color 0.25s ease-in-out,
+    color 0.25s ease-in-out
 }
 .sim-data-table thead tr {
   background-color: #00000040;
@@ -1345,8 +1352,12 @@ function toInt16(value: number) {
 .row-updated {
   background-color: #fff70038;
 }
-.row-disabled {
+.sim-top:not(.reduce-flashing) .row-disabled {
+  color: gray;
   background-color: lightgrey !important;
+}
+.sim-top.reduce-flashing .row-disabled {
+  color: gray;
 }
 
 .data-cell-text {

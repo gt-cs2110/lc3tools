@@ -161,6 +161,18 @@
                       @change="saveSettings('ignore_privilege')"
                     />
                   </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <h3 class="flex-grow-1">
+                      Reduce flashing in simulator
+                    </h3>
+                    <v-switch
+                      v-model="settings.reduce_flashing"
+                      class="flex-shrink-1"
+                      color="primary"
+                      hide-details
+                      @change="saveSettings('reduce_flashing')"
+                    />
+                  </div>
                   <div class="d-flex justify-center">
                     <h4>Issues? Post on CS 2110 Ed/Piazza!</h4>
                   </div>
