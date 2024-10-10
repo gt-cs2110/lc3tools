@@ -105,7 +105,7 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let out_path = in_path.with_extension("obj");
     
     // should be unreachable cause frontend validates IO
-    let src = std::fs::read_to_string(in_path).unwrap();
+    let src = std::fs::read_to_string(in_path).or_throw(&mut cx)?;
 
     let ast = parse_ast(&src)
         .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;

@@ -32,6 +32,7 @@
     "@neon-rs/cli": "^0.1.81",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/node": "^22.7.4",
+    "@types/yargs": "^17.0.33",
     "@typescript-eslint/eslint-plugin": "^8.8.0",
     "@typescript-eslint/parser": "^8.8.0",
     "@vitejs/plugin-vue": "^5.1.4",
@@ -56,6 +57,7 @@
     "vue": "^3.5.10",
     "vue-router": "^4.4.5",
     "vue3-ace-editor": "^2.2.4",
-    "vuetify": "^3.7.2"
+    "vuetify": "^3.7.2",
+    "yargs": "^17.7.2"
   }
 }
