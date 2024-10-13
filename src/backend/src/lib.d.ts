@@ -8,6 +8,14 @@ declare module "lc3-backend" {
     export function assemble(fp: string): void;
     
     /**
+     * Takes several `.obj` files and links them.
+     * @param fps The filepaths of the `.obj` files
+     * @param out The output path where the linked object file should be
+     * @throws if linking fails
+     */
+    export function link(fps: string[], out: string): void;
+
+    /**
      * Gets the symbol table, mapping each memory address to a label.
      */
     export function getCurrSymTable(): {[addr: number]: string};

@@ -11,6 +11,7 @@ import { API, Handler, SyncHandler } from './api';
 import electronSquirrelStartupFailure from 'electron-squirrel-startup';
 import { updateElectronApp } from 'update-electron-app';
 import { cliEntrypoint } from "./cli";
+import { hideBin } from "yargs/helpers";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (electronSquirrelStartupFailure) {
@@ -68,8 +69,9 @@ const createWindow = () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
   const { argv } = process;
-  if (argv && argv.length > 1) {
-    cliEntrypoint(argv);
+  if (hideBin(argv).length > 0) {
+    cliEntrypoint(argv)
+      .finally(process.exit);
   } else {
     // Auto-updater.
     updateElectronApp();

@@ -119,6 +119,28 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
+fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn (fp: String[], out: String) -> Result<()>
+    let out = cx.argument::<JsString>(1)?.value(&mut cx);
+    let file_paths = cx.argument::<JsArray>(0)?.to_vec(&mut cx)?;
+
+    let mut result_obj = ObjectFile::empty();
+    for fp in file_paths {
+        // Parse object file:
+        let fp = fp.downcast_or_throw::<JsString, _>(&mut cx)?.value(&mut cx);
+        let src = std::fs::read_to_string(&fp).or_throw(&mut cx)?;
+        let obj = deserialize_obj_file(src.into_bytes())
+            .ok_or(())
+            .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {fp}")))?;
+
+        // Link to current result obj:
+        result_obj = ObjectFile::link(result_obj, obj).or_throw(&mut cx)?;
+    }
+    std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
+
+    writeln!(controller().output_buf(), "successfully linked object files to {out}").unwrap();
+    Ok(cx.undefined())
+}
 //--------- SIMULATOR FUNCTIONS ---------//
 
 fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
@@ -128,7 +150,7 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     let mut map = HashMap::new();
 
     if let Some((sym, _)) = contents.get_sym_source() {
-        map.extend(sym.label_iter().map(|(label, addr)| (addr, label)));
+        map.extend(sym.label_iter().map(|(label, addr, _)| (addr, label)));
     }
 
     map.try_into_js(&mut cx)
@@ -506,6 +528,7 @@ fn set_timer_max(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("assemble", assemble)?;
+    cx.export_function("link", link)?;
     cx.export_function("getCurrSymTable", get_curr_sym_table)?;
     cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
     cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;

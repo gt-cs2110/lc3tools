@@ -34,8 +34,12 @@ export async function cliEntrypoint(argv: string[]) {
                     requiresArg: true
                 })
             }, (argv) => {
-                // TODO
-                console.log(argv);
+                try {
+                    lc3.link(argv.files as string[], argv.o);
+                    console.log(lc3.getAndClearOutput());
+                } catch (e) {
+                    console.error(e.message);
+                }
             })
         .command("$0", false, {}, (argv) => {
             console.log(`Invalid command ${argv._[0] ?? ''}`.trim());
