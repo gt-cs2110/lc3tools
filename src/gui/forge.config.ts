@@ -8,11 +8,14 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
-const config: ForgeConfig = {
-  packagerConfig: {
-    asar: true,
-    icon: "static/icons/icon",
-    osxSign: {
+function osxSignNotarize() {
+  const options: {
+    osxSign?: ForgeConfig["packagerConfig"]["osxSign"],
+    osxNotarize?: ForgeConfig["packagerConfig"]["osxNotarize"]
+  } = {};
+
+  if (process.env.SIGNING_IDENTITY) {
+      options.osxSign = {
       identity: process.env.SIGNING_IDENTITY,
       preAutoEntitlements: false,
       optionsForFile: (filePath) => {
@@ -20,12 +23,28 @@ const config: ForgeConfig = {
             entitlements: "entitlements.plist",
         };
       },
-    },
-    osxNotarize: {
+    };
+  } else {
+    console.warn("Missing environment variables -- skipping macOS signing...");
+  }
+  if (process.env.NOTARIZE_EMAIL && process.env.NOTARIZE_PASSWORD && process.env.TEAM_ID) {
+    options.osxNotarize = {
       appleId: process.env.NOTARIZE_EMAIL,
       appleIdPassword: process.env.NOTARIZE_PASSWORD,
       teamId: process.env.TEAM_ID,
-    },
+    };
+  } else {
+    console.warn("Missing environment variables -- skipping macOS notarizing...");
+  }
+
+  return options;
+}
+
+const config: ForgeConfig = {
+  packagerConfig: {
+    asar: true,
+    icon: "static/icons/icon",
+    ...osxSignNotarize(),
   },
   rebuildConfig: {},
   makers: [new MakerSquirrel({}), new MakerDMG(), new MakerZIP({}, ['darwin', 'linux']), new MakerFlatpak({
