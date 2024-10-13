@@ -163,7 +163,7 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
                 .or_throw(&mut cx)?
                 .prefetch_pc();
             
-            simple_reporter(&format!("{e} (instruction x{pc:04X})"))
+            simple_reporter(&format!("{e} (PC: x{pc:04X})"))
                 .report(&mut *controller().output_buf());
         }
 
