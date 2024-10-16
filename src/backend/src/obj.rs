@@ -18,7 +18,8 @@ fn add_mem_lines_from_obj(mem_lines: &mut HashMap<u16, String>, obj: &ObjectFile
             sym.line_iter()
                 .filter_map(|(lno, addr)| {
                     let span = src_info.line_span(lno)?;
-                    Some((addr, src_info.source()[span].to_string()))
+                    let text = src_info.source().get(span)?.to_string();
+                    Some((addr, text))
                 })
         });
 

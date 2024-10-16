@@ -11,6 +11,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
 use cast::{IntoJsValue, ResultExtJs, TryIntoJsValue};
+use lc3_ensemble::asm::encoding::{BinaryFormat, ObjFileFormat, TextFormat};
 use lc3_ensemble::asm::{assemble_debug, ObjectFile};
 use lc3_ensemble::ast::Reg::{R0, R1, R2, R3, R4, R5, R6, R7};
 use lc3_ensemble::parse::parse_ast;
@@ -32,6 +33,14 @@ fn obj_contents() -> MutexGuard<'static, ObjContents> {
 fn controller() -> MutexGuard<'static, SimController> {
     CONTROLLER.lock().unwrap_or_else(|e| e.into_inner())
 }
+
+pub fn deserialize_obj_file(bytes: Vec<u8>) -> Option<ObjectFile> {
+    match String::from_utf8(bytes) {
+        Ok(s) => TextFormat::deserialize(&s),
+        Err(e) => BinaryFormat::deserialize(e.as_bytes()),
+    }
+}
+
 fn reset_machine(zeroed: bool) {
     let init = match zeroed {
         true => MachineInitStrategy::Known { value: 0 },
@@ -44,15 +53,16 @@ fn reset_machine(zeroed: bool) {
 
     obj_contents().clear();
 }
-fn load_obj_file(obj: ObjectFile) {
+fn load_obj_file(obj: ObjectFile) -> Result<(), SimErr> {
     reset_machine(false);
     let mut controller = controller();
     
     controller.simulator()
         .unwrap_or_else(|_| panic!("simulator should've been idle after reset"))
-        .load_obj_file(&obj);
+        .load_obj_file(&obj)?;
 
     obj_contents().load_contents(obj);
+    Ok(())
 }
 //--------- CONFIG FUNCTIONS ---------//
 fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -96,20 +106,43 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let out_path = in_path.with_extension("obj");
     
     // should be unreachable cause frontend validates IO
-    let src = std::fs::read_to_string(in_path).unwrap();
+    let src = std::fs::read_to_string(in_path).or_throw(&mut cx)?;
 
     let ast = parse_ast(&src)
         .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
-    let asm = assemble_debug(ast, &src)
+    let obj = assemble_debug(ast, &src)
         .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     
-    std::fs::write(&out_path, asm.write_bytes())
+    std::fs::write(&out_path, TextFormat::serialize(&obj))
         .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
 
     writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
 }
 
+fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    // fn (fp: String[], out: String) -> Result<()>
+    let out = cx.argument::<JsString>(1)?.value(&mut cx);
+    let file_paths = cx.argument::<JsArray>(0)?.to_vec(&mut cx)?;
+
+    let mut result_obj = ObjectFile::empty();
+    for fp in file_paths {
+        // Parse object file:
+        let fp = fp.downcast_or_throw::<JsString, _>(&mut cx)?.value(&mut cx);
+        let src = std::fs::read_to_string(&fp).or_throw(&mut cx)?;
+        let obj = deserialize_obj_file(src.into_bytes())
+            .ok_or(())
+            .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {fp}")))?;
+
+        // Link to current result obj:
+        result_obj = ObjectFile::link(result_obj, obj)
+            .map_err(|e| simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+    }
+    std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
+
+    writeln!(controller().output_buf(), "successfully linked object files to {out}").unwrap();
+    Ok(cx.undefined())
+}
 //--------- SIMULATOR FUNCTIONS ---------//
 
 fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
@@ -119,7 +152,7 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
     let mut map = HashMap::new();
 
     if let Some((sym, _)) = contents.get_sym_source() {
-        map.extend(sym.label_iter().map(|(label, addr)| (addr, label)));
+        map.extend(sym.label_iter().map(|(label, addr, _)| (addr, label)));
     }
 
     map.try_into_js(&mut cx)
@@ -130,14 +163,16 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let in_path = AsRef::<Path>::as_ref(&fp);
     
     // should be unreachable cause frontend validates IO
-    let bytes = std::fs::read(in_path).unwrap();
+    let bytes = std::fs::read(in_path).or_throw(&mut cx)?;
     
-    let Some(obj) = ObjectFile::read_bytes(&bytes) else {
+    let Some(obj) = deserialize_obj_file(bytes) else {
         return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
     };
     
-    load_obj_file(obj);
-    Ok(cx.undefined())
+    match load_obj_file(obj) {
+        Ok(_) => Ok(cx.undefined()),
+        Err(e) => Err(simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx)),
+    }
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
@@ -497,6 +532,7 @@ fn set_timer_max(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("assemble", assemble)?;
+    cx.export_function("link", link)?;
     cx.export_function("getCurrSymTable", get_curr_sym_table)?;
     cx.export_function("setIgnorePrivilege", set_ignore_privilege)?;
     cx.export_function("setPauseOnFatalTrap", set_pause_on_fatal_trap)?;
