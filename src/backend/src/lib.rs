@@ -53,15 +53,16 @@ fn reset_machine(zeroed: bool) {
 
     obj_contents().clear();
 }
-fn load_obj_file(obj: ObjectFile) {
+fn load_obj_file(obj: ObjectFile) -> Result<(), SimErr> {
     reset_machine(false);
     let mut controller = controller();
     
     controller.simulator()
         .unwrap_or_else(|_| panic!("simulator should've been idle after reset"))
-        .load_obj_file(&obj);
+        .load_obj_file(&obj)?;
 
     obj_contents().load_contents(obj);
+    Ok(())
 }
 //--------- CONFIG FUNCTIONS ---------//
 fn set_ignore_privilege(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -168,8 +169,10 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
     };
     
-    load_obj_file(obj);
-    Ok(cx.undefined())
+    match load_obj_file(obj) {
+        Ok(_) => Ok(cx.undefined()),
+        Err(e) => Err(simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx)),
+    }
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn () -> Result<()>
