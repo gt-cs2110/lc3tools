@@ -66,6 +66,16 @@
           text="Toggle Console"
         />
       </v-list-item>
+      <v-list-item
+        :prepend-icon="mdiLinkVariant"
+        @click="link()"
+      >
+        <v-tooltip
+          location="right"
+          activator="parent"
+          text="Link Object Files"
+        />
+      </v-list-item>
     </v-navigation-drawer>
     <!-- Main editor content -->
     <v-main>
@@ -124,7 +134,7 @@ import type { VAceEditorInstance } from "vue3-ace-editor/types";
 import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
-import { mdiConsole, mdiContentSave, mdiContentSaveEdit, mdiFolderOpen, mdiWrench } from "@mdi/js";
+import { mdiConsole, mdiContentSave, mdiContentSaveEdit, mdiFolderOpen, mdiLinkVariant, mdiWrench } from "@mdi/js";
 
 const { lc3, dialog, fs } = window.api;
 const activeFileStore = useActiveFileStore();
@@ -210,6 +220,32 @@ onMounted(() => {
 function toggleConsole() {
   showConsole.value = !showConsole.value;
 }
+async function link() {
+  const inputs = await dialog.showModal("open", {
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      { name: "Object Files", extensions: ["obj"] }
+    ]
+  });
+  if (!inputs.canceled) {
+    const output = await dialog.showModal("save", {
+      defaultPath: "linked.obj",
+      filters: [
+        { name: "Object Files", extensions: ["obj"] }
+      ]
+    })
+
+    try {
+      lc3.link(inputs.filePaths, output.filePath);
+    } catch (e) {
+      // Don't crash on link failure.
+    }
+    
+    showConsole.value = true;
+    consoleStr.value = lc3.getAndClearOutput();
+  }
+}
+
 async function _writeFile(fp: string, content: string | undefined = undefined) {
   if (typeof content === "undefined") content = editor.value.current_content;
 

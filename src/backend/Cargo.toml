@@ -13,5 +13,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ariadne = "0.4.0"
-lc3-ensemble = "0.8.0"
+lc3-ensemble = "0.8.1"
 neon = "1"

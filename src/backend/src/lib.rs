@@ -134,7 +134,8 @@ fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {fp}")))?;
 
         // Link to current result obj:
-        result_obj = ObjectFile::link(result_obj, obj).or_throw(&mut cx)?;
+        result_obj = ObjectFile::link(result_obj, obj)
+            .map_err(|e| simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     }
     std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
 
