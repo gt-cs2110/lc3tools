@@ -10,13 +10,13 @@ import path from 'path';
 import { API, Handler, SyncHandler } from './api';
 import electronSquirrelStartupFailure from 'electron-squirrel-startup';
 import { updateElectronApp } from 'update-electron-app';
-import { cliEntrypoint } from "./cli";
-import { hideBin } from "yargs/helpers";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (electronSquirrelStartupFailure) {
   app.quit();
 }
+// Auto-updater.
+updateElectronApp();
 
 const createWindow = () => {
   // Create the browser window.
@@ -67,19 +67,7 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
-  const { argv } = process;
-  if (hideBin(argv).length > 0) {
-    cliEntrypoint(argv)
-      .finally(process.exit);
-  } else {
-    // Auto-updater.
-    updateElectronApp();
-
-    // Load window
-    createWindow();
-  }
-});
+app.on('ready', createWindow);
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
