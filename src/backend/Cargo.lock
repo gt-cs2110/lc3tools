@@ -58,9 +58,9 @@ dependencies = [
 
 [[package]]
 name = "lc3-ensemble"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae6022e467ccf97e66fb1dc147d5fdf2de2ddec234adcb4b83e92823fbccd8ec"
+checksum = "a2c884acd1c988fa7f800eb2641928633b323ad0db97e4e12fd2c0d3d0e874e1"
 dependencies = [
  "logos",
  "rand",

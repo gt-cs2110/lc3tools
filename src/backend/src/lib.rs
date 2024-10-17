@@ -6,7 +6,7 @@ mod obj;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::{Range, RangeBounds};
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
@@ -101,20 +101,19 @@ fn clear_output(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 //--------- EDITOR/ASSEMBLER FUNCTIONS ---------//
 fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: String) -> Result<()>
-    let fp = cx.argument::<JsString>(0)?.value(&mut cx);
-    let in_path = AsRef::<Path>::as_ref(&fp);
+    let in_path: PathBuf = cx.argument::<JsString>(0)?.value(&mut cx).into();
     let out_path = in_path.with_extension("obj");
     
     // should be unreachable cause frontend validates IO
-    let src = std::fs::read_to_string(in_path).or_throw(&mut cx)?;
+    let src = std::fs::read_to_string(&in_path).or_throw(&mut cx)?;
 
     let ast = parse_ast(&src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     let obj = assemble_debug(ast, &src)
-        .map_err(|e| error_reporter(&e, in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     
     std::fs::write(&out_path, TextFormat::serialize(&obj))
-        .map_err(|e| io_reporter(&e, in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| io_reporter(&e, &in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
 
     writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
@@ -122,17 +121,21 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: String[], out: String) -> Result<()>
-    let out = cx.argument::<JsString>(1)?.value(&mut cx);
-    let file_paths = cx.argument::<JsArray>(0)?.to_vec(&mut cx)?;
+    let out: PathBuf = cx.argument::<JsString>(1)?.value(&mut cx).into();
+
+    let file_paths: Vec<PathBuf> = cx.argument::<JsArray>(0)?
+        .to_vec(&mut cx)?
+        .into_iter()
+        .map(|e| e.downcast_or_throw::<JsString, _>(&mut cx).map(|s| s.value(&mut cx).into()))
+        .collect::<Result<_, _>>()?;
 
     let mut result_obj = ObjectFile::empty();
-    for fp in file_paths {
+    for fp in &file_paths {
         // Parse object file:
-        let fp = fp.downcast_or_throw::<JsString, _>(&mut cx)?.value(&mut cx);
-        let src = std::fs::read_to_string(&fp).or_throw(&mut cx)?;
+        let src = std::fs::read_to_string(fp).or_throw(&mut cx)?;
         let obj = deserialize_obj_file(src.into_bytes())
             .ok_or(())
-            .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {fp}")))?;
+            .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {}", fp.display())))?;
 
         // Link to current result obj:
         result_obj = ObjectFile::link(result_obj, obj)
@@ -140,7 +143,7 @@ fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     }
     std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
 
-    writeln!(controller().output_buf(), "successfully linked object files to {out}").unwrap();
+    writeln!(controller().output_buf(), "successfully linked object files {file_paths:?} to {}", out.display()).unwrap();
     Ok(cx.undefined())
 }
 //--------- SIMULATOR FUNCTIONS ---------//
@@ -159,14 +162,13 @@ fn get_curr_sym_table(mut cx: FunctionContext) -> JsResult<JsObject> {
 }
 fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // fn (fp: string) -> Result<()>
-    let fp = cx.argument::<JsString>(0)?.value(&mut cx);
-    let in_path = AsRef::<Path>::as_ref(&fp);
+    let in_path: PathBuf = cx.argument::<JsString>(0)?.value(&mut cx).into();
     
     // should be unreachable cause frontend validates IO
-    let bytes = std::fs::read(in_path).or_throw(&mut cx)?;
+    let bytes = std::fs::read(&in_path).or_throw(&mut cx)?;
     
     let Some(obj) = deserialize_obj_file(bytes) else {
-        return Err(io_reporter("malformed object file", in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
+        return Err(io_reporter("malformed object file", &in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
     };
     
     match load_obj_file(obj) {
