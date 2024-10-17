@@ -770,7 +770,7 @@ const rangeRule = (min: number, max: number) => (value: string) => {
 };
 const rules: Record<string, ValidationRule> = {
   hex(value: string) {
-    return /^0?x[0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
+    return /^0?[xX][0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
   },
   dec(value: string) {
     return /^-?\d+$/.test(value) || "Invalid decimal number";
