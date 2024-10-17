@@ -107,7 +107,20 @@ const createMenu = () => {
       ]
     },
     { role: 'editMenu' },
-    { role: 'viewMenu' },
+    { 
+      role: 'viewMenu',
+      submenu: [
+        ...(process.env.NODE_ENV === "development" ? [
+          { role: "toggleDevTools" },
+          { type: "separator" },
+        ] satisfies Electron.MenuItemConstructorOptions[] : []),
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ]
+    },
     { role: 'windowMenu' }
   ];
 
