@@ -52,8 +52,7 @@
           location="right"
           activator="parent"
         >
-          <span v-if="activeFileStore.path === null">Assemble</span>
-          <span v-else>Build</span>
+          <span>Assemble</span>
         </v-tooltip>
       </v-list-item>
       <v-list-item
