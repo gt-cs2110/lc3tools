@@ -164,51 +164,47 @@ const aceEditorRef = useTemplateRef<VAceEditorInstance>("aceEditorRef");
 const aceEditor = computed(() => aceEditorRef.value?.getAceInstance());
 
 // ace editor setup:
-watch(aceEditorRef, (ref) => {
-  let aceEditor = ref.getAceInstance();
-
-  aceEditor.setShowPrintMargin(false);
-  aceEditor.setOptions({
+watch(aceEditor, (editor) => {
+  editor.setShowPrintMargin(false);
+  editor.setOptions({
     fontSize: "1.25em",
-    scrollPastEnd: 0.7
-  });
-  aceEditor.setOptions({
+    scrollPastEnd: 0.7,
     enableBasicAutocompletion: [
       CreateLc3CompletionProvider(() => autocompleteMode.value)
     ],
     enableLiveAutocompletion: true
   });
-  aceEditor.commands.addCommand({
-    name: "save",
-    bindKey: { win: "Ctrl-S", mac: "Cmd-S" },
-    exec: () => saveFileThen(build)
+  editor.commands.addCommands([
+    {
+      name: "save",
+      bindKey: { win: "Ctrl-S", mac: "Cmd-S" },
+      exec: () => saveFileThen(build)
+    },
+    {
+      name: "build",
+      bindKey: { win: "Ctrl-Enter", mac: "Cmd-Enter" },
+      exec: build
+    },
+    {
+      name: "open",
+      bindKey: { win: "Ctrl-O", mac: "Cmd-O" },
+      exec: (e, path) => openFile(path)
+    }
+  ]);
+
+  // Vim custom config:
+  ace.config.loadModule("ace/keyboard/vim", module => {
+    let VimApi = module.CodeMirror.Vim;
+    VimApi.defineEx("write", "w", function(cm: any, input: any) {
+      cm.ace.execCommand("save");
+    });
   });
-  aceEditor.commands.addCommand({
-    name: "build",
-    bindKey: { win: "Ctrl-Enter", mac: "Cmd-Enter" },
-    exec: build
-  });
-  aceEditor.commands.addCommand({
-    name: "open",
-    bindKey: { win: "Ctrl-O", mac: "Cmd-O" },
-    exec: (e, path) => openFile(path)
-  });
+
+  setEditorBinding(settingsRefs.editor_binding.value);
 }, { once: true });
 
 // On editor binding update:
-watch(editorBinding, binding => {
-  if (binding === "vim") {
-    aceEditor.value.setKeyboardHandler("ace/keyboard/vim");
-    ace.config.loadModule("ace/keyboard/vim", module => {
-      let VimApi = module.CodeMirror.Vim;
-      VimApi.defineEx("write", "w", function(cm: any, input: any) {
-        cm.ace.execCommand("save");
-      });
-    })
-  } else {
-    aceEditor.value.setKeyboardHandler("");
-  }
-})
+watch(editorBinding, setEditorBinding);
 
 onMounted(() => {
   // autosave every 5 minutes (cool!)
@@ -218,6 +214,18 @@ onMounted(() => {
 // Methods
 function toggleConsole() {
   showConsole.value = !showConsole.value;
+}
+function setEditorBinding(binding: typeof settings["editor_binding"]) {
+  if (typeof aceEditor.value === "undefined") {
+    console.warn("Ace editor did not exist when trying to set keyboard binding");
+    return;
+  }
+
+  if (binding === "vim") {
+    aceEditor.value.setKeyboardHandler("ace/keyboard/vim");
+  } else {
+    aceEditor.value.setKeyboardHandler("");
+  }
 }
 async function link() {
   const inputs = await dialog.showModal("open", {
