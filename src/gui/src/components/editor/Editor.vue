@@ -285,9 +285,9 @@ async function saveFile() {
   return saveSuccess;
 }
 // Save the current file, then do something secondary (if saving was successful).
-async function saveFileThen(f: () => void) {
+async function saveFileThen(f: () => void | Promise<void>) {
   let success = await saveFile();
-  if (success) f();
+  if (success) await f();
 }
 
 async function autosaveFile() {
@@ -296,7 +296,10 @@ async function autosaveFile() {
   }
 }
 async function openFile(path: string | undefined = undefined) {
-  // Todo: try catch around this
+  // Only allow open if accept on unsaved changes:
+  let accept = await triggerUnsavedChangesModal();
+  if (!accept) return;
+
   // if not given a path, open a dialog to ask user for file
   let selected_files: string[] = [];
   if (typeof path !== "string") {
@@ -322,25 +325,42 @@ async function openFile(path: string | undefined = undefined) {
 async function dropFile(e: DragEvent) {
   let file = e.dataTransfer.files[0];
   if (file?.name.toLowerCase().endsWith("asm")) {
-    if (editorContentChanged.value) {
-      const buttons = ["Yes", "No", "Cancel"]
-      // Save warning
-      let clicked = await dialog.showModal("box", {
-        type: 'warning',
-        title: 'Confirm',
-        message: `You have unsaved changes to ${filename.value}. Would you like to save your changes?`,
-        buttons,
-        cancelId: 2
-      });
-
-      let response = buttons[clicked.response];
-      if (response === "Yes") await saveFileThen(() => openFile(fs.getPath(file)));
-      else if (response === "No") await openFile(fs.getPath(file));
-    } else {
-      await saveFileThen(() => openFile(fs.getPath(file)));
+    let accept = await triggerUnsavedChangesModal();
+    if (accept) {
+      await openFile(fs.getPath(file));
     }
   }
 }
+
+/**
+ * Opens a modal prompting the user to save changes (if they have unsaved changes).
+ * This may not open a modal if there are no changes to save.
+ * 
+ * @returns whether the action following this modal was not canceled, i.e.,
+ * - This method returns true if no modal was required or if `Yes` or `No` were pressed
+ * - This method returns false if `Cancel` was pressed
+ */
+async function triggerUnsavedChangesModal() {
+  if (!editorContentChanged.value) return true;
+
+  const buttons = ["Yes", "No", "Cancel"];
+  const cancelId = 2;
+
+  // Save warning
+  let clicked = await dialog.showModal("box", {
+    type: 'warning',
+    title: 'Confirm',
+    message: `You have unsaved changes to ${filename.value}. Would you like to save your changes?`,
+    buttons,
+    cancelId
+  });
+
+  if (clicked.response === 0) {
+    await saveFile();
+  }
+  return clicked.response !== cancelId;
+}
+
 async function build() {
   // save the file if it hasn't been saved
   if (editorContentChanged.value) {
