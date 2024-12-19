@@ -38,12 +38,22 @@ For building and deployment,
 `npm run build-backend`: This script is defined as...
 
 ```sh
-npm run --prefix ../backend build && npm install --install-links lc3-backend@../backend
+npm run --prefix ../backend build && npm install lc3-backend@../backend
 ```
 
-This runs the `build` script on the backend (without having to `cd` to it) and then reinstalls the dependency (which adds the dylib in `node_modules`).
+This runs the `build` script on the backend package (without having to `cd` to it) and then reinstalls the dependency (which adds a symlink in `node_modules`).
 
-[Due to a quirk of Electron Forge and Vite](https://github.com/electron/forge/issues/3624), we use the `--install-links` flag so that a copy of the data is bundled into the application (rather than a symlink). If this ever gets fixed, then the script should be reduced to simply `npm run --prefix ../backend build`.
+You can verify that the backend is present in the executable by inspecting the ASAR of a packaged executable. For macOS, this would be done like so:
+
+```sh
+$ npm run package # package the executable
+$ npx @electron/asar list 'out/LC3Tools-platform-arch/LC3Tools.app/Contents/Resources/app.asar' | grep 'lc3-backend' # read out the archive, list out its directory, and search for lc3-backend related files
+/node_modules/lc3-backend
+/node_modules/lc3-backend/index.node
+/node_modules/lc3-backend/package.json
+```
+
+This behavior can be configured with the `packageAfterCopy` hook in Electron Forge (which can be found in `forge.config.ts`).
 
 ## Distributables
 

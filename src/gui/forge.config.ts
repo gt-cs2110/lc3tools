@@ -6,9 +6,12 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { PublisherGithub } from '@electron-forge/publisher-github';
+import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import fs from "node:fs/promises";
+import path from "node:path";
 
 function osxSignNotarize() {
   const options: {
@@ -45,6 +48,25 @@ const config: ForgeConfig = {
     asar: true,
     icon: "static/icons/icon",
     ...osxSignNotarize(),
+  },
+  hooks: {
+    packageAfterCopy: async (_cfg, buildPath) => {
+      const nativeDeps = {
+        "lc3-backend": ["index.node", "package.json"]
+      };
+
+      // Copy all native modules to ASAR, so they can be accessed in build
+      for (const [dep, filenames] of Object.entries(nativeDeps)) {
+        const src = path.join("node_modules", dep);
+        const dst = path.join(buildPath, "node_modules", dep);
+        for (const f of filenames) {
+          await fs.cp(path.join(src, f), path.join(dst, f), {
+            recursive: true,
+            dereference: true
+          });
+        }
+      }
+    }
   },
   rebuildConfig: {},
   makers: [
@@ -85,6 +107,7 @@ const config: ForgeConfig = {
     draft: true
   })],
   plugins: [
+    new AutoUnpackNativesPlugin({}),
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
       // If you are familiar with Vite configuration, it will look really familiar.
@@ -93,10 +116,12 @@ const config: ForgeConfig = {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
           entry: 'src/main.ts',
           config: 'vite.main.config.ts',
+          target: 'main',
         },
         {
           entry: 'src/preload.ts',
           config: 'vite.preload.config.ts',
+          target: 'preload',
         },
       ],
       renderer: [
