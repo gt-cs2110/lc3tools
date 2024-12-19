@@ -90,12 +90,12 @@
           <h3 class="view-header">
             {{ filename }}
           </h3>
-          <v-col class="flex-grow-1 flex-shrink-0">
+          <v-col class="d-flex flex-grow-1 flex-shrink-0">
             <v-ace-editor
               id="ace-editor"
               ref="aceEditorRef"
               v-model:value="editor.current_content"
-              class="elevation-2"
+              class="flex-grow-1 elevation-2"
               lang="lc3"
               :theme="editorTheme"
               @drop.prevent="dropFile"
