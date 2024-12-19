@@ -5,6 +5,8 @@ export type LC3Settings = {
     // Editor settings
     editor_binding: "standard" | "vim",
     autocomplete: "none" | "basic" | "full",
+    soft_tabs: boolean,
+    soft_tab_size: number,
     // Simulator settings
     numbers: "signed" | "unsigned",
     ignore_privilege: boolean,
@@ -18,6 +20,8 @@ export const useSettingsStore = defineStore("settings", {
         theme: "light",
         editor_binding: "standard",
         autocomplete: "full",
+        soft_tabs: true,
+        soft_tab_size: 4,
         numbers: "signed",
         ignore_privilege: false,
         pause_on_fatal_trap: false,

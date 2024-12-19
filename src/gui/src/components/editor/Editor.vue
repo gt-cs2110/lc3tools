@@ -150,6 +150,9 @@ const showConsole = ref(false);
 
 const settingsRefs = storeToRefs(settings);
 const editorBinding = settingsRefs.editor_binding;
+const tabSize = computed<number>(() => {
+  return settingsRefs.soft_tabs.value ? settingsRefs.soft_tab_size.value : -1
+});
 const autocompleteMode = settingsRefs.autocomplete;
 const editorTheme = computed(() => ({
   "light": "textmate",
@@ -200,11 +203,14 @@ watch(aceEditor, (editor) => {
     });
   });
 
+  // Initialize editor settings:
   setEditorBinding(settingsRefs.editor_binding.value);
+  setTabSize(tabSize.value);
 }, { once: true });
 
 // On editor binding update:
 watch(editorBinding, setEditorBinding);
+watch(tabSize, setTabSize);
 
 onMounted(() => {
   // autosave every 5 minutes (cool!)
@@ -227,6 +233,13 @@ function setEditorBinding(binding: typeof settings["editor_binding"]) {
     aceEditor.value.setKeyboardHandler("");
   }
 }
+function setTabSize(binding: typeof tabSize.value) {
+  aceEditor.value.setOptions({
+    useSoftTabs: binding > 0,
+    tabSize: Math.max(binding, 1)
+  });
+}
+
 async function link() {
   const inputs = await dialog.showModal("open", {
     properties: ["openFile", "multiSelections"],

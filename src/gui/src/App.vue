@@ -97,6 +97,24 @@
                       />
                     </v-radio-group>
                   </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <h3 class="flex-grow-1">
+                      Soft Tabs
+                    </h3>
+                    <v-checkbox 
+                      v-model="settings.soft_tabs"
+                      hide-details
+                    />
+                    <v-text-field 
+                      v-model.number="settings.soft_tab_size"
+                      variant="outlined" 
+                      hide-details 
+                      density="compact"
+                      type="number"
+                      width="3"
+                      :disabled="!settings.soft_tabs"
+                    />
+                  </div>
                   <v-divider />
                   <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
