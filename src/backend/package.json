@@ -17,6 +17,6 @@
   "license": "MIT",
   "types": "./src/lib.d.ts",
   "devDependencies": {
-    "@neon-rs/cli": "0.1.73"
+    "@neon-rs/cli": "^0.1.82"
   }
 }
