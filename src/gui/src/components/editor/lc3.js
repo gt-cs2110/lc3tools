@@ -1,6 +1,6 @@
 ace.define("ace/mode/lc3_highlight_rules",
   ["require", "exports","module", "ace/lib/oop", "ace/mode/text_highlight_rules"], 
-  function(acequire, exports, module) {
+  function(acequire, exports, _module) {
     "use strict";
 
     const oop = acequire("../lib/oop");
@@ -52,26 +52,25 @@ ace.define("ace/mode/lc3_highlight_rules",
 
 ace.define("ace/mode/folding/coffee",
   ["require", "exports", "module", "ace/lib/oop", "ace/mode/folding/fold_mode", "ace/range"],
-  function(acequire, exports, module) {
+  function(acequire, exports, _module) {
     "use strict";
 
     const oop = acequire("../../lib/oop");
     const BaseFoldMode = acequire("./fold_mode").FoldMode;
-    const Range = acequire("../../range").Range;
     const FoldMode = exports.FoldMode = function() {};
 
     oop.inherits(FoldMode, BaseFoldMode);
 
     const FoldModePrototype = function() {
-      this.getFoldWidgetRange = (session, foldStyle, row) => { return; };
-      this.getFoldWidget = (session, foldStyle, row) => { return ""; };
+      this.getFoldWidgetRange = (_session, _foldStyle, _row) => {};
+      this.getFoldWidget = (_session, _foldStyle, _row) => "";
     }
     FoldModePrototype.call(FoldMode.prototype);
 });
 
 ace.define("ace/mode/lc3",
   ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/lc3_highlight_rules", "ace/mode/folding/coffee"],
-  function(acequire, exports, module) {
+  function(acequire, exports, _module) {
     "use strict";
 
     const oop = acequire("../lib/oop");

@@ -885,7 +885,7 @@ function loadFile(path: string) {
   try {
     lc3.loadObjectFile(path);
     success = true;
-  } catch (e) {
+  } catch {
     success = false;
   }
 

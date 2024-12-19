@@ -20,11 +20,9 @@ function osxSignNotarize() {
       options.osxSign = {
       identity: process.env.SIGNING_IDENTITY,
       preAutoEntitlements: false,
-      optionsForFile: (filePath) => {
-        return {
-            entitlements: "entitlements.plist",
-        };
-      },
+      optionsForFile: () => ({
+          entitlements: "entitlements.plist",
+      }),
     };
   } else {
     console.warn("Missing environment variables -- skipping macOS signing...");

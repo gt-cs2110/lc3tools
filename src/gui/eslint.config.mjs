@@ -47,8 +47,12 @@ export default tseslint.config(
             "vue/multi-word-component-names": "off",
             // typescript handles it and it's causing false positives on eslint's side
             "no-redeclare": "off",
-            // ignore any unused variables starting with _
-            "@typescript-eslint/no-unused-vars": "off",
+            "@typescript-eslint/no-unused-vars": ["error", {
+                // ignore any unused variables and arguments starting with _
+                varsIgnorePattern: "^_",
+                argsIgnorePattern: "^_",
+                caughtErrors: "all"
+            }],
             // any is bad, but also there's too many APIs with missing types
             // that would be too annoying to type.
             // i'll trust that y'all know what y'all're doing if you do :any

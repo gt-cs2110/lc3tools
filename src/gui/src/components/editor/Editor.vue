@@ -236,7 +236,7 @@ async function link() {
 
     try {
       lc3.link(inputs.filePaths, output.filePath);
-    } catch (e) {
+    } catch {
       // Don't crash on link failure.
     }
     
@@ -349,7 +349,7 @@ async function build() {
   } else if (activeFileStore.path.toLowerCase().endsWith(".asm")) {
     try {
       lc3.assemble(activeFileStore.path);
-    } catch (e) {
+    } catch {
       success = false;
     }
     output = lc3.getAndClearOutput();
