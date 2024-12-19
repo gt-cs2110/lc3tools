@@ -156,7 +156,7 @@ const editorTheme = computed(() => ({
   "dark": "twilight"
 })[settingsRefs.theme.value]);
 const filename = computed(() => {
-  let fp = activeFileStore.path;
+  const fp = activeFileStore.path;
   return typeof fp === "string" ? fs.basename(fp) : "\u{200B}";
 })
 
@@ -165,7 +165,7 @@ const aceEditor = computed(() => aceEditorRef.value?.getAceInstance());
 
 // ace editor setup:
 watch(aceEditorRef, (ref) => {
-  let aceEditor = ref.getAceInstance();
+  const aceEditor = ref.getAceInstance();
 
   aceEditor.setShowPrintMargin(false);
   aceEditor.setOptions({
@@ -200,7 +200,7 @@ watch(editorBinding, binding => {
   if (binding === "vim") {
     aceEditor.value.setKeyboardHandler("ace/keyboard/vim");
     ace.config.loadModule("ace/keyboard/vim", module => {
-      let VimApi = module.CodeMirror.Vim;
+      const VimApi = module.CodeMirror.Vim;
       VimApi.defineEx("write", "w", function(cm: any, input: any) {
         cm.ace.execCommand("save");
       });
@@ -253,7 +253,7 @@ async function _writeFile(fp: string, content: string | undefined = undefined) {
   activeFileStore.path = fp;
 }
 async function saveFileAs() {
-  let new_file = await dialog.showModal("save", {
+  const new_file = await dialog.showModal("save", {
     filters: [
       { name: "Assembly", extensions: ["asm"] }
     ]
@@ -278,7 +278,7 @@ async function saveFile() {
 }
 // Save the current file, then do something secondary (if saving was successful).
 async function saveFileThen(f: () => void) {
-  let success = await saveFile();
+  const success = await saveFile();
   if (success) f();
 }
 
@@ -292,7 +292,7 @@ async function openFile(path: string | undefined = undefined) {
   // if not given a path, open a dialog to ask user for file
   let selected_files: string[] = [];
   if (typeof path !== "string") {
-    let result = await dialog.showModal("open", {
+    const result = await dialog.showModal("open", {
       properties: ["openFile"],
       filters: [
         { name: "Assembly", extensions: ["asm"] }
@@ -306,18 +306,18 @@ async function openFile(path: string | undefined = undefined) {
 
   // Dialog returns an array of files, we only care about the first one
   if (selected_files.length > 0) {
-    let active_file = selected_files[0];
+    const active_file = selected_files[0];
     editor.value.original_content = editor.value.current_content = await fs.read(active_file);
     activeFileStore.path = active_file;
   }
 }
 async function dropFile(e: DragEvent) {
-  let file = e.dataTransfer.files[0];
+  const file = e.dataTransfer.files[0];
   if (file?.name.toLowerCase().endsWith("asm")) {
     if (editorContentChanged.value) {
       const buttons = ["Yes", "No", "Cancel"]
       // Save warning
-      let clicked = await dialog.showModal("box", {
+      const clicked = await dialog.showModal("box", {
         type: 'warning',
         title: 'Confirm',
         message: `You have unsaved changes to ${filename.value}. Would you like to save your changes?`,
@@ -325,7 +325,7 @@ async function dropFile(e: DragEvent) {
         cancelId: 2
       });
 
-      let response = buttons[clicked.response];
+      const response = buttons[clicked.response];
       if (response === "Yes") await saveFileThen(() => openFile(fs.getPath(file)));
       else if (response === "No") await openFile(fs.getPath(file));
     } else {
@@ -375,16 +375,16 @@ export default {
     next((vm: any) => {
       if (to.hash) {
         // format L999C999-L999C999
-        let hash_pattern = /^#?L(\d+)C(\d+)-L(\d+)C(\d+)$/;
-        let match = to.hash.match(hash_pattern);
+        const hash_pattern = /^#?L(\d+)C(\d+)-L(\d+)C(\d+)$/;
+        const match = to.hash.match(hash_pattern);
         if (match) {
-          let [_, slno_str, scno_str, elno_str, ecno_str] = match;
-          let slno = parseInt(slno_str, 10);
-          let scno = parseInt(scno_str, 10);
-          let elno = parseInt(elno_str, 10);
-          let ecno = parseInt(ecno_str, 10);
+          const [_, slno_str, scno_str, elno_str, ecno_str] = match;
+          const slno = parseInt(slno_str, 10);
+          const scno = parseInt(scno_str, 10);
+          const elno = parseInt(elno_str, 10);
+          const ecno = parseInt(ecno_str, 10);
   
-          let { Range } = vm.ace.require("ace/range");
+          const { Range } = vm.ace.require("ace/range");
           vm.aceEditor.gotoLine(slno, scno, true);
           vm.aceEditor.getSelection().setRange(new Range(slno, scno, elno, ecno));
         }

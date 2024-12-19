@@ -765,7 +765,7 @@ type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
 const rangeRule = (min: number, max: number) => (value: string) => {
-  let intValue = parseInputString(value);
+  const intValue = parseInputString(value);
   return min <= intValue && intValue <= max || `Value must be between ${min} and ${max}`;
 };
 const rules: Record<string, ValidationRule> = {
@@ -776,14 +776,14 @@ const rules: Record<string, ValidationRule> = {
     return /^-?\d+$/.test(value) || "Invalid decimal number";
   },
   size16bit(value: string) {
-    let intValue = parseInputString(value);
+    const intValue = parseInputString(value);
     return (
       intValue === toInt16(intValue) || intValue === toUint16(intValue) ||
       "Value must be between x0000 and xFFFF"
     );
   },
   size8bit(value: string) {
-    let intValue = parseInputString(value);
+    const intValue = parseInputString(value);
     return intValue === (intValue & 0xFF) || "Value must be between x00 and xFF";
   }
 }
@@ -805,9 +805,9 @@ onUnmounted(() => {
 
 })
 onActivated(() => {
-  let asmFileName = activeFileStore.path;
+  const asmFileName = activeFileStore.path;
   if (asmFileName != null && activeFileStore.lastBuilt > activeFileStore.lastLoaded) {
-    let objFileName = asmFileName.replace(/\.asm$/, ".obj");
+    const objFileName = asmFileName.replace(/\.asm$/, ".obj");
     if (fs.exists(objFileName)) {
       loadFile(objFileName);
     }
@@ -844,7 +844,7 @@ function handleMemoryScroll(e: WheelEvent) {
 }
 
 async function dropFile(e: DragEvent) {
-  let file = e.dataTransfer.files[0];
+  const file = e.dataTransfer.files[0];
   if (file?.name.toLowerCase().endsWith("obj") && !lc3.isSimRunning()) {
     openFile(fs.getPath(file));
   }
@@ -852,7 +852,7 @@ async function dropFile(e: DragEvent) {
 async function openFile(path: string | undefined = undefined) {
   let selectedFiles: string[] = [];
   if (!path) {
-    let result = await dialog.showModal("open", {
+    const result = await dialog.showModal("open", {
       properties: ["openFile"],
       filters: [{ name: "Object Files", extensions: ["obj"] }]
     });
@@ -909,7 +909,7 @@ function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
     startPollIO();
 
     return new Promise<void>((resolve, reject) => {
-      let callback = (error: Error) => {
+      const callback = (error: Error) => {
         if (error) {
           reject(error);
           return;
@@ -995,7 +995,7 @@ function handleConsoleInput(e: KeyboardEvent) {
     lc3.addInput(overrides[key]);
   } else if (key.length === 1) {
     // Handle CTRL-a through CTRL-z.
-    let code = key.charCodeAt(0);
+    const code = key.charCodeAt(0);
     if (code > 64 && code < 128 && e.ctrlKey) {
       key = String.fromCharCode(code & 0x1F);
     } 
@@ -1008,7 +1008,7 @@ function handleConsoleInput(e: KeyboardEvent) {
 async function openRegContextMenu(item: RegDataRow) {
   if (lc3.isSimRunning()) return;
 
-  let output = await dialog.showModal("menu", ["Jump", "Copy Hex", "Copy Decimal"]);
+  const output = await dialog.showModal("menu", ["Jump", "Copy Hex", "Copy Decimal"]);
   switch (output) {
     case 0:
       jumpToMemView(item.value);
@@ -1027,10 +1027,10 @@ async function openRegContextMenu(item: RegDataRow) {
 async function openMemContextMenu(item: MemDataRow) {
   if (lc3.isSimRunning()) return;
 
-  let options = ["Jump to Address"];
+  const options = ["Jump to Address"];
 
-  let hasLabel = !!item.label;
-  let hasInstr = typeof lc3.getAddrSourceRange(item.addr) !== "undefined";
+  const hasLabel = !!item.label;
+  const hasInstr = typeof lc3.getAddrSourceRange(item.addr) !== "undefined";
   if (hasLabel && hasInstr) {
     options.push("Jump to Source (Label)", "Jump to Source (Instruction)");
   } else if (hasLabel || hasInstr) {
@@ -1038,7 +1038,7 @@ async function openMemContextMenu(item: MemDataRow) {
   }
 
   options.push("Copy Hex", "Copy Decimal");
-  let output = await dialog.showModal("menu", options);
+  const output = await dialog.showModal("menu", options);
   switch (options[output]) {
     case "Jump to Address":
       jumpToMemView(item.value);
@@ -1067,8 +1067,8 @@ async function openMemContextMenu(item: MemDataRow) {
 function setDataValue(dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
 function setDataValue(dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
 function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
-  let value = editValue.value;
-  let validated = rules.every(r => r(value) === true);
+  const value = editValue.value;
+  const validated = rules.every(r => r(value) === true);
   
   // Validation failed, so ignore set
   if (!validated) {
@@ -1095,7 +1095,7 @@ function updateUI(showUpdates = false, updateReg = true) {
 
   // Registers
   if (updateReg) {
-    for (let reg of sim.value.regs) {
+    for (const reg of sim.value.regs) {
       const regVal = lc3.getRegValue(reg.name);
       const prevVal = reg.value;
 
@@ -1117,9 +1117,9 @@ function updateUI(showUpdates = false, updateReg = true) {
   }
 
   // Memory
-  let updates: number[] = lc3.takeMemChanges();
+  const updates: number[] = lc3.takeMemChanges();
   for (let i = 0; i < memView.value.data.length; i++) {
-    let addr = toUint16(memView.value.start + i);
+    const addr = toUint16(memView.value.start + i);
     const dataLine = memView.value.data[i];
 
     dataLine.addr = addr;
@@ -1151,7 +1151,7 @@ function updateTimer() {
   }
 }
 function toggleBreakpoint(addr: number) {
-  let idx = sim.value.breakpoints.indexOf(addr);
+  const idx = sim.value.breakpoints.indexOf(addr);
 
   if (!lc3.isSimRunning()) {
     if (idx == -1) {
@@ -1182,7 +1182,7 @@ function jumpToSource(location: string | number) {
     }
 
     if (typeof span !== "undefined") {
-      let [slno, scno, elno, ecno] = span;
+      const [slno, scno, elno, ecno] = span;
       router.push({ name: "editor", hash: `#L${slno}C${scno}-L${elno}C${ecno}` });
     }
   }
@@ -1200,7 +1200,7 @@ function jumpToMemView(newStart: number) {
   updateUI(false, false);
 }
 function jumpToMemViewStr() {
-  let match = jumpToLocInput.value.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
+  const match = jumpToLocInput.value.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
   if (match != null) {
     jumpToMemView(parseInt(match[1], 16));
   }
@@ -1215,11 +1215,11 @@ function jumpToNextMemView() {
   jumpToPartMemView(+memView.value.data.length);
 }
 function jumpToPC(jumpIfInView: boolean) {
-  let pc = toUint16(sim.value.regs[9].value);
-  let memViewStart = memView.value.start;
-  let memViewEnd = memViewStart + memView.value.data.length;
+  const pc = toUint16(sim.value.regs[9].value);
+  const memViewStart = memView.value.start;
+  const memViewEnd = memViewStart + memView.value.data.length;
   
-  let pcInView = memViewStart <= pc && pc < memViewEnd;
+  const pcInView = memViewStart <= pc && pc < memViewEnd;
   if (jumpIfInView || !pcInView) jumpToMemView(pc);
 }
 
@@ -1244,15 +1244,15 @@ async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, 
   if (!valid) return;
 
   if (prop === "vect") {
-    let intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
+    const intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
     lc3.setTimerVect(intValue);
     sim.value.timer[prop] = intValue;
   } else if (prop === "priority") {
-    let intValue = parseInputString(timerInputs.value[prop]);
+    const intValue = parseInputString(timerInputs.value[prop]);
     lc3.setTimerPriority(intValue);
     sim.value.timer[prop] = intValue;
   } else if (prop === "max") {
-    let intValue = parseInputString(timerInputs.value[prop]);
+    const intValue = parseInputString(timerInputs.value[prop]);
     lc3.setTimerMax(intValue);
     sim.value.timer[prop] = intValue;
     resetTimer();
@@ -1262,7 +1262,7 @@ async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, 
 }
 // Helper functions
 function psrToCC(psr: number) {
-  let cc = psr & 0b111;
+  const cc = psr & 0b111;
   switch (cc) {
     case 0b100: return "N"
     case 0b010: return "Z"
@@ -1271,7 +1271,7 @@ function psrToCC(psr: number) {
   }
 }
 function toHex(value: number) {
-  let hex = toUint16(value).toString(16).toUpperCase();
+  const hex = toUint16(value).toString(16).toUpperCase();
   return `x${hex.padStart(4, "0")}`;
 }
 function toFormattedDec(value: number) {

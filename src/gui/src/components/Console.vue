@@ -41,11 +41,11 @@ const convert = new Convert({
 });
 const consoleHtml = computed(() => {
   // Handle backspaces:
-  let buf: string[] = [];
+  const buf: string[] = [];
   // pattern represents: (ANSI escape code | new line | any non-new-line character)
   // ANSI escape code is of format: \x1B[999;999;999
   // eslint-disable-next-line no-control-regex
-  for (let ch of consoleStr.value.match(/(?:\x1B\[(?:\d+;)*\d+m|\n|.)/g) ?? []) {
+  for (const ch of consoleStr.value.match(/(?:\x1B\[(?:\d+;)*\d+m|\n|.)/g) ?? []) {
     if (ch === '\b') {
         if (buf.length === 0) continue;
         if (buf[buf.length - 1] === '\n') continue;
@@ -56,7 +56,7 @@ const consoleHtml = computed(() => {
   }
 
   // Escape console string:
-  let string = buf.join("").replace(/[&<>"']/g, m => ({
+  const string = buf.join("").replace(/[&<>"']/g, m => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",

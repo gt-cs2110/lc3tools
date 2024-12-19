@@ -243,7 +243,7 @@ const lc3SettingCalls = {
 } satisfies Partial<Record<keyof LC3Settings, (status: boolean) => void>>;
 
 onMounted(() => {
-  for (let [key, f] of Object.entries(lc3SettingCalls)) {
+  for (const [key, f] of Object.entries(lc3SettingCalls)) {
     f(settings[key as keyof typeof lc3SettingCalls]);
   }
 })
@@ -252,13 +252,13 @@ onMounted(() => {
 type SettingKeys = keyof LC3Settings | "all";
 function saveSettings(setting: SettingKeys) {
   if (setting === "all") {
-    for (let [key, f] of Object.entries(lc3SettingCalls)) {
+    for (const [key, f] of Object.entries(lc3SettingCalls)) {
       f(settings[key as keyof typeof lc3SettingCalls]);
     }
     storage.setAll(settings);
   } else {
     if (setting in lc3SettingCalls) {
-      let s = setting as keyof typeof lc3SettingCalls;
+      const s = setting as keyof typeof lc3SettingCalls;
       lc3SettingCalls[s](settings[s]);
     }
     storage.set(setting, settings[setting]);

@@ -3,10 +3,10 @@ ace.define("ace/mode/lc3_highlight_rules",
   function(acequire, exports, module) {
     "use strict";
 
-    let oop = acequire("../lib/oop");
-    let TextHighlightRules = acequire("./text_highlight_rules").TextHighlightRules;
+    const oop = acequire("../lib/oop");
+    const TextHighlightRules = acequire("./text_highlight_rules").TextHighlightRules;
 
-    let LC3HighlightRules = function() {
+    const LC3HighlightRules = function() {
       this.$rules = { start: [
         {
           token: 'keyword.control.assembly',
@@ -55,14 +55,14 @@ ace.define("ace/mode/folding/coffee",
   function(acequire, exports, module) {
     "use strict";
 
-    let oop = acequire("../../lib/oop");
-    let BaseFoldMode = acequire("./fold_mode").FoldMode;
-    let Range = acequire("../../range").Range;
-    let FoldMode = exports.FoldMode = function() {};
+    const oop = acequire("../../lib/oop");
+    const BaseFoldMode = acequire("./fold_mode").FoldMode;
+    const Range = acequire("../../range").Range;
+    const FoldMode = exports.FoldMode = function() {};
 
     oop.inherits(FoldMode, BaseFoldMode);
 
-    let FoldModePrototype = function() {
+    const FoldModePrototype = function() {
       this.getFoldWidgetRange = (session, foldStyle, row) => { return; };
       this.getFoldWidget = (session, foldStyle, row) => { return ""; };
     }
@@ -74,11 +74,11 @@ ace.define("ace/mode/lc3",
   function(acequire, exports, module) {
     "use strict";
 
-    let oop = acequire("../lib/oop");
-    let TextMode = acequire("./text").Mode;
-    let LC3HighlightRules = acequire("./lc3_highlight_rules").LC3HighlightRules;
-    let FoldMode = acequire("./folding/coffee").FoldMode;
-    let Mode = function() {
+    const oop = acequire("../lib/oop");
+    const TextMode = acequire("./text").Mode;
+    const LC3HighlightRules = acequire("./lc3_highlight_rules").LC3HighlightRules;
+    const FoldMode = acequire("./folding/coffee").FoldMode;
+    const Mode = function() {
       this.HighlightRules = LC3HighlightRules;
       this.foldingRules = new FoldMode();
       this.$behaviour = this.$defaultBehaviour;
@@ -86,7 +86,7 @@ ace.define("ace/mode/lc3",
 
     oop.inherits(Mode, TextMode);
 
-    let ModePrototype = function() {
+    const ModePrototype = function() {
       this.lineCommentStart = ";";
       this.$id = "ace/mode/lc3";
     }

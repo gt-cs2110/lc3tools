@@ -88,7 +88,7 @@ function generateCompletions(mode, doc, pos, prefix) {
     return [];
   }
 
-  let labelsReferenced = new Set();
+  const labelsReferenced = new Set();
 
   if (mode == "full") {
     const documentLines = doc.getAllLines();
