@@ -1291,7 +1291,7 @@ function parseInputString(value: string) {
 function regLabel(item: RegDataRow) {
   if (item.name === "psr") {
     return "CC: " + psrToCC(item.value);
-  } else if (item.name.startsWith("r") && 0 <= item.value && item.value <= 127) {
+  } else if (item.name.startsWith("r") && 20 <= item.value && item.value <= 127) {
     return String.fromCharCode(item.value);
   }
 
