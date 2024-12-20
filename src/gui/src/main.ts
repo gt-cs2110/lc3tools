@@ -18,6 +18,10 @@ if (electronSquirrelStartupFailure) {
 // Auto-updater.
 updateElectronApp();
 
+// Only allow devTools in development mode:
+const enableDevTools = process.env.NODE_ENV === "development";
+// const enableDevTools = true;
+
 const createWindow = () => {
   // Create the browser window.
   const { width, height } = screen.getPrimaryDisplay().size;
@@ -25,9 +29,7 @@ const createWindow = () => {
     width, height,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      
-      // Only allow devTools in development mode:
-      devTools: process.env.NODE_ENV === "development",
+      devTools: enableDevTools,
 
       // Needed to import lc3-backend in preload.ts
       // 
@@ -51,7 +53,7 @@ const createWindow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  if (process.env.NODE_ENV === "development") {
+  if (enableDevTools) {
     // Open the DevTools.
     mainWindow.webContents.openDevTools();
   }
@@ -110,7 +112,7 @@ const createMenu = () => {
     { 
       role: 'viewMenu',
       submenu: [
-        ...(process.env.NODE_ENV === "development" ? [
+        ...(enableDevTools ? [
           { role: "toggleDevTools" },
           { type: "separator" },
         ] satisfies Electron.MenuItemConstructorOptions[] : []),
