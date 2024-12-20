@@ -21,7 +21,7 @@
               :close-on-content-click="false"
             >
               <v-card>
-                <v-container class="d-flex flex-column ga-5">
+                <v-container class="d-flex flex-column ga-3">
                   <!-- Should use v-row, v-col, but those are grid not flex -->
                   <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
@@ -46,29 +46,7 @@
                       />
                     </v-radio-group>
                   </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Number View
-                    </h3>
-                    <v-radio-group
-                      v-model="settings.numbers"
-                      class="flex-shrink-1"
-                      color="primary"
-                      inline
-                      hide-details
-                      @change="saveSettings('numbers')"
-                    >
-                      <v-spacer />
-                      <v-radio
-                        label="Unsigned"
-                        value="unsigned"
-                      />
-                      <v-radio
-                        label="Signed"
-                        value="signed"
-                      />
-                    </v-radio-group>
-                  </div>
+                  <v-divider />
                   <div class="d-flex justify-space-between align-center">
                     <h3 class="flex-grow-1">
                       Editor Key Binding
@@ -116,6 +94,48 @@
                       <v-radio
                         label="Full"
                         value="full"
+                      />
+                    </v-radio-group>
+                  </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <h3 class="flex-grow-1">
+                      Soft Tabs
+                    </h3>
+                    <v-checkbox 
+                      v-model="settings.soft_tabs"
+                      hide-details
+                    />
+                    <v-text-field 
+                      v-model.number="settings.soft_tab_size"
+                      variant="outlined" 
+                      hide-details 
+                      density="compact"
+                      type="number"
+                      width="3"
+                      :disabled="!settings.soft_tabs"
+                    />
+                  </div>
+                  <v-divider />
+                  <div class="d-flex justify-space-between align-center">
+                    <h3 class="flex-grow-1">
+                      Number View
+                    </h3>
+                    <v-radio-group
+                      v-model="settings.numbers"
+                      class="flex-shrink-1"
+                      color="primary"
+                      inline
+                      hide-details
+                      @change="saveSettings('numbers')"
+                    >
+                      <v-spacer />
+                      <v-radio
+                        label="Unsigned"
+                        value="unsigned"
+                      />
+                      <v-radio
+                        label="Signed"
+                        value="signed"
                       />
                     </v-radio-group>
                   </div>
@@ -173,6 +193,7 @@
                       @change="saveSettings('reduce_flashing')"
                     />
                   </div>
+                  <v-divider />
                   <div class="d-flex justify-center">
                     <h4>Issues? Post on CS 2110 Ed/Piazza!</h4>
                   </div>

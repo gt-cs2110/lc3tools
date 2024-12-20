@@ -1,3 +1,5 @@
+import ace from "ace-builds";
+
 ace.define("ace/mode/lc3_highlight_rules",
   ["require", "exports","module", "ace/lib/oop", "ace/mode/text_highlight_rules"], 
   function(acequire, exports, module) {
@@ -10,7 +12,7 @@ ace.define("ace/mode/lc3_highlight_rules",
       this.$rules = { start: [
         {
           token: 'keyword.control.assembly',
-          regex: '\\b(?:add|and|br(n?z?p?)?|jmp|jsr|jsrr|ld|ldi|ldr|lea|not|ret|rti|st|sti|str|trap|getc|out|putc|puts|in|putsp|halt)\\b',
+          regex: '\\b(?:add|and|br(n?z?p?)?|jmp|jsr|jsrr|ld|ldi|ldr|lea|not|ret|rti|st|sti|str|trap|nop|getc|out|putc|puts|in|putsp|halt)\\b',
           caseInsensitive: true
         },
         {
@@ -20,7 +22,7 @@ ace.define("ace/mode/lc3_highlight_rules",
         },
         {
           token: 'constant.character.decimal.assembly',
-          regex: '[ | ,]#-?[0-9]+',
+          regex: '(?:#-?|-|\\b)[0-9]+\\b',
           caseInsensitive: true
         },
         {
@@ -32,7 +34,7 @@ ace.define("ace/mode/lc3_highlight_rules",
         { token: 'string.assembly', regex: /"([^\\"]|\\.)*"/ },
         { 
           token: 'support.function.directive.assembly',
-          regex: '(\.blkw|\.end|\.external|\.fill|\.orig|\.stringz)\\b',
+          regex: '(\\.blkw|\\.end|\\.external|\\.fill|\\.orig|\\.stringz)\\b',
           caseInsensitive: true
         },
         { token: 'comment.assembly', regex: ';(.*)' }
