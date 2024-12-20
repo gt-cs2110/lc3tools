@@ -65,9 +65,9 @@ impl<E: std::fmt::Display + ?Sized> Reporter<'_, E> {
             self.err.to_string()
         };
         let fname = self.filename.unwrap_or("source");
-        let offset = self.span.as_ref().map_or(0, |e| e.first().start);
+        let span = self.span.as_ref().map_or(0..0, |s| s.first());
         
-        let mut report = Report::build(ReportKind::Error, fname, offset).with_message(msg);
+        let mut report = Report::build(ReportKind::Error, (fname, span)).with_message(msg);
         match self.span.clone() {
             Some(ErrSpan::One(r)) => {
                 report.add_label({
