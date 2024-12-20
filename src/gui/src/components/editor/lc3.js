@@ -22,7 +22,7 @@ ace.define("ace/mode/lc3_highlight_rules",
         },
         {
           token: 'constant.character.decimal.assembly',
-          regex: '[ | ,]#-?[0-9]+',
+          regex: '(?:#-?|-|\\b)[0-9]+\\b',
           caseInsensitive: true
         },
         {
