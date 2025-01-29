@@ -14,6 +14,7 @@ declare module 'vue' {
     Editor: typeof import('./src/components/editor/Editor.vue')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
     MdiAlert: typeof import('~icons/mdi/alert')['default']
+    MdiClose: typeof import('~icons/mdi/close')['default']
     MdiCodeTags: typeof import('~icons/mdi/code-tags')['default']
     MdiCog: typeof import('~icons/mdi/cog')['default']
     MdiConsole: typeof import('~icons/mdi/console')['default']
@@ -22,6 +23,7 @@ declare module 'vue' {
     MdiDebugStepInto: typeof import('~icons/mdi/debug-step-into')['default']
     MdiDebugStepOut: typeof import('~icons/mdi/debug-step-out')['default']
     MdiDebugStepOver: typeof import('~icons/mdi/debug-step-over')['default']
+    MdiDelete: typeof import('~icons/mdi/delete')['default']
     MdiFolderOpen: typeof import('~icons/mdi/folder-open')['default']
     MdiLinkVariant: typeof import('~icons/mdi/link-variant')['default']
     MdiMemory: typeof import('~icons/mdi/memory')['default']
@@ -44,6 +46,7 @@ declare module 'vue' {
     Tab: typeof import('primevue/tab')['default']
     TabList: typeof import('primevue/tablist')['default']
     Tabs: typeof import('primevue/tabs')['default']
+    Toast: typeof import('primevue/toast')['default']
     ToggleSwitch: typeof import('primevue/toggleswitch')['default']
   }
   export interface ComponentCustomProperties {

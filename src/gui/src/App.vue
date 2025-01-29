@@ -127,7 +127,7 @@ function saveSettings(setting: SettingKeys) {
   
     <router-view
       v-slot="{ Component }"
-      class="flex h-full"
+      class="flex w-full h-full"
     >
       <keep-alive>
         <component :is="Component" />

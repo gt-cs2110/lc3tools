@@ -32,6 +32,7 @@ import router from "./router/index";
 
 // Theming
 import PrimeVue from 'primevue/config';
+import ToastService from 'primevue/toastservice';
 import Aura from '@primevue/themes/aura';
 import "./style.pcss";
 
@@ -52,6 +53,7 @@ createApp(App)
                 }
             }
         }
-     })
+    })
+    .use(ToastService)
     .use(pinia)
     .mount('#app');
