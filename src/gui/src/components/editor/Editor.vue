@@ -330,11 +330,13 @@ export default {
         @click="saveFileThen(build)"
       >
         <OverlayBadge
+          v-if="editorContentChanged"
           value="!"
           severity="warn"
         >
           <MdiContentSave />
         </OverlayBadge>
+        <MdiContentSave v-else />
       </Button>
       <Button
         v-tooltip.right="'Save File As'"
