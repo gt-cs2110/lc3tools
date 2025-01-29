@@ -10,7 +10,7 @@
 <template>
   <div
     ref="consoleRef"
-    class="elevation-4 console"
+    class="shadow-md console"
     :class="{
       'show-focus': props.showFocus,
       'show-cursor': props.showCursor
@@ -83,14 +83,11 @@ watch(consoleHtml, async () => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 .console {
-  flex: 1;
-  font-family: Consolas, Menlo, Courier, monospace;
-  padding: 8px;
-  overflow-y: auto;
+  @apply font-mono p-2 dark:bg-zinc-800;
+  @apply grow overflow-y-auto;
   white-space: pre-wrap;
-  background-color: rgb(var(--v-theme-surface));
   user-select: text;
   overflow-wrap: anywhere;
 }

@@ -3,7 +3,6 @@ import { useActiveFileStore } from "../../store/active_file";
 import { useSettingsStore } from "../../store/settings";
 // Vue stuff
 import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
-import "vuetify/components";
 import { storeToRefs } from "pinia";
 // Editor
 import "./ace-cfg";
@@ -13,8 +12,6 @@ import type { VAceEditorInstance } from "vue3-ace-editor/types";
 import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
-import { mdiConsole, mdiContentSave, mdiContentSaveEdit, mdiFolderOpen, mdiLinkVariant, mdiWrench } from "@mdi/js";
-
 const { lc3, dialog, fs } = window.api;
 const activeFileStore = useActiveFileStore();
 const settings = useSettingsStore();
@@ -316,122 +313,88 @@ export default {
 </script>
 
 <template>
-  <div class="contents">
-    <!-- Sidebar -->
-    <v-navigation-drawer
-      permanent
-      rail
-    >
-      <v-list-item
-        :prepend-icon="mdiFolderOpen"
+  <div>
+    <div class="nav-menu flex flex-col">
+      <Button
+        v-tooltip.right="'Open File'"
+        variant="text"
+        aria-label="Open File"
         @click="openFile()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Open File"
-        />
-      </v-list-item>
-      <v-list-item @click="saveFileThen(build)">
-        <template #prepend>
-          <v-badge
-            v-model="editorContentChanged"
-            color="orange-darken-2"
-          >
-            <template #badge>
-              <strong>!</strong>
-            </template>
-            <v-icon :icon="mdiContentSave" />
-          </v-badge>
-        </template>
-
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Save File"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiContentSaveEdit"
+        <MdiFolderOpen />
+      </Button>
+      <Button
+        v-tooltip.right="'Save File'"
+        variant="text"
+        aria-label="Save File"
+        @click="saveFileThen(build)"
+      >
+        <OverlayBadge
+          value="!"
+          severity="warn"
+        >
+          <MdiContentSave />
+        </OverlayBadge>
+      </Button>
+      <Button
+        v-tooltip.right="'Save File As'"
+        variant="text"
+        aria-label="Save File As"
         @click="saveFileAs()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Save File As"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiWrench"
+        <MdiContentSaveEdit />
+      </Button>
+      <Button
+        v-tooltip.right="'Assemble'"
+        variant="text"
+        aria-label="Assemble"
         @click="build()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-        >
-          <span>Assemble</span>
-        </v-tooltip>
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiConsole"
+        <MdiWrench />
+      </Button>
+      <Button
+        v-tooltip.right="'Toggle Console'"
+        variant="text"
+        aria-label="Toggle Console"
         @click="toggleConsole()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Toggle Console"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiLinkVariant"
+        <MdiConsole />
+      </Button>
+      <Button
+        v-tooltip.right="'Link Object Files'"
+        variant="text"
+        aria-label="Link Object Files"
         @click="link()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Link Object Files"
+        <MdiLinkVariant />
+      </Button>
+    </div>
+    <main class="contents">
+      <div class="p-4 flex flex-col flex-grow gap-3">
+        <h3 class="font-bold text-lg text-center">
+          {{ filename }}
+        </h3>
+        <v-ace-editor
+          ref="aceEditorRef"
+          v-model:value="editor.current_content"
+          class="shadow-md overflow-hidden h-full"
+          lang="lc3"
+          :theme="editorTheme"
+          @drop.prevent="dropFile"
+          @dragover.prevent
         />
-      </v-list-item>
-    </v-navigation-drawer>
-    <!-- Main editor content -->
-    <v-main>
-      <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
-      <v-container
-        fluid
-        class="fill-height"
-      >
-        <v-row
-          class="align-self-stretch flex-column"
-          no-gutters
+        <div
+          v-if="showConsole"
+          class="flex-initial"
         >
-          <h3 class="view-header">
-            {{ filename }}
-          </h3>
-          <v-col class="d-flex flex-grow-1 flex-shrink-0">
-            <v-ace-editor
-              id="ace-editor"
-              ref="aceEditorRef"
-              v-model:value="editor.current_content"
-              class="flex-grow-1 elevation-2"
-              lang="lc3"
-              :theme="editorTheme"
-              @drop.prevent="dropFile"
-              @dragover.prevent
-            />
-          </v-col>
-          <v-col
-            v-if="showConsole"
-            class="flex-grow-0 flex-shrink-1"
-          >
-            <console 
-              id="console"
-              v-model="consoleStr"
-              float="top"
-            />
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-main>
+          <console 
+            v-model="consoleStr"
+            float="top"
+            class="h-48"
+          />
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
@@ -441,20 +404,11 @@ export default {
 }
 </style>
 
-<style scoped>
-.view-header {
-  text-align: center;
-  padding-bottom: 5px;
+<style scoped lang="postcss">
+.nav-menu {
+  @apply bg-white dark:bg-zinc-800 border-r dark:border-zinc-700;
 }
-
-#ace-editor {
-  overflow: hidden;
-  justify-self: center;
-  height: 100%;
-}
-
-#console {
-  margin: 15px 0 5px 0;
-  height: 170px;
+.nav-menu svg {
+  @apply text-stone-600 dark:text-stone-400;
 }
 </style>

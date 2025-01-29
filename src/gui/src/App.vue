@@ -73,7 +73,7 @@ function saveSettings(setting: SettingKeys) {
 </script>
 
 <template>
-  <div id="app">
+  <div class="flex flex-col h-screen">
     <Menubar>
       <template #start>
         <div class="flex items-center gap-1">
@@ -124,8 +124,11 @@ function saveSettings(setting: SettingKeys) {
         </Tabs>
       </template>
     </Menubar>
-
-    <router-view v-slot="{ Component }">
+  
+    <router-view
+      v-slot="{ Component }"
+      class="flex h-full"
+    >
       <keep-alive>
         <component :is="Component" />
       </keep-alive>
@@ -249,7 +252,6 @@ function saveSettings(setting: SettingKeys) {
 /* Other stuff */
 body {
     user-select: none;
-    cursor: default;
 }
 
 /* https://stackoverflow.com/q/56973002/11984788 */
