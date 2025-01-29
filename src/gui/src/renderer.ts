@@ -31,19 +31,9 @@ import App from './App.vue';
 import router from "./router/index";
 
 // Vuetify
-import 'vuetify/styles'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
-const vuetify = createVuetify({
-    components,
-    directives,
-    icons: {
-        aliases,
-        sets: { mdi }
-    }
-});
+import PrimeVue from 'primevue/config';
+import Aura from '@primevue/themes/aura';
+import "./style.pcss";
 
 // Pinia
 import { createPinia } from 'pinia';
@@ -51,6 +41,17 @@ const pinia = createPinia();
 
 createApp(App)
     .use(router)
-    .use(vuetify)
+    .use(PrimeVue, {
+        theme: {
+            preset: Aura,
+            options: {
+                darkModeSelector: ".dark",
+                cssLayer: {
+                    name: 'primevue',
+                    order: 'tailwind-base, primevue, tailwind-utilities'
+                }
+            }
+        }
+     })
     .use(pinia)
     .mount('#app');

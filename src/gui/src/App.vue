@@ -1,263 +1,48 @@
-<template>
-  <div id="app">
-    <v-app
-      id="lc3tools"
-      :theme="settings.theme"
-    >
-      <v-app-bar
-        density="compact"
-        :elevation="2"
-      >
-        <v-app-bar-title>
-          <strong>LC3</strong>Tools
-          <!-- Put buttons next to title -->
-          <v-btn
-            icon
-            flat
-          >
-            <v-icon :icon="mdiCog" />
-            <v-menu
-              activator="parent"
-              :close-on-content-click="false"
-            >
-              <v-card>
-                <v-container class="d-flex flex-column ga-3">
-                  <!-- Should use v-row, v-col, but those are grid not flex -->
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Theme
-                    </h3>
-                    <v-radio-group
-                      v-model="settings.theme"
-                      class="flex-shrink-1"
-                      color="primary"
-                      inline
-                      hide-details
-                      @change="saveSettings('theme')"
-                    >
-                      <v-spacer />
-                      <v-radio
-                        label="Light"
-                        value="light"
-                      />
-                      <v-radio
-                        label="Dark"
-                        value="dark"
-                      />
-                    </v-radio-group>
-                  </div>
-                  <v-divider />
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Editor Key Binding
-                    </h3>
-                    <v-radio-group
-                      v-model="settings.editor_binding"
-                      class="flex-shrink-1"
-                      color="primary"
-                      inline
-                      hide-details
-                      @change="saveSettings('editor_binding')"
-                    >
-                      <v-spacer />
-                      <v-radio
-                        label="Standard"
-                        value="standard"
-                      />
-                      <v-radio
-                        label="Vim"
-                        value="vim"
-                      />
-                    </v-radio-group>
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Autocomplete
-                    </h3>
-                    <v-radio-group
-                      v-model="settings.autocomplete"
-                      class="flex-shrink-1"
-                      color="primary"
-                      inline
-                      hide-details
-                      @change="saveSettings('autocomplete')"
-                    >
-                      <v-spacer />
-                      <v-radio
-                        label="None"
-                        value="none"
-                      />
-                      <v-radio
-                        label="Basic"
-                        value="basic"
-                      />
-                      <v-radio
-                        label="Full"
-                        value="full"
-                      />
-                    </v-radio-group>
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Soft Tabs
-                    </h3>
-                    <v-checkbox 
-                      v-model="settings.soft_tabs"
-                      hide-details
-                    />
-                    <v-text-field 
-                      v-model.number="settings.soft_tab_size"
-                      variant="outlined" 
-                      hide-details 
-                      density="compact"
-                      type="number"
-                      width="3"
-                      :disabled="!settings.soft_tabs"
-                    />
-                  </div>
-                  <v-divider />
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Number View
-                    </h3>
-                    <v-radio-group
-                      v-model="settings.numbers"
-                      class="flex-shrink-1"
-                      color="primary"
-                      inline
-                      hide-details
-                      @change="saveSettings('numbers')"
-                    >
-                      <v-spacer />
-                      <v-radio
-                        label="Unsigned"
-                        value="unsigned"
-                      />
-                      <v-radio
-                        label="Signed"
-                        value="signed"
-                      />
-                    </v-radio-group>
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Pause on HALT and exceptions
-                    </h3>
-                    <v-switch
-                      v-model="settings.pause_on_fatal_trap"
-                      class="flex-shrink-1"
-                      color="primary"
-                      hide-details
-                      @change="saveSettings('pause_on_fatal_trap')"
-                    />
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Clear output on object file reload
-                    </h3>
-                    <v-switch
-                      v-model="settings.clear_out_on_reload"
-                      class="flex-shrink-1"
-                      color="primary"
-                      hide-details
-                      @change="saveSettings('clear_out_on_reload')"
-                    />
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <div class="flex-grow-1">
-                      <h3>Ignore privileged mode</h3>
-                      <p
-                        v-if="settings.ignore_privilege"
-                        class="text-red"
-                      >
-                        May result in inconsistency with the grader.
-                      </p>
-                    </div>
-                    <v-switch
-                      v-model="settings.ignore_privilege"
-                      class="flex-shrink-1"
-                      color="primary"
-                      hide-details
-                      @change="saveSettings('ignore_privilege')"
-                    />
-                  </div>
-                  <div class="d-flex justify-space-between align-center">
-                    <h3 class="flex-grow-1">
-                      Reduce flashing in simulator
-                    </h3>
-                    <v-switch
-                      v-model="settings.reduce_flashing"
-                      class="flex-shrink-1"
-                      color="primary"
-                      hide-details
-                      @change="saveSettings('reduce_flashing')"
-                    />
-                  </div>
-                  <v-divider />
-                  <div class="d-flex justify-center">
-                    <h4>Issues? Post on CS 2110 Ed/Piazza!</h4>
-                  </div>
-                </v-container>
-              </v-card>
-            </v-menu>
-          </v-btn>
-        </v-app-bar-title>
-        <v-tabs>
-          <v-tab
-            exact
-            to="/editor"
-            icon
-          >
-            <v-icon
-              size="x-large"
-              :icon="mdiCodeTags"
-            />
-            <v-tooltip
-              location="bottom"
-              activator="parent"
-              text="Editor"
-            />
-          </v-tab>
-          <v-tab
-            exact
-            to="/simulator"
-            icon
-          >
-            <v-icon
-              size="x-large"
-              :icon="mdiMemory"
-            />
-            <v-tooltip
-              location="bottom"
-              activator="parent"
-              text="Simulator"
-            />
-          </v-tab>
-        </v-tabs>
-      </v-app-bar>
-
-      <router-view v-slot="{ Component }">
-        <keep-alive>
-          <component :is="Component" />
-        </keep-alive>
-      </router-view>
-    </v-app>
-  </div>
-</template>
-  
 <script setup lang="ts">
-// Vue stuff
-import { onMounted } from "vue";
-import "vuetify/components";
-import { mdiCog, mdiCodeTags, mdiMemory } from "@mdi/js";
+import { onMounted, useTemplateRef, watch } from "vue";
 import { LC3Settings, useSettingsStore } from "./store/settings";
+import { storeToRefs } from "pinia";
 
+const settingsPopover = useTemplateRef("settingsPopover");
 const { lc3, storage } = window.api;
 
 // Settings
 const settings = useSettingsStore();
 settings.$patch(storage.getAll());
 
+const settingsRefs = storeToRefs(settings);
+// Store settings to persistent storage when any modifications occur.
+for (const [key, r] of Object.entries(settingsRefs)) {
+  watch(r, () => {
+    saveSettings(key as keyof LC3Settings);
+  });
+}
+// Apply theme to page:
+watch(settingsRefs.theme, theme => {
+  document.documentElement.classList.remove("light", "dark");
+  document.documentElement.classList.add(theme);
+}, { immediate: true });
+
+const selectButtons = {
+  theme: [
+    {value: 'light', label: 'Light'},
+    {value: 'dark', label: 'Dark'}
+  ],
+  editor_binding: [
+    {value: 'standard', label: 'Standard'},
+    {value: 'vim', label: 'Vim'}
+  ],
+  autocomplete: [
+    {value: 'none', label: 'None'},
+    {value: 'basic', label: 'Basic'},
+    {value: 'full', label: 'Full'}
+  ],
+  numbers: [
+    {value: 'signed', label: 'Signed'},
+    {value: 'unsigned', label: 'Unsigned'}
+  ]
+} satisfies Partial<{ [K in keyof LC3Settings]: { value: LC3Settings[K], label: string }[] }>;
+// Any calls that need to occur to the LC3 engine when a property is updated.
 const lc3SettingCalls = {
   "ignore_privilege": lc3.setIgnorePrivilege,
   "pause_on_fatal_trap": lc3.setPauseOnFatalTrap
@@ -286,6 +71,158 @@ function saveSettings(setting: SettingKeys) {
   }
 }
 </script>
+
+<template>
+  <div id="app">
+    <Menubar>
+      <template #start>
+        <div class="flex items-center gap-1">
+          <h1 class="text-xl">
+            <strong>LC3</strong>Tools
+          </h1>
+          <Button
+            icon="pi"
+            variant="text"
+            rounded
+            aria-label="Settings"
+            @click="settingsPopover?.toggle"
+          >
+            <MdiCog class="text-black dark:text-white" />
+          </Button>
+        </div>
+      </template>
+      <template #end>
+        <Tabs value="editor">
+          <TabList>
+            <Tab
+              v-tooltip.bottom="'Editor'"
+              value="editor"
+              to="/editor"
+              as="router-link"
+              class="px-6 py-1"
+              aria-label="Editor"
+            >
+              <MdiCodeTags
+                width="2em"
+                height="2em"
+              />
+            </Tab>
+            <Tab
+              v-tooltip.bottom="'Simulator'"
+              value="simulator"
+              to="/simulator"
+              as="router-link"
+              class="px-6 py-1"
+              aria-label="Simulator"
+            >
+              <MdiMemory
+                width="2em"
+                height="2em"
+              />
+            </Tab>
+          </TabList>
+        </Tabs>
+      </template>
+    </Menubar>
+
+    <router-view v-slot="{ Component }">
+      <keep-alive>
+        <component :is="Component" />
+      </keep-alive>
+    </router-view>
+  </div>
+
+  <Popover ref="settingsPopover">
+    <div>
+      <div class="flex flex-col gap-3">
+        <label class="flex justify-between items-center gap-2">
+          <span>Theme</span>
+          <SelectButton
+            v-model="settings.theme"
+            :options="selectButtons.theme"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+          />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>Editor Key Bindings</span>
+          <SelectButton
+            v-model="settings.editor_binding"
+            :options="selectButtons.editor_binding"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+          />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>Autocomplete</span>
+          <SelectButton
+            v-model="settings.autocomplete"
+            :options="selectButtons.autocomplete"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+          />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>Soft Tabs</span>
+          <div class="flex items-center gap-3">
+            <Checkbox
+              v-model="settings.soft_tabs"
+              binary
+            />
+            <InputNumber
+              v-model="settings.soft_tab_size"
+              :use-grouping="false"
+              :disabled="!settings.soft_tabs"
+              :min="0"
+              input-class="w-24"
+            />
+          </div>
+        </label>
+      </div>
+      <Divider />
+      <div class="flex flex-col gap-3">
+        <label class="flex justify-between items-center gap-2">
+          <span>Number View</span>
+          <SelectButton
+            v-model="settings.numbers"
+            :options="selectButtons.numbers"
+            option-label="label"
+            option-value="value"
+            :allow-empty="false"
+          />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>Pause on HALT and exceptions</span>
+          <ToggleSwitch v-model="settings.pause_on_fatal_trap" />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>Clear output on object file reload</span>
+          <ToggleSwitch v-model="settings.clear_out_on_reload" />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>
+            Ignore privileged mode
+            <MdiAlert
+              v-if="settings.ignore_privilege"
+              v-tooltip="'May result in inconsistency with autograder'"
+              class="text-red-500 inline-block"
+            />
+          </span>
+          <ToggleSwitch v-model="settings.ignore_privilege" />
+        </label>
+        <label class="flex justify-between items-center gap-2">
+          <span>Reduce flashing in simulator</span>
+          <ToggleSwitch v-model="settings.reduce_flashing" />
+        </label>
+      </div>
+      <Divider />
+      <div><span>Issues? Post on CS 2110 Ed/Piazza!</span></div>
+    </div>
+  </Popover>
+</template>
 
 <style lang="css">
 /* dark mode autocomplete menu tweaks ------------------------------ */
@@ -318,9 +255,5 @@ body {
 /* https://stackoverflow.com/q/56973002/11984788 */
 html {
     overflow-y: auto !important;
-}
-
-.d-contents {
-  display: contents;
 }
 </style>

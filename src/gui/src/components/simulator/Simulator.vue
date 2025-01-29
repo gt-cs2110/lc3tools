@@ -1,3 +1,620 @@
+<script setup lang="ts">
+import { useActiveFileStore } from '../../store/active_file';
+import { useSettingsStore } from '../../store/settings';
+// Vue stuff
+import { computed, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import "vuetify/components";
+//
+import Console from '../Console.vue';
+import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle, mdiTimer } from '@mdi/js';
+
+const { lc3, dialog, fs } = window.api;
+
+const settings = useSettingsStore();
+const activeFileStore = useActiveFileStore();
+const router = useRouter();
+
+const sim = ref({
+  regs: [
+    { flash: false, updated: false, name: "r0", value: 0 },
+    { flash: false, updated: false, name: "r1", value: 0 },
+    { flash: false, updated: false, name: "r2", value: 0 },
+    { flash: false, updated: false, name: "r3", value: 0 },
+    { flash: false, updated: false, name: "r4", value: 0 },
+    { flash: false, updated: false, name: "r5", value: 0 },
+    { flash: false, updated: false, name: "r6", value: 0 },
+    { flash: false, updated: false, name: "r7", value: 0 },
+    { flash: false, updated: false, name: "psr", value: 0 },
+    { flash: false, updated: false, name: "pc", value: 0 },
+    { flash: false, updated: false, name: "mcr", value: 0 }
+  ],
+  breakpoints: [] as number[],
+  running: false,
+  timer: {
+    enabled: false,
+    hide_badge: false,
+    vect: 0x81,
+    priority: 4,
+    remaining: 0,
+    max: 0,
+  }
+})
+const memView = ref({
+  start: 0x3000,
+  data: [{
+    addr: 0, value: 0, line: "", label: "", flash: false, updated: false
+  }],
+  symTable: {} as Record<number, string>
+})
+
+const isSnackBarVisible = ref(false);
+const consoleStr = ref("");
+const jumpToLocInput = ref("");
+const timerInputs = ref({
+  vect: "x81",
+  priority: "4",
+  max: "50"
+});
+
+const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
+const timerBtnVariant = computed(() => {
+  if (sim.value.timer.enabled) {
+    if (!sim.value.running && sim.value.timer.remaining == 0) return "flat";
+    return "tonal";
+  }
+  return "text";
+});
+const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : undefined);
+let lastLoadedFile: string | null = null;
+let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
+let memScrollOffset = 0;
+
+type RegDataRow = typeof sim.value.regs[number];
+type MemDataRow = typeof memView.value.data[number];
+
+const rangeRule = (min: number, max: number) => (value: string) => {
+  const intValue = parseInputString(value);
+  return min <= intValue && intValue <= max || `Value must be between ${min} and ${max}`;
+};
+const rules: Record<string, ValidationRule> = {
+  hex(value: string) {
+    return /^0?[xX][0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
+  },
+  dec(value: string) {
+    return /^-?\d+$/.test(value) || "Invalid decimal number";
+  },
+  size16bit(value: string) {
+    const intValue = parseInputString(value);
+    return (
+      intValue === toInt16(intValue) || intValue === toUint16(intValue) ||
+      "Value must be between x0000 and xFFFF"
+    );
+  },
+  size8bit(value: string) {
+    const intValue = parseInputString(value);
+    return intValue === (intValue & 0xFF) || "Value must be between x00 and xFF";
+  }
+}
+type ValidationRule = (value: string) => boolean | string;
+const editValue = ref("");
+
+const memViewWrapper = useTemplateRef("memViewWrapper");
+watch(memViewWrapper, el => {
+  el.addEventListener("wheel", handleMemoryScroll);
+}, { once: true });
+
+onMounted(() => {
+  refreshMemoryPanel();
+  window.addEventListener("resize", refreshMemoryPanel);
+})
+onUnmounted(() => {
+  memViewWrapper.value?.removeEventListener("wheel", handleMemoryScroll);
+  window.removeEventListener("resize", refreshMemoryPanel);
+
+})
+onActivated(() => {
+  const asmFileName = activeFileStore.path;
+  if (asmFileName != null && activeFileStore.lastBuilt > activeFileStore.lastLoaded) {
+    const objFileName = asmFileName.replace(/\.asm$/, ".obj");
+    if (fs.exists(objFileName)) {
+      loadFile(objFileName);
+    }
+    activeFileStore.touchLoadTime();
+  }
+})
+
+function refreshMemoryPanel() {
+  memView.value.data = Array.from(
+    { length: Math.floor((window.innerHeight - 140) / 25) - 4},
+    () => ({
+      addr: 0,
+      value: 0,
+      line: "",
+      label: "",
+      flash: false,
+      updated: false
+    })
+  );
+
+  updateUI();
+  jumpToPC(true);
+}
+function handleMemoryScroll(e: WheelEvent) {
+  e.preventDefault();
+
+  if (!lc3.isSimRunning()) {
+    memScrollOffset += e.deltaY;
+    if (Math.abs(memScrollOffset) > 20) {
+      jumpToPartMemView(Math.floor(memScrollOffset / 20));
+      memScrollOffset = 0;
+    }
+  }
+}
+
+async function dropFile(e: DragEvent) {
+  const file = e.dataTransfer.files[0];
+  if (file?.name.toLowerCase().endsWith("obj") && !lc3.isSimRunning()) {
+    openFile(fs.getPath(file));
+  }
+}
+async function openFile(path: string | undefined = undefined) {
+  let selectedFiles: string[] = [];
+  if (!path) {
+    const result = await dialog.showModal("open", {
+      properties: ["openFile"],
+      filters: [{ name: "Object Files", extensions: ["obj"] }]
+    });
+
+    if (!result.canceled) {
+      selectedFiles = result.filePaths;
+    }
+  } else {
+    // Path already defined
+    selectedFiles = [path];
+  }
+
+  if (selectedFiles.length > 0) {
+    loadFile(selectedFiles[0]);
+  }
+}
+function loadFile(path: string) {
+  // pause lc3 if running
+  lc3.pause();
+
+  lc3.clearInput();
+  // clear output on file (re)load
+  if (settings.clear_out_on_reload) {
+    clearConsoleOutput();
+  }
+
+  // load object file
+  // and check for load failure (i.e., if file is malformed)
+  let success;
+  try {
+    lc3.loadObjectFile(path);
+    success = true;
+  } catch {
+    success = false;
+  }
+
+  // If successful, set up initialization steps
+  if (success) {
+    lastLoadedFile = path;
+    memView.value.start = lc3.getRegValue("pc");
+    memView.value.symTable = lc3.getCurrSymTable();
+  }
+  updateUI();
+  isSnackBarVisible.value = success;
+}
+function reloadFile() {
+  loadFile(lastLoadedFile);
+  updateUI();
+}
+function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
+  if (!sim.value.running) {
+    sim.value.running = true;
+
+    startPollIO();
+
+    return new Promise<void>((resolve, reject) => {
+      const callback = (error: Error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        endSimulation(runKind !== "run" || lc3.didHitBreakpoint());
+        resolve();
+      };
+
+      if (runKind === "in") {
+        lc3.stepIn(callback);
+      } else if (runKind === "out") {
+        lc3.stepOut(callback);
+      } else if (runKind === "over") {
+        lc3.stepOver(callback);
+      } else if (runKind === "run") {
+        lc3.run(callback);
+      } else {
+        // statically assert no other branches exist:
+        runKind satisfies never;
+      }
+    });
+  } else {
+    endSimulation(false);
+  }
+}
+function reinitializeMachine() {
+  lc3.reinitializeMachine();
+  lc3.clearInput();
+  clearConsoleOutput();
+  updateUI();
+}
+function randomizeMachine() {
+  lc3.randomizeMachine();
+  lc3.clearInput();
+  clearConsoleOutput();
+  updateUI();
+}
+
+function startPollIO() {
+  if (typeof pollOutputHandle !== "number") {
+    pollOutputHandle = setInterval(() => {
+      updateConsole();
+      updateTimer();
+    }, 50);
+  }
+}
+function stopPollOutput() {
+  clearInterval(pollOutputHandle);
+  pollOutputHandle = null;
+}
+
+function endSimulation(jumpToPC_: boolean) {
+  stopPollOutput();
+
+  if (sim.value.running) {
+    sim.value.running = false;
+    lc3.pause();
+    updateUI(true);
+
+    sim.value.regs[9].value = lc3.getRegValue("pc");
+    if (jumpToPC_) jumpToPC(false);
+  }
+}
+function clearConsoleOutput() {
+  consoleStr.value = "";
+  lc3.clearOutput();
+}
+function handleConsoleInput(e: KeyboardEvent) {
+  // Typable characters on a standard keyboard.
+  const overrides: Record<string, string> = {
+    Enter: '\n',
+    Backspace: '\x08',
+    Tab: '\x09',
+    Escape: '\x1b',
+    Delete: '\x7f'
+  };
+
+  // TODO: since the console string is rendered as I/O, 
+  // the console actually allows for "HTML injection"
+  let key = e.key;
+  if (key in overrides) {
+    lc3.addInput(overrides[key]);
+  } else if (key.length === 1) {
+    // Handle CTRL-a through CTRL-z.
+    const code = key.charCodeAt(0);
+    if (code > 64 && code < 128 && e.ctrlKey) {
+      key = String.fromCharCode(code & 0x1F);
+    } 
+    lc3.addInput(key);
+  }
+
+  e.preventDefault(); // for TAB, etc.
+}
+
+async function openRegContextMenu(item: RegDataRow) {
+  if (lc3.isSimRunning()) return;
+
+  const output = await dialog.showModal("menu", ["Jump", "Copy Hex", "Copy Decimal"]);
+  switch (output) {
+    case 0:
+      jumpToMemView(item.value);
+      break;
+    
+    // These two functions are actually pretty useless.
+    // They're only here so "Jump" isn't by itself.
+    case 1:
+      navigator.clipboard.writeText(toHex(item.value));
+      break;
+    case 2:
+      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      break;
+  }
+}
+async function openMemContextMenu(item: MemDataRow) {
+  if (lc3.isSimRunning()) return;
+
+  const options = ["Jump to Address"];
+
+  const hasLabel = !!item.label;
+  const hasInstr = typeof lc3.getAddrSourceRange(item.addr) !== "undefined";
+  if (hasLabel && hasInstr) {
+    options.push("Jump to Source (Label)", "Jump to Source (Instruction)");
+  } else if (hasLabel || hasInstr) {
+    options.push("Jump to Source");
+  }
+
+  options.push("Copy Hex", "Copy Decimal");
+  const output = await dialog.showModal("menu", options);
+  switch (options[output]) {
+    case "Jump to Address":
+      jumpToMemView(item.value);
+      break;
+    
+    case "Jump to Source":
+      jumpToSource(item.label || item.addr);
+      break;
+    case "Jump to Source (Label)":
+      jumpToSource(item.label);
+      break;
+    case "Jump to Source (Instruction)":
+      jumpToSource(item.addr);
+      break;
+
+    // These two functions are actually pretty useless.
+    // They're only here so "Jump" isn't by itself.
+    case "Copy Hex":
+      navigator.clipboard.writeText(toHex(item.value));
+      break;
+    case "Copy Decimal":
+      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      break;
+  }
+}
+function setDataValue(dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
+function setDataValue(dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
+function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
+  const value = editValue.value;
+  const validated = rules.every(r => r(value) === true);
+  
+  // Validation failed, so ignore set
+  if (!validated) {
+    if (type === "reg" && "name" in dataCell) {
+      dataCell.value = lc3.getRegValue(dataCell.name);
+    } else if (type === "mem" && "addr" in dataCell) {
+      dataCell.value = lc3.getMemValue(dataCell.addr);
+    }
+    return;
+  }
+
+  dataCell.value = toUint16(parseInputString(value));
+  if (type === "reg" && "name" in dataCell) {
+    lc3.setRegValue(dataCell.name, dataCell.value);
+  } else if (type === "mem" && "addr" in dataCell) {
+    lc3.setMemValue(dataCell.addr, dataCell.value);
+  }
+  
+  updateUI();
+}
+function updateUI(showUpdates = false, updateReg = true) {
+  // Can't update UI while it's running
+  if (lc3.isSimRunning()) return;
+
+  // Registers
+  if (updateReg) {
+    for (const reg of sim.value.regs) {
+      const regVal = lc3.getRegValue(reg.name);
+      const prevVal = reg.value;
+
+      reg.value = regVal;
+      // flash and highlight registers that change from their previous values
+      reg.flash = false;
+      reg.updated = false;
+      if (showUpdates) {
+        const updated = reg.name === "pc" ? regVal !== prevVal + 1 : regVal !== prevVal;
+        if (updated) {
+          reg.flash = true;
+          setTimeout(() => {
+            reg.flash = false;
+            reg.updated = true;
+          }, 250);
+        }
+      }
+    }
+  }
+
+  // Memory
+  const updates: number[] = lc3.takeMemChanges();
+  for (let i = 0; i < memView.value.data.length; i++) {
+    const addr = toUint16(memView.value.start + i);
+    const dataLine = memView.value.data[i];
+
+    dataLine.addr = addr;
+    dataLine.value = lc3.getMemValue(addr);
+    dataLine.line = lc3.getMemLine(addr);
+    // show label using symbol table
+    dataLine.label = memView.value.symTable[addr]?.toUpperCase() ?? "";
+  
+    dataLine.flash = false;
+    dataLine.updated = false;
+    if (showUpdates && updates.includes(addr)) {
+      dataLine.flash = true;
+      setTimeout(() => {
+        dataLine.flash = false;
+        dataLine.updated = true;
+      }, 250);
+    }
+  }
+
+  updateConsole();
+  updateTimer();
+}
+function updateConsole() {
+  consoleStr.value += lc3.getAndClearOutput();
+}
+function updateTimer() {
+  if (sim.value.timer.enabled) {
+    sim.value.timer.remaining = lc3.getTimerRemaining();
+  }
+}
+function toggleBreakpoint(addr: number) {
+  const idx = sim.value.breakpoints.indexOf(addr);
+
+  if (!lc3.isSimRunning()) {
+    if (idx == -1) {
+      lc3.setBreakpoint(addr);
+      sim.value.breakpoints.push(addr);
+    } else {
+      lc3.removeBreakpoint(addr);
+      sim.value.breakpoints.splice(idx, 1);
+    }
+  }
+}
+function setPC(addr: number) {
+  if (!lc3.isSimRunning()) {
+    lc3.setRegValue("pc", toUint16(addr));
+    updateUI();
+  }
+}
+function jumpToSource(location: string | number) {
+  if (!lc3.isSimRunning()) {
+    let span;
+    if (typeof location === "string") {
+      span = lc3.getLabelSourceRange(location);
+    } else if (typeof location === "number") {
+      span = lc3.getAddrSourceRange(location);
+    } else {
+      // statically assert no other branches exist:
+      location satisfies never;
+    }
+
+    if (typeof span !== "undefined") {
+      const [slno, scno, elno, ecno] = span;
+      router.push({ name: "editor", hash: `#L${slno}C${scno}-L${elno}C${ecno}` });
+    }
+  }
+}
+function isBreakpointAt(addr: number) {
+  return sim.value.breakpoints.includes(addr)
+}
+function isPCAt(addr: number) {
+  return addr == sim.value.regs[9].value && !sim.value.running;
+}
+
+// Memory view jump functions
+function jumpToMemView(newStart: number) {
+  memView.value.start = toUint16(newStart);
+  updateUI(false, false);
+}
+function jumpToMemViewStr() {
+  const match = jumpToLocInput.value.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
+  if (match != null) {
+    jumpToMemView(parseInt(match[1], 16));
+  }
+}
+function jumpToPartMemView(offset: number) {
+  jumpToMemView(memView.value.start + offset);
+}
+function jumpToPrevMemView() {
+  jumpToPartMemView(-memView.value.data.length);
+}
+function jumpToNextMemView() {
+  jumpToPartMemView(+memView.value.data.length);
+}
+function jumpToPC(jumpIfInView: boolean) {
+  const pc = toUint16(sim.value.regs[9].value);
+  const memViewStart = memView.value.start;
+  const memViewEnd = memViewStart + memView.value.data.length;
+  
+  const pcInView = memViewStart <= pc && pc < memViewEnd;
+  if (jumpIfInView || !pcInView) jumpToMemView(pc);
+}
+
+// Timer functions
+function setTimerStatus() {
+  lc3.setTimerStatus(sim.value.timer.enabled);
+  resetTimer();
+}
+function resetTimer() {
+  lc3.resetTimer();
+  updateUI();
+}
+function resetTimerInputs() {
+  timerInputs.value = {
+    vect: "x" + lc3.getTimerVect().toString(16).padStart(2, "0"),
+    priority: String(lc3.getTimerPriority()),
+    max: String(lc3.getTimerMax())
+  }
+}
+async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, prop: keyof typeof timerInputs.value) {
+  const { valid } = await event;
+  if (!valid) return;
+
+  if (prop === "vect") {
+    const intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
+    lc3.setTimerVect(intValue);
+    sim.value.timer[prop] = intValue;
+  } else if (prop === "priority") {
+    const intValue = parseInputString(timerInputs.value[prop]);
+    lc3.setTimerPriority(intValue);
+    sim.value.timer[prop] = intValue;
+  } else if (prop === "max") {
+    const intValue = parseInputString(timerInputs.value[prop]);
+    lc3.setTimerMax(intValue);
+    sim.value.timer[prop] = intValue;
+    resetTimer();
+  } else {
+    prop satisfies never;
+  }
+}
+// Helper functions
+function psrToCC(psr: number) {
+  const cc = psr & 0b111;
+  switch (cc) {
+    case 0b100: return "N"
+    case 0b010: return "Z"
+    case 0b001: return "P"
+    default: return "?"
+  }
+}
+function toHex(value: number) {
+  const hex = toUint16(value).toString(16).toUpperCase();
+  return `x${hex.padStart(4, "0")}`;
+}
+function toFormattedDec(value: number) {
+  if (settings.numbers === "signed") {
+    return toInt16(value);
+  } else if (settings.numbers === "unsigned") {
+    return toUint16(value);
+  } else {
+    // statically assert no other branches exist:
+    settings.numbers satisfies never;
+  }
+}
+function parseInputString(value: string) {
+  if (value.startsWith("x")) value = "0" + value;
+  return parseInt(value);
+}
+function regLabel(item: RegDataRow) {
+  if (item.name === "psr") {
+    return "CC: " + psrToCC(item.value);
+  } else if (item.name.startsWith("r") && 20 <= item.value && item.value <= 127) {
+    return String.fromCharCode(item.value);
+  }
+
+  return "";
+}
+
+function toUint16(value: number) {
+  return value & 0xFFFF;
+}
+function toInt16(value: number) {
+  return (value << 16) >> 16;
+}
+</script>
+
 <template>
   <div 
     class="contents sim-top"
@@ -689,623 +1306,6 @@
   </div>
 </template>
   
-<script setup lang="ts">
-import { useActiveFileStore } from '../../store/active_file';
-import { useSettingsStore } from '../../store/settings';
-// Vue stuff
-import { computed, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import "vuetify/components";
-//
-import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle, mdiTimer } from '@mdi/js';
-
-const { lc3, dialog, fs } = window.api;
-
-const settings = useSettingsStore();
-const activeFileStore = useActiveFileStore();
-const router = useRouter();
-
-const sim = ref({
-  regs: [
-    { flash: false, updated: false, name: "r0", value: 0 },
-    { flash: false, updated: false, name: "r1", value: 0 },
-    { flash: false, updated: false, name: "r2", value: 0 },
-    { flash: false, updated: false, name: "r3", value: 0 },
-    { flash: false, updated: false, name: "r4", value: 0 },
-    { flash: false, updated: false, name: "r5", value: 0 },
-    { flash: false, updated: false, name: "r6", value: 0 },
-    { flash: false, updated: false, name: "r7", value: 0 },
-    { flash: false, updated: false, name: "psr", value: 0 },
-    { flash: false, updated: false, name: "pc", value: 0 },
-    { flash: false, updated: false, name: "mcr", value: 0 }
-  ],
-  breakpoints: [] as number[],
-  running: false,
-  timer: {
-    enabled: false,
-    hide_badge: false,
-    vect: 0x81,
-    priority: 4,
-    remaining: 0,
-    max: 0,
-  }
-})
-const memView = ref({
-  start: 0x3000,
-  data: [{
-    addr: 0, value: 0, line: "", label: "", flash: false, updated: false
-  }],
-  symTable: {} as Record<number, string>
-})
-
-const isSnackBarVisible = ref(false);
-const consoleStr = ref("");
-const jumpToLocInput = ref("");
-const timerInputs = ref({
-  vect: "x81",
-  priority: "4",
-  max: "50"
-});
-
-const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
-const timerBtnVariant = computed(() => {
-  if (sim.value.timer.enabled) {
-    if (!sim.value.running && sim.value.timer.remaining == 0) return "flat";
-    return "tonal";
-  }
-  return "text";
-});
-const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : undefined);
-let lastLoadedFile: string | null = null;
-let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
-let memScrollOffset = 0;
-
-type RegDataRow = typeof sim.value.regs[number];
-type MemDataRow = typeof memView.value.data[number];
-
-const rangeRule = (min: number, max: number) => (value: string) => {
-  const intValue = parseInputString(value);
-  return min <= intValue && intValue <= max || `Value must be between ${min} and ${max}`;
-};
-const rules: Record<string, ValidationRule> = {
-  hex(value: string) {
-    return /^0?[xX][0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
-  },
-  dec(value: string) {
-    return /^-?\d+$/.test(value) || "Invalid decimal number";
-  },
-  size16bit(value: string) {
-    const intValue = parseInputString(value);
-    return (
-      intValue === toInt16(intValue) || intValue === toUint16(intValue) ||
-      "Value must be between x0000 and xFFFF"
-    );
-  },
-  size8bit(value: string) {
-    const intValue = parseInputString(value);
-    return intValue === (intValue & 0xFF) || "Value must be between x00 and xFF";
-  }
-}
-type ValidationRule = (value: string) => boolean | string;
-const editValue = ref("");
-
-const memViewWrapper = useTemplateRef("memViewWrapper");
-watch(memViewWrapper, el => {
-  el.addEventListener("wheel", handleMemoryScroll);
-}, { once: true });
-
-onMounted(() => {
-  refreshMemoryPanel();
-  window.addEventListener("resize", refreshMemoryPanel);
-})
-onUnmounted(() => {
-  memViewWrapper.value?.removeEventListener("wheel", handleMemoryScroll);
-  window.removeEventListener("resize", refreshMemoryPanel);
-
-})
-onActivated(() => {
-  const asmFileName = activeFileStore.path;
-  if (asmFileName != null && activeFileStore.lastBuilt > activeFileStore.lastLoaded) {
-    const objFileName = asmFileName.replace(/\.asm$/, ".obj");
-    if (fs.exists(objFileName)) {
-      loadFile(objFileName);
-    }
-    activeFileStore.touchLoadTime();
-  }
-})
-
-function refreshMemoryPanel() {
-  memView.value.data = Array.from(
-    { length: Math.floor((window.innerHeight - 140) / 25) - 4},
-    () => ({
-      addr: 0,
-      value: 0,
-      line: "",
-      label: "",
-      flash: false,
-      updated: false
-    })
-  );
-
-  updateUI();
-  jumpToPC(true);
-}
-function handleMemoryScroll(e: WheelEvent) {
-  e.preventDefault();
-
-  if (!lc3.isSimRunning()) {
-    memScrollOffset += e.deltaY;
-    if (Math.abs(memScrollOffset) > 20) {
-      jumpToPartMemView(Math.floor(memScrollOffset / 20));
-      memScrollOffset = 0;
-    }
-  }
-}
-
-async function dropFile(e: DragEvent) {
-  const file = e.dataTransfer.files[0];
-  if (file?.name.toLowerCase().endsWith("obj") && !lc3.isSimRunning()) {
-    openFile(fs.getPath(file));
-  }
-}
-async function openFile(path: string | undefined = undefined) {
-  let selectedFiles: string[] = [];
-  if (!path) {
-    const result = await dialog.showModal("open", {
-      properties: ["openFile"],
-      filters: [{ name: "Object Files", extensions: ["obj"] }]
-    });
-
-    if (!result.canceled) {
-      selectedFiles = result.filePaths;
-    }
-  } else {
-    // Path already defined
-    selectedFiles = [path];
-  }
-
-  if (selectedFiles.length > 0) {
-    loadFile(selectedFiles[0]);
-  }
-}
-function loadFile(path: string) {
-  // pause lc3 if running
-  lc3.pause();
-
-  lc3.clearInput();
-  // clear output on file (re)load
-  if (settings.clear_out_on_reload) {
-    clearConsoleOutput();
-  }
-
-  // load object file
-  // and check for load failure (i.e., if file is malformed)
-  let success;
-  try {
-    lc3.loadObjectFile(path);
-    success = true;
-  } catch {
-    success = false;
-  }
-
-  // If successful, set up initialization steps
-  if (success) {
-    lastLoadedFile = path;
-    memView.value.start = lc3.getRegValue("pc");
-    memView.value.symTable = lc3.getCurrSymTable();
-  }
-  updateUI();
-  isSnackBarVisible.value = success;
-}
-function reloadFile() {
-  loadFile(lastLoadedFile);
-  updateUI();
-}
-function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
-  if (!sim.value.running) {
-    sim.value.running = true;
-
-    startPollIO();
-
-    return new Promise<void>((resolve, reject) => {
-      const callback = (error: Error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        endSimulation(runKind !== "run" || lc3.didHitBreakpoint());
-        resolve();
-      };
-
-      if (runKind === "in") {
-        lc3.stepIn(callback);
-      } else if (runKind === "out") {
-        lc3.stepOut(callback);
-      } else if (runKind === "over") {
-        lc3.stepOver(callback);
-      } else if (runKind === "run") {
-        lc3.run(callback);
-      } else {
-        // statically assert no other branches exist:
-        runKind satisfies never;
-      }
-    });
-  } else {
-    endSimulation(false);
-  }
-}
-function reinitializeMachine() {
-  lc3.reinitializeMachine();
-  lc3.clearInput();
-  clearConsoleOutput();
-  updateUI();
-}
-function randomizeMachine() {
-  lc3.randomizeMachine();
-  lc3.clearInput();
-  clearConsoleOutput();
-  updateUI();
-}
-
-function startPollIO() {
-  if (typeof pollOutputHandle !== "number") {
-    pollOutputHandle = setInterval(() => {
-      updateConsole();
-      updateTimer();
-    }, 50);
-  }
-}
-function stopPollOutput() {
-  clearInterval(pollOutputHandle);
-  pollOutputHandle = null;
-}
-
-function endSimulation(jumpToPC_: boolean) {
-  stopPollOutput();
-
-  if (sim.value.running) {
-    sim.value.running = false;
-    lc3.pause();
-    updateUI(true);
-
-    sim.value.regs[9].value = lc3.getRegValue("pc");
-    if (jumpToPC_) jumpToPC(false);
-  }
-}
-function clearConsoleOutput() {
-  consoleStr.value = "";
-  lc3.clearOutput();
-}
-function handleConsoleInput(e: KeyboardEvent) {
-  // Typable characters on a standard keyboard.
-  const overrides: Record<string, string> = {
-    Enter: '\n',
-    Backspace: '\x08',
-    Tab: '\x09',
-    Escape: '\x1b',
-    Delete: '\x7f'
-  };
-
-  // TODO: since the console string is rendered as I/O, 
-  // the console actually allows for "HTML injection"
-  let key = e.key;
-  if (key in overrides) {
-    lc3.addInput(overrides[key]);
-  } else if (key.length === 1) {
-    // Handle CTRL-a through CTRL-z.
-    const code = key.charCodeAt(0);
-    if (code > 64 && code < 128 && e.ctrlKey) {
-      key = String.fromCharCode(code & 0x1F);
-    } 
-    lc3.addInput(key);
-  }
-
-  e.preventDefault(); // for TAB, etc.
-}
-
-async function openRegContextMenu(item: RegDataRow) {
-  if (lc3.isSimRunning()) return;
-
-  const output = await dialog.showModal("menu", ["Jump", "Copy Hex", "Copy Decimal"]);
-  switch (output) {
-    case 0:
-      jumpToMemView(item.value);
-      break;
-    
-    // These two functions are actually pretty useless.
-    // They're only here so "Jump" isn't by itself.
-    case 1:
-      navigator.clipboard.writeText(toHex(item.value));
-      break;
-    case 2:
-      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
-      break;
-  }
-}
-async function openMemContextMenu(item: MemDataRow) {
-  if (lc3.isSimRunning()) return;
-
-  const options = ["Jump to Address"];
-
-  const hasLabel = !!item.label;
-  const hasInstr = typeof lc3.getAddrSourceRange(item.addr) !== "undefined";
-  if (hasLabel && hasInstr) {
-    options.push("Jump to Source (Label)", "Jump to Source (Instruction)");
-  } else if (hasLabel || hasInstr) {
-    options.push("Jump to Source");
-  }
-
-  options.push("Copy Hex", "Copy Decimal");
-  const output = await dialog.showModal("menu", options);
-  switch (options[output]) {
-    case "Jump to Address":
-      jumpToMemView(item.value);
-      break;
-    
-    case "Jump to Source":
-      jumpToSource(item.label || item.addr);
-      break;
-    case "Jump to Source (Label)":
-      jumpToSource(item.label);
-      break;
-    case "Jump to Source (Instruction)":
-      jumpToSource(item.addr);
-      break;
-
-    // These two functions are actually pretty useless.
-    // They're only here so "Jump" isn't by itself.
-    case "Copy Hex":
-      navigator.clipboard.writeText(toHex(item.value));
-      break;
-    case "Copy Decimal":
-      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
-      break;
-  }
-}
-function setDataValue(dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
-function setDataValue(dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
-function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
-  const value = editValue.value;
-  const validated = rules.every(r => r(value) === true);
-  
-  // Validation failed, so ignore set
-  if (!validated) {
-    if (type === "reg" && "name" in dataCell) {
-      dataCell.value = lc3.getRegValue(dataCell.name);
-    } else if (type === "mem" && "addr" in dataCell) {
-      dataCell.value = lc3.getMemValue(dataCell.addr);
-    }
-    return;
-  }
-
-  dataCell.value = toUint16(parseInputString(value));
-  if (type === "reg" && "name" in dataCell) {
-    lc3.setRegValue(dataCell.name, dataCell.value);
-  } else if (type === "mem" && "addr" in dataCell) {
-    lc3.setMemValue(dataCell.addr, dataCell.value);
-  }
-  
-  updateUI();
-}
-function updateUI(showUpdates = false, updateReg = true) {
-  // Can't update UI while it's running
-  if (lc3.isSimRunning()) return;
-
-  // Registers
-  if (updateReg) {
-    for (const reg of sim.value.regs) {
-      const regVal = lc3.getRegValue(reg.name);
-      const prevVal = reg.value;
-
-      reg.value = regVal;
-      // flash and highlight registers that change from their previous values
-      reg.flash = false;
-      reg.updated = false;
-      if (showUpdates) {
-        const updated = reg.name === "pc" ? regVal !== prevVal + 1 : regVal !== prevVal;
-        if (updated) {
-          reg.flash = true;
-          setTimeout(() => {
-            reg.flash = false;
-            reg.updated = true;
-          }, 250);
-        }
-      }
-    }
-  }
-
-  // Memory
-  const updates: number[] = lc3.takeMemChanges();
-  for (let i = 0; i < memView.value.data.length; i++) {
-    const addr = toUint16(memView.value.start + i);
-    const dataLine = memView.value.data[i];
-
-    dataLine.addr = addr;
-    dataLine.value = lc3.getMemValue(addr);
-    dataLine.line = lc3.getMemLine(addr);
-    // show label using symbol table
-    dataLine.label = memView.value.symTable[addr]?.toUpperCase() ?? "";
-  
-    dataLine.flash = false;
-    dataLine.updated = false;
-    if (showUpdates && updates.includes(addr)) {
-      dataLine.flash = true;
-      setTimeout(() => {
-        dataLine.flash = false;
-        dataLine.updated = true;
-      }, 250);
-    }
-  }
-
-  updateConsole();
-  updateTimer();
-}
-function updateConsole() {
-  consoleStr.value += lc3.getAndClearOutput();
-}
-function updateTimer() {
-  if (sim.value.timer.enabled) {
-    sim.value.timer.remaining = lc3.getTimerRemaining();
-  }
-}
-function toggleBreakpoint(addr: number) {
-  const idx = sim.value.breakpoints.indexOf(addr);
-
-  if (!lc3.isSimRunning()) {
-    if (idx == -1) {
-      lc3.setBreakpoint(addr);
-      sim.value.breakpoints.push(addr);
-    } else {
-      lc3.removeBreakpoint(addr);
-      sim.value.breakpoints.splice(idx, 1);
-    }
-  }
-}
-function setPC(addr: number) {
-  if (!lc3.isSimRunning()) {
-    lc3.setRegValue("pc", toUint16(addr));
-    updateUI();
-  }
-}
-function jumpToSource(location: string | number) {
-  if (!lc3.isSimRunning()) {
-    let span;
-    if (typeof location === "string") {
-      span = lc3.getLabelSourceRange(location);
-    } else if (typeof location === "number") {
-      span = lc3.getAddrSourceRange(location);
-    } else {
-      // statically assert no other branches exist:
-      location satisfies never;
-    }
-
-    if (typeof span !== "undefined") {
-      const [slno, scno, elno, ecno] = span;
-      router.push({ name: "editor", hash: `#L${slno}C${scno}-L${elno}C${ecno}` });
-    }
-  }
-}
-function isBreakpointAt(addr: number) {
-  return sim.value.breakpoints.includes(addr)
-}
-function isPCAt(addr: number) {
-  return addr == sim.value.regs[9].value && !sim.value.running;
-}
-
-// Memory view jump functions
-function jumpToMemView(newStart: number) {
-  memView.value.start = toUint16(newStart);
-  updateUI(false, false);
-}
-function jumpToMemViewStr() {
-  const match = jumpToLocInput.value.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
-  if (match != null) {
-    jumpToMemView(parseInt(match[1], 16));
-  }
-}
-function jumpToPartMemView(offset: number) {
-  jumpToMemView(memView.value.start + offset);
-}
-function jumpToPrevMemView() {
-  jumpToPartMemView(-memView.value.data.length);
-}
-function jumpToNextMemView() {
-  jumpToPartMemView(+memView.value.data.length);
-}
-function jumpToPC(jumpIfInView: boolean) {
-  const pc = toUint16(sim.value.regs[9].value);
-  const memViewStart = memView.value.start;
-  const memViewEnd = memViewStart + memView.value.data.length;
-  
-  const pcInView = memViewStart <= pc && pc < memViewEnd;
-  if (jumpIfInView || !pcInView) jumpToMemView(pc);
-}
-
-// Timer functions
-function setTimerStatus() {
-  lc3.setTimerStatus(sim.value.timer.enabled);
-  resetTimer();
-}
-function resetTimer() {
-  lc3.resetTimer();
-  updateUI();
-}
-function resetTimerInputs() {
-  timerInputs.value = {
-    vect: "x" + lc3.getTimerVect().toString(16).padStart(2, "0"),
-    priority: String(lc3.getTimerPriority()),
-    max: String(lc3.getTimerMax())
-  }
-}
-async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, prop: keyof typeof timerInputs.value) {
-  const { valid } = await event;
-  if (!valid) return;
-
-  if (prop === "vect") {
-    const intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
-    lc3.setTimerVect(intValue);
-    sim.value.timer[prop] = intValue;
-  } else if (prop === "priority") {
-    const intValue = parseInputString(timerInputs.value[prop]);
-    lc3.setTimerPriority(intValue);
-    sim.value.timer[prop] = intValue;
-  } else if (prop === "max") {
-    const intValue = parseInputString(timerInputs.value[prop]);
-    lc3.setTimerMax(intValue);
-    sim.value.timer[prop] = intValue;
-    resetTimer();
-  } else {
-    prop satisfies never;
-  }
-}
-// Helper functions
-function psrToCC(psr: number) {
-  const cc = psr & 0b111;
-  switch (cc) {
-    case 0b100: return "N"
-    case 0b010: return "Z"
-    case 0b001: return "P"
-    default: return "?"
-  }
-}
-function toHex(value: number) {
-  const hex = toUint16(value).toString(16).toUpperCase();
-  return `x${hex.padStart(4, "0")}`;
-}
-function toFormattedDec(value: number) {
-  if (settings.numbers === "signed") {
-    return toInt16(value);
-  } else if (settings.numbers === "unsigned") {
-    return toUint16(value);
-  } else {
-    // statically assert no other branches exist:
-    settings.numbers satisfies never;
-  }
-}
-function parseInputString(value: string) {
-  if (value.startsWith("x")) value = "0" + value;
-  return parseInt(value);
-}
-function regLabel(item: RegDataRow) {
-  if (item.name === "psr") {
-    return "CC: " + psrToCC(item.value);
-  } else if (item.name.startsWith("r") && 20 <= item.value && item.value <= 127) {
-    return String.fromCharCode(item.value);
-  }
-
-  return "";
-}
-
-function toUint16(value: number) {
-  return value & 0xFFFF;
-}
-function toInt16(value: number) {
-  return (value << 16) >> 16;
-}
-</script>
-
 
 <style scoped>
 .h-limit {
@@ -1448,9 +1448,5 @@ tr:not(.row-disabled) .pc-icon:hover {
   grid-column: 2;
   grid-row: 1;
   text-align: right;
-}
-
-.contents {
-  display: contents;
 }
 </style>
