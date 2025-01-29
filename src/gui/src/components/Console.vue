@@ -93,8 +93,7 @@ watch(consoleHtml, async () => {
 }
 
 .console.show-focus:focus {
-  outline: none;
-  box-shadow: 0px 0px 6px 3px rgba(var(--v-theme-primary), 0.6) !important;
+  box-shadow: 0px 0px 6px 3px hsl(214deg 100% 30%) !important;
 }
 
 .console.show-cursor::after {

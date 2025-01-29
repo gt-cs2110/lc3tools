@@ -32,6 +32,7 @@ declare module 'vue' {
     MdiPower: typeof import('~icons/mdi/power')['default']
     MdiRefresh: typeof import('~icons/mdi/refresh')['default']
     MdiShuffle: typeof import('~icons/mdi/shuffle')['default']
+    MdiTimer: typeof import('~icons/mdi/timer')['default']
     MdiWrench: typeof import('~icons/mdi/wrench')['default']
     Menu: typeof import('primevue/menu')['default']
     Menubar: typeof import('primevue/menubar')['default']

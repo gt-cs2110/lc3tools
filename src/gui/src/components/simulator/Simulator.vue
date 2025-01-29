@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDelete, mdiPlay, mdiTimer } from '@mdi/js';
+import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiPlay, mdiTimer } from '@mdi/js';
 import { useToast } from 'primevue';
 
 const { lc3, dialog, fs } = window.api;
@@ -61,12 +61,12 @@ const timerInputs = ref({
 const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
 const timerBtnVariant = computed(() => {
   if (sim.value.timer.enabled) {
-    if (!sim.value.running && sim.value.timer.remaining == 0) return "flat";
-    return "tonal";
+    if (!sim.value.running && sim.value.timer.remaining == 0) return null;
+    return "outlined";
   }
   return "text";
 });
-const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : undefined);
+const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : "secondary");
 let lastLoadedFile: string | null = null;
 let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
 let memScrollOffset = 0;
@@ -695,9 +695,9 @@ function toInt16(value: number) {
             icon="pi"
             variant="text"
             rounded
-            class="text-red-500 active:bg-red-500/10"
+            severity="danger"
           >
-            <MdiClose class="text-red-500" />
+            <MdiClose />
           </Button>
         </div>
       </template>
@@ -863,6 +863,23 @@ function toInt16(value: number) {
               <h3 class="header-bar-title">
                 Memory
               </h3>
+              <Button
+                v-tooltip.left="'Configure Timer Interrupt'"
+                class="header-bar-right"
+                :variant="timerBtnVariant"
+                icon="pi"
+                rounded
+                :severity="timerBtnColor"
+                @click="resetTimerInputs()"
+              >
+                <OverlayBadge
+                  v-if="timerRemBadgeShow"
+                  :value="sim.timer.remaining || ''"
+                >
+                  <MdiTimer />
+                </OverlayBadge>
+                <MdiTimer v-else />
+              </Button>
               <v-btn
                 class="header-bar-right"
                 icon
