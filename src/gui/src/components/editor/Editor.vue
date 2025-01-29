@@ -314,63 +314,45 @@ export default {
 
 <template>
   <div>
-    <div class="nav-menu flex flex-col">
-      <Button
-        v-tooltip.right="'Open File'"
-        variant="text"
-        aria-label="Open File"
+    <nav-menu>
+      <nav-icon
+        label="Open File"
         @click="openFile()"
       >
         <MdiFolderOpen />
-      </Button>
-      <Button
-        v-tooltip.right="'Save File'"
-        variant="text"
-        aria-label="Save File"
+      </nav-icon>
+      <nav-icon
+        label="Save File"
+        :badge="editorContentChanged"
         @click="saveFileThen(build)"
       >
-        <OverlayBadge
-          v-if="editorContentChanged"
-          value="!"
-          severity="warn"
-        >
-          <MdiContentSave />
-        </OverlayBadge>
-        <MdiContentSave v-else />
-      </Button>
-      <Button
-        v-tooltip.right="'Save File As'"
-        variant="text"
-        aria-label="Save File As"
+        <MdiContentSave />
+      </nav-icon>
+      <nav-icon
+        label="Save File As"
         @click="saveFileAs()"
       >
         <MdiContentSaveEdit />
-      </Button>
-      <Button
-        v-tooltip.right="'Assemble'"
-        variant="text"
-        aria-label="Assemble"
+      </nav-icon>
+      <nav-icon
+        label="Assemble"
         @click="build()"
       >
         <MdiWrench />
-      </Button>
-      <Button
-        v-tooltip.right="'Toggle Console'"
-        variant="text"
-        aria-label="Toggle Console"
+      </nav-icon>
+      <nav-icon
+        label="Toggle Console"
         @click="toggleConsole()"
       >
         <MdiConsole />
-      </Button>
-      <Button
-        v-tooltip.right="'Link Object Files'"
-        variant="text"
-        aria-label="Link Object Files"
+      </nav-icon>
+      <nav-icon
+        label="Link Object Files"
         @click="link()"
       >
         <MdiLinkVariant />
-      </Button>
-    </div>
+      </nav-icon>
+    </nav-menu>
     <main class="contents">
       <div class="p-4 flex flex-col flex-grow gap-3">
         <h3 class="font-bold text-lg text-center">
@@ -403,14 +385,5 @@ export default {
 <style>
 .ace-twilight .ace_marker-layer .ace_selection {
   background: rgb(60, 97, 146) !important;
-}
-</style>
-
-<style scoped lang="postcss">
-.nav-menu {
-  @apply bg-white dark:bg-zinc-800 border-r dark:border-zinc-700;
-}
-.nav-menu svg {
-  @apply text-stone-600 dark:text-stone-400;
 }
 </style>

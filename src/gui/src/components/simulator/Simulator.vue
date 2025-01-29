@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle, mdiTimer } from '@mdi/js';
+import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDelete, mdiPlay, mdiTimer } from '@mdi/js';
 
 const { lc3, dialog, fs } = window.api;
 
@@ -617,112 +617,69 @@ function toInt16(value: number) {
 
 <template>
   <div 
-    class="contents sim-top"
+    class="sim-top"
     :class="{
       'reduce-flashing': settings.reduce_flashing
     }"
   >
-    <v-navigation-drawer
-      permanent
-      rail
-    >
-      <v-list-item
-        :prepend-icon="mdiFolderOpen"
+    <nav-menu>
+      <!-- File buttons -->
+      <nav-icon
+        label="Open File"
         @click="openFile()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Open File"
-        />
-      </v-list-item>
-      <v-list-item @click="toggleSimulator('run')">
-        <template #prepend>
-          <v-icon
-            v-if="!sim.running"
-            :icon="mdiPlay"
-          />
-          <v-icon
-            v-else
-            :icon="mdiPause"
-          />
-        </template>
-        <v-tooltip
-          v-if="!sim.running"
-          location="right"
-          activator="parent"
-          text="Run"
-        />
-        <v-tooltip
-          v-else
-          location="right"
-          activator="parent"
-          text="Pause"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiRefresh"
+        <MdiFolderOpen />
+      </nav-icon>
+      <nav-icon
+        :label="sim.running ? 'Pause' : 'Play'"
+        @click="toggleSimulator('run')"
+      >
+        <MdiPause v-if="sim.running" />
+        <MdiPlay v-else />
+      </nav-icon>
+      <nav-icon
+        label="Reload Object Files"
         @click="reloadFile()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Reload Object Files"
-        />
-      </v-list-item>
-      <v-divider />
-      <v-list-item
-        :prepend-icon="mdiDebugStepOver"
+        <MdiRefresh />
+      </nav-icon>
+
+      <!-- Debug -->
+      <Divider class="my-0" />
+      <nav-icon
+        label="Step Over"
         @click="toggleSimulator('over')"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Step Over"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiDebugStepInto"
+        <MdiDebugStepOver />
+      </nav-icon>
+      <nav-icon
+        label="Step In"
         @click="toggleSimulator('in')"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Step In"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiDebugStepOut"
+        <MdiDebugStepInto />
+      </nav-icon>
+      <nav-icon
+        label="Step Out"
         @click="toggleSimulator('out')"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Step Out"
-        />
-      </v-list-item>
-      <v-divider />
-      <v-list-item
-        :prepend-icon="mdiPower"
+        <MdiDebugStepOut />
+      </nav-icon>
+
+      <!-- Machine -->
+      <Divider class="my-0" />
+      <nav-icon
+        label="Reinitialize Machine"
         @click="reinitializeMachine()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Reinitialize Machine"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiShuffle"
+        <MdiPower />
+      </nav-icon>
+      <nav-icon
+        label="Randomize Machine"
         @click="randomizeMachine()"
       >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Randomize Machine"
-        />
-      </v-list-item>
-    </v-navigation-drawer>
+        <MdiShuffle />
+      </nav-icon>
+    </nav-menu>
     <!-- Main editor content -->
     <v-main
       @drop.prevent="dropFile"
@@ -1307,7 +1264,7 @@ function toInt16(value: number) {
 </template>
   
 
-<style scoped>
+<style scoped lang="postcss">
 .h-limit {
   height: calc(100vh - 90px);
 }
