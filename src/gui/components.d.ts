@@ -13,6 +13,7 @@ declare module 'vue' {
     Divider: typeof import('primevue/divider')['default']
     Editor: typeof import('./src/components/editor/Editor.vue')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
+    InputText: typeof import('primevue/inputtext')['default']
     MdiAlert: typeof import('~icons/mdi/alert')['default']
     MdiClose: typeof import('~icons/mdi/close')['default']
     MdiCodeTags: typeof import('~icons/mdi/code-tags')['default']

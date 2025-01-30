@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiPlay, mdiTimer } from '@mdi/js';
+import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiPlay } from '@mdi/js';
 import { useToast } from 'primevue';
 
 const { lc3, dialog, fs } = window.api;
@@ -16,6 +16,7 @@ const settings = useSettingsStore();
 const activeFileStore = useActiveFileStore();
 const router = useRouter();
 const toast = useToast();
+const timerPopover = useTemplateRef("timerPopover");
 
 const sim = ref({
   regs: [
@@ -54,8 +55,8 @@ const consoleStr = ref("");
 const jumpToLocInput = ref("");
 const timerInputs = ref({
   vect: "x81",
-  priority: "4",
-  max: "50"
+  priority: 4,
+  max: 50
 });
 
 const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
@@ -548,8 +549,8 @@ function resetTimer() {
 function resetTimerInputs() {
   timerInputs.value = {
     vect: "x" + lc3.getTimerVect().toString(16).padStart(2, "0"),
-    priority: String(lc3.getTimerPriority()),
-    max: String(lc3.getTimerMax())
+    priority: lc3.getTimerPriority(),
+    max: lc3.getTimerMax()
   }
 }
 async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, prop: keyof typeof timerInputs.value) {
@@ -561,11 +562,11 @@ async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, 
     lc3.setTimerVect(intValue);
     sim.value.timer[prop] = intValue;
   } else if (prop === "priority") {
-    const intValue = parseInputString(timerInputs.value[prop]);
+    const intValue = timerInputs.value[prop];
     lc3.setTimerPriority(intValue);
     sim.value.timer[prop] = intValue;
   } else if (prop === "max") {
-    const intValue = parseInputString(timerInputs.value[prop]);
+    const intValue = timerInputs.value[prop];
     lc3.setTimerMax(intValue);
     sim.value.timer[prop] = intValue;
     resetTimer();
@@ -686,7 +687,7 @@ function toInt16(value: number) {
     </nav-menu>
     <!-- Toast popup -->
     <Toast position="top-center">
-      <template #container="{ message }">
+      <template #container="{ message, closeCallback }">
         <div class="flex p-2 items-center">
           <div class="px-2 flex-1">
             {{ message.summary }}
@@ -696,6 +697,7 @@ function toInt16(value: number) {
             variant="text"
             rounded
             severity="danger"
+            @click="closeCallback"
           >
             <MdiClose />
           </Button>
@@ -765,9 +767,9 @@ function toInt16(value: number) {
                     class="data-cell-num clickable"
                     @click="editValue = ($event.target as HTMLElement).textContent"
                   >
-                    <span>{{
-                      toHex(item.value)
-                    }}</span>
+                    <span>
+                      {{ toHex(item.value) }}
+                    </span>
                     <v-menu 
                       v-if="!sim.running"
                       activator="parent" 
@@ -863,52 +865,90 @@ function toInt16(value: number) {
               <h3 class="header-bar-title">
                 Memory
               </h3>
-              <Button
-                v-tooltip.left="'Configure Timer Interrupt'"
+              <OverlayBadge
+                severity="secondary"
+                :value="sim.timer.remaining || ''"
                 class="header-bar-right"
-                :variant="timerBtnVariant"
-                icon="pi"
-                rounded
-                :severity="timerBtnColor"
-                @click="resetTimerInputs()"
+                :class="{ 'hide-badge': !timerRemBadgeShow }"
               >
-                <OverlayBadge
-                  v-if="timerRemBadgeShow"
-                  :value="sim.timer.remaining || ''"
+                <Button
+                  v-tooltip.left="'Configure Timer Interrupt'"
+                  :variant="timerBtnVariant"
+                  icon="pi"
+                  rounded
+                  :severity="timerBtnColor"
+                  @click="e => {
+                    resetTimerInputs();
+                    timerPopover?.toggle(e);
+                  }"
                 >
                   <MdiTimer />
-                </OverlayBadge>
-                <MdiTimer v-else />
-              </Button>
-              <v-btn
-                class="header-bar-right"
-                icon
-                flat
-                :variant="timerBtnVariant"
-                :color="timerBtnColor"
-                @click="resetTimerInputs()"
+                </Button>
+              </OverlayBadge>
+              <Popover
+                v-if="!sim.running"
+                ref="timerPopover"
               >
-                <v-badge
-                  v-model="timerRemBadgeShow"
-                  location="top start"
-                >
-                  <template #badge>
-                    <strong>{{ sim.timer.remaining || '' }}</strong>
-                  </template>
-                  <v-icon :icon="mdiTimer" />
-                </v-badge>
-                <v-tooltip
-                  location="left"
-                  activator="parent"
-                  text="Configure Timer Interrupt"
-                />
-                <v-menu
+                <div class="popover-menu">
+                  <div>
+                    <label>
+                      <span>Enable timer interrupt</span>
+                      <ToggleSwitch v-model="sim.timer.enabled" />
+                    </label>
+                    <label>
+                      <span>Hide timer badge</span>
+                      <ToggleSwitch
+                        v-model="sim.timer.hide_badge"
+                        :disabled="!sim.timer.enabled"
+                      />
+                    </label>
+                  </div>
+                  <Divider />
+                  <div>
+                    <!-- TODO: impl form submission -->
+                    <label>
+                      <span>Vector</span>
+                      <InputText
+                        v-model="timerInputs.vect"
+                        :disabled="!sim.timer.enabled"
+                        class="w-24"
+                      />
+                    </label>
+                    <label>
+                      <span>Priority</span>
+                      <InputNumber
+                        v-model="timerInputs.priority"
+                        :use-grouping="false"
+                        :disabled="!sim.timer.enabled"
+                        :min="0"
+                        :max="7"
+                        input-class="w-24"
+                      />
+                    </label>
+                    <label>
+                      <span>Repeat</span>
+                      <InputNumber
+                        v-model="timerInputs.max"
+                        :use-grouping="false"
+                        :disabled="!sim.timer.enabled"
+                        :min="0"
+                        :max="2 ** 31 - 1"
+                        input-class="w-24"
+                      />
+                    </label>
+                  </div>
+                  <Divider />
+                  <div>
+                    Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
+                  </div>
+                </div>
+              </Popover>
+              <!-- <v-menu
                   activator="parent"
                   :close-on-content-click="false"
                 >
                   <v-card>
                     <v-container>
-                      <!-- Should use v-row, v-col, but those are grid not flex -->
                       <div class="d-flex justify-space-between align-center ga-5">
                         <h3 class="flex-grow-1">
                           Enable timer interrupt
@@ -1006,8 +1046,7 @@ function toInt16(value: number) {
                       </div>
                     </v-container>
                   </v-card>
-                </v-menu>
-              </v-btn>
+                </v-menu> -->
             </div>
             <v-data-table
               class="elevation-4 sim-data-table"
@@ -1358,7 +1397,6 @@ tr:not(.row-disabled) .clickable {
   grid-template-rows: 100%;
   justify-items: center;
   align-items: center;
-  overflow: hidden;
 }
 .header-bar-title {
   @apply font-bold text-lg text-center;
@@ -1404,5 +1442,18 @@ tr:not(.row-disabled) .pc-icon:hover {
   grid-column: 2;
   grid-row: 1;
   text-align: right;
+}
+
+.popover-menu > div {
+  @apply flex flex-col gap-3;
+}
+.popover-menu > div > label {
+  @apply flex justify-between items-center gap-2;
+}
+.p-overlaybadge :deep(.p-badge) {
+  @apply transition;
+}
+.p-overlaybadge.hide-badge :deep(.p-badge) {
+  @apply opacity-0;
 }
 </style>

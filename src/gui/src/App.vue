@@ -136,8 +136,8 @@ function saveSettings(setting: SettingKeys) {
   </div>
 
   <Popover ref="settingsPopover">
-    <div>
-      <div class="flex flex-col gap-3">
+    <div class="popover-menu">
+      <div>
         <label class="flex justify-between items-center gap-2">
           <span>Theme</span>
           <SelectButton
@@ -186,8 +186,8 @@ function saveSettings(setting: SettingKeys) {
         </label>
       </div>
       <Divider />
-      <div class="flex flex-col gap-3">
-        <label class="flex justify-between items-center gap-2">
+      <div>
+        <label>
           <span>Number View</span>
           <SelectButton
             v-model="settings.numbers"
@@ -197,15 +197,15 @@ function saveSettings(setting: SettingKeys) {
             :allow-empty="false"
           />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Pause on HALT and exceptions</span>
           <ToggleSwitch v-model="settings.pause_on_fatal_trap" />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Clear output on object file reload</span>
           <ToggleSwitch v-model="settings.clear_out_on_reload" />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>
             Ignore privileged mode
             <MdiAlert
@@ -216,13 +216,13 @@ function saveSettings(setting: SettingKeys) {
           </span>
           <ToggleSwitch v-model="settings.ignore_privilege" />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Reduce flashing in simulator</span>
           <ToggleSwitch v-model="settings.reduce_flashing" />
         </label>
       </div>
       <Divider />
-      <div><span>Issues? Post on CS 2110 Ed/Piazza!</span></div>
+      <div>Issues? Post on CS 2110 Ed/Piazza!</div>
     </div>
   </Popover>
 </template>
@@ -257,5 +257,14 @@ body {
 /* https://stackoverflow.com/q/56973002/11984788 */
 html {
     overflow-y: auto !important;
+}
+</style>
+
+<style scoped lang="postcss">
+.popover-menu > div {
+  @apply flex flex-col gap-3;
+}
+.popover-menu > div > label {
+  @apply flex justify-between items-center gap-2;
 }
 </style>

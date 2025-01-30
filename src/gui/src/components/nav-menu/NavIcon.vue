@@ -16,25 +16,26 @@
     @click="$emit('click')"
   >
     <OverlayBadge
-      v-if="props.badge"
       value="!"
       severity="warn"
+      :class="{ 'hide-badge': !props.badge }"
     >
       <slot
         name="default"
         class="nav-icon"
       />
     </OverlayBadge>
-    <slot
-      v-else
-      name="default"
-      class="nav-icon"
-    />
   </Button>
 </template>
 
 <style lang="postcss" scoped>
-.nav-icon-btn * {
+.nav-icon-btn :deep(svg) {
     @apply text-stone-600 dark:text-stone-400;
+}
+.p-overlaybadge :deep(.p-badge) {
+  @apply transition;
+}
+.p-overlaybadge.hide-badge :deep(.p-badge) {
+  @apply opacity-0;
 }
 </style>
