@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiPlay } from '@mdi/js';
+import { mdiAlertOctagon, mdiPlay } from '@mdi/js';
 import { useToast } from 'primevue';
 
 const { lc3, dialog, fs } = window.api;
@@ -1223,85 +1223,56 @@ function toInt16(value: number) {
             </v-data-table>
           </div>
   
-          <div id="controls">
-            <div id="jump-to-location">
-              <v-form @submit.prevent="jumpToMemViewStr()">
-                <v-text-field
-                  v-model="jumpToLocInput"
-                  single-line
-                  variant="underlined"
-                  label="Jump To Location"
-                />
-              </v-form>
+          <div class="flex items-center justify-between">
+            <div>
+              <!-- TODO: add form functionality: jumpToMemViewStr() -->
+              <InputText placeholder="Jump to Location" />
             </div>
-            <div id="jump-buttons">
-              <v-btn
-                variant="flat"
-                class="mr-3"
-                @click="jumpToPC(true)"
-              >
-                <span class="title">PC</span>
-                <v-tooltip
-                  location="top"
-                  activator="parent"
-                  text="Jump to PC"
-                />
-              </v-btn>
-                
-              <v-btn 
-                flat
-                icon
+            <div class="flex gap-1">
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start - memView.data.length))"
+                icon="pi"
+                rounded
+                severity="secondary"
                 @click="jumpToPrevMemView()"
               >
-                <v-icon
-                  size="x-large"
-                  :icon="mdiArrowLeft"
-                />
-                <v-tooltip
-                  location="top"
-                  activator="parent"
-                  :text="toHex(toUint16(memView.start - memView.data.length))"
-                />
-              </v-btn>
-              <v-btn 
-                flat
-                icon
+                <MdiChevronDoubleLeft />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start - 5))"
+                icon="pi"
+                rounded
+                severity="secondary"
                 @click="jumpToPartMemView(-5)"
               >
-                <v-icon :icon="mdiArrowLeft" />
-                <v-tooltip
-                  location="top"
-                  activator="parent"
-                  :text="toHex(toUint16(memView.start - 5))"
-                />
-              </v-btn>
-              <v-btn 
-                flat
-                icon
+                <MdiChevronLeft />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to PC'"
+                icon="pi"
+                severity="secondary"
+                @click="jumpToPC(true)"
+              >
+                <MdiHome />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start + 5))"
+                icon="pi"
+                rounded
+                severity="secondary"
                 @click="jumpToPartMemView(+5)"
               >
-                <v-icon :icon="mdiArrowRight" />
-                <v-tooltip
-                  location="top"
-                  activator="parent"
-                  :text="toHex(toUint16(memView.start + 5))"
-                />
-              </v-btn>
-              <v-btn 
-                flat
-                icon
+                <MdiChevronRight />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start + memView.data.length))"
+                icon="pi"
+                rounded
+                severity="secondary"
                 @click="jumpToNextMemView()"
               >
-                <v-icon
-                  size="x-large"
-                  :icon="mdiArrowRight"
-                />
-                <v-tooltip
-                  location="top"
-                  activator="parent"
-                  :text="toHex(toUint16(memView.start + memView.data.length))"
-                />
-              </v-btn>
+                <MdiChevronDoubleRight />
+              </Button>
             </div>
           </div>
         </div>
@@ -1420,28 +1391,6 @@ tr:not(.row-disabled) .breakpoint-icon:hover {
 
 tr:not(.row-disabled) .pc-icon:hover {
   color: #2196f3 !important;
-}
-
-/* Memory view controls styles */
-#controls {
-  flex-basis: content;
-  order: 2;
-
-  display: grid;
-  grid-template-columns: 30% auto;
-  grid-template-rows: auto;
-  align-items: center;
-}
-
-#jump-to-location {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-#jump-buttons {
-  grid-column: 2;
-  grid-row: 1;
-  text-align: right;
 }
 
 .popover-menu > div {
