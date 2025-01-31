@@ -138,7 +138,7 @@ function saveSettings(setting: SettingKeys) {
   <Popover ref="settingsPopover">
     <div class="popover-menu">
       <div>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Theme</span>
           <SelectButton
             v-model="settings.theme"
@@ -148,7 +148,7 @@ function saveSettings(setting: SettingKeys) {
             :allow-empty="false"
           />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Editor Key Bindings</span>
           <SelectButton
             v-model="settings.editor_binding"
@@ -158,7 +158,7 @@ function saveSettings(setting: SettingKeys) {
             :allow-empty="false"
           />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Autocomplete</span>
           <SelectButton
             v-model="settings.autocomplete"
@@ -168,7 +168,7 @@ function saveSettings(setting: SettingKeys) {
             :allow-empty="false"
           />
         </label>
-        <label class="flex justify-between items-center gap-2">
+        <label>
           <span>Soft Tabs</span>
           <div class="flex items-center gap-3">
             <Checkbox
@@ -206,14 +206,14 @@ function saveSettings(setting: SettingKeys) {
           <ToggleSwitch v-model="settings.clear_out_on_reload" />
         </label>
         <label>
-          <span>
-            Ignore privileged mode
+          <div class="flex gap-1">
+            <span>Ignore privileged mode</span>
             <MdiAlert
-              v-if="settings.ignore_privilege"
-              v-tooltip="'May result in inconsistency with autograder'"
-              class="text-red-500 inline-block"
+              v-tooltip="settings.ignore_privilege ? 'This setting may result in behavior inconsistent with the autograder' : ''"
+              class="text-red-500 inline-block transition"
+              :class="{ 'opacity-0': !settings.ignore_privilege }"
             />
-          </span>
+          </div>
           <ToggleSwitch v-model="settings.ignore_privilege" />
         </label>
         <label>
