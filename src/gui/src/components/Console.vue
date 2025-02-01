@@ -10,7 +10,7 @@
 <template>
   <div
     ref="consoleRef"
-    class="shadow-md console"
+    class="console"
     :class="{
       'show-focus': props.showFocus,
       'show-cursor': props.showCursor
@@ -87,13 +87,15 @@ watch(consoleHtml, async () => {
 .console {
   @apply font-mono p-2 dark:bg-zinc-800;
   @apply grow overflow-y-auto;
+  @apply shadow-lg transition;
   white-space: pre-wrap;
   user-select: text;
   overflow-wrap: anywhere;
 }
 
 .console.show-focus:focus {
-  box-shadow: 0px 0px 6px 3px hsl(214deg 100% 30%) !important;
+  @apply shadow-blue-500/40;
+  box-shadow: 0px 0px 6px 3px var(--tw-shadow-color) !important;
 }
 
 .console.show-cursor::after {
