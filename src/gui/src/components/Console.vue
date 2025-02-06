@@ -85,9 +85,9 @@ watch(consoleHtml, async () => {
 
 <style scoped lang="postcss">
 .console {
-  @apply font-mono p-2 dark:bg-zinc-800;
   @apply grow overflow-y-auto;
-  @apply shadow-lg transition;
+  @apply font-mono p-2 dark:bg-surface-800;
+  @apply border shadow dark:border-surface-800 transition;
   white-space: pre-wrap;
   user-select: text;
   overflow-wrap: anywhere;

@@ -64,6 +64,7 @@
     "lc3-backend": "file:../backend",
     "pinia": "^2.3.0",
     "primevue": "^4.2.5",
+    "tailwindcss-primeui": "^0.4.0",
     "update-electron-app": "^3.1.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",

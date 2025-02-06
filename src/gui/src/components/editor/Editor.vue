@@ -354,14 +354,14 @@ export default {
       </nav-icon>
     </nav-menu>
     <main class="contents">
-      <div class="p-4 flex flex-col flex-grow gap-3">
+      <div class="flex flex-col flex-grow gap-3 p-4">
         <h3 class="font-bold text-lg text-center">
           {{ filename }}
         </h3>
         <v-ace-editor
           ref="aceEditorRef"
           v-model:value="editor.current_content"
-          class="shadow-lg overflow-hidden h-full"
+          class="border shadow dark:border-surface-800 overflow-hidden h-full"
           lang="lc3"
           :theme="editorTheme"
           @drop.prevent="dropFile"

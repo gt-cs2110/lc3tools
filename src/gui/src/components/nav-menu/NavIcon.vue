@@ -30,7 +30,7 @@
 
 <style lang="postcss" scoped>
 .nav-icon-btn :deep(svg) {
-    @apply text-stone-600 dark:text-stone-400;
+    @apply text-surface-600 dark:text-surface-400;
 }
 .p-overlaybadge :deep(.p-badge) {
   @apply transition;

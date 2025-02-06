@@ -1,4 +1,5 @@
 import { Config } from "tailwindcss";
+import primeui from "tailwindcss-primeui";
 
 export default {
   darkMode: "selector",
@@ -10,5 +11,5 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [primeui],
 } satisfies Config;

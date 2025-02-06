@@ -7,7 +7,6 @@ import { useRouter } from 'vue-router';
 import "vuetify/components";
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiPlay } from '@mdi/js';
 import { useToast } from 'primevue';
 
 const { lc3, dialog, fs } = window.api;
@@ -130,8 +129,10 @@ function showFileLoadedToast() {
   toast.add({ severity: 'contrast', summary: 'Object File Loaded!', life: 2500 });
 }
 function refreshMemoryPanel() {
+  const rowWidth = Math.min(memViewWrapper.value.querySelector("tr")?.offsetHeight ?? 0, 25);
+
   memView.value.data = Array.from(
-    { length: Math.floor((window.innerHeight - 140) / 25) - 4},
+    { length: Math.floor((window.innerHeight) / rowWidth) - 10},
     () => ({
       addr: 0,
       value: 0,
@@ -710,7 +711,7 @@ function toInt16(value: number) {
       @drop.prevent="dropFile"
       @dragover.prevent
     >
-      <div class="grid grid-cols-[1fr_2fr] w-full gap-4 p-4">
+      <div class="grid grid-cols-[1fr_2fr] w-full gap-4 p-4 pt-2">
         <div class="flex flex-col gap-1">
           <div class="header-bar">
             <h3 class="header-bar-title">
@@ -718,7 +719,116 @@ function toInt16(value: number) {
             </h3>
           </div>
           <div>
-            <v-data-table
+            <table class="sim-data-table">
+              <colgroup>
+                <col style="width: 20%">
+                <col style="width: 20%">
+                <col style="width: 20%">
+                <col style="width: 40%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="data-cell-text">
+                    Registers
+                  </th>
+                  <th class="data-cell-num">
+                    Hex
+                  </th>
+                  <th class="data-cell-num">
+                    Decimal
+                  </th>
+                  <th class="data-cell-text">
+                    ASCII / Misc
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item of sim.regs"
+                  :key="item.name"
+                  :class="{
+                    'row-update-flash': item.flash,
+                    'row-updated': item.updated,
+                    'row-disabled': sim.running
+                  }"
+                  @contextmenu="openRegContextMenu(item)"
+                >
+                  <td
+                    class="data-cell-text"
+                  >
+                    <strong>{{ item.name.toUpperCase() }}</strong>
+                  </td>
+                  <td
+                    class="data-cell-num clickable"
+                    @click="editValue = ($event.target as HTMLElement).textContent"
+                  >
+                    <span>
+                      {{ toHex(item.value) }}
+                    </span>
+                    <v-menu 
+                      v-if="!sim.running"
+                      activator="parent" 
+                      :close-on-content-click="false" 
+                      :width="200"
+                    >
+                      <v-card>
+                        <v-container>
+                          <v-text-field 
+                            v-model.lazy="editValue"
+                            label="Hex Value"
+                            variant="underlined"
+                            :rules="[rules.hex, rules.size16bit]"
+                            @focus="$event.target.select()"
+                            @change="
+                              setDataValue(item, 'reg', [
+                                rules.hex,
+                                rules.size16bit
+                              ])
+                            "
+                          />
+                        </v-container>
+                      </v-card>
+                    </v-menu>
+                  </td>
+                  <td
+                    class="data-cell-num clickable"
+                    @click="editValue = ($event.target as HTMLElement).textContent"
+                  >
+                    <span>{{
+                      toFormattedDec(item.value)
+                    }}</span>
+                    <v-menu
+                      v-if="!sim.running"
+                      activator="parent" 
+                      :close-on-content-click="false" 
+                      :width="200"
+                    >
+                      <v-card>
+                        <v-container>
+                          <v-text-field 
+                            v-model.lazy="editValue"
+                            label="Decimal Value"
+                            variant="underlined"
+                            :rules="[rules.dec, rules.size16bit]"
+                            @focus="$event.target.select()"
+                            @change="
+                              setDataValue(item, 'reg', [
+                                rules.dec,
+                                rules.size16bit
+                              ])
+                            "
+                          />
+                        </v-container>
+                      </v-card>
+                    </v-menu>
+                  </td>
+                  <td class="data-cell-text">
+                    <span>{{ regLabel(item) }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <!-- <v-data-table
               class="elevation-4 sim-data-table"
               density="compact"
               hide-default-footer
@@ -832,7 +942,7 @@ function toInt16(value: number) {
                   </td>
                 </tr>
               </template>
-            </v-data-table>
+            </v-data-table> -->
           </div>
           <div class="flex flex-col flex-1">
             <div class="header-bar">
@@ -859,371 +969,526 @@ function toInt16(value: number) {
             />
           </div>
         </div>
-        <div>
-          <div ref="memViewWrapper">
-            <div class="header-bar">
-              <h3 class="header-bar-title">
-                Memory
-              </h3>
-              <OverlayBadge
-                severity="secondary"
-                :value="sim.timer.remaining || ''"
-                class="header-bar-right"
-                :class="{ 'hide-badge': !timerRemBadgeShow }"
-              >
-                <Button
-                  v-tooltip.left="'Configure Timer Interrupt'"
-                  :variant="timerBtnVariant"
-                  icon="pi"
-                  rounded
-                  :severity="timerBtnColor"
-                  @click="e => {
-                    resetTimerInputs();
-                    timerPopover?.toggle(e);
-                  }"
-                >
-                  <MdiTimer />
-                </Button>
-              </OverlayBadge>
-              <Popover
-                v-if="!sim.running"
-                ref="timerPopover"
-              >
-                <div class="popover-menu">
-                  <div>
-                    <label>
-                      <span>Enable timer interrupt</span>
-                      <ToggleSwitch v-model="sim.timer.enabled" />
-                    </label>
-                    <label>
-                      <span>Hide timer badge</span>
-                      <ToggleSwitch
-                        v-model="sim.timer.hide_badge"
-                        :disabled="!sim.timer.enabled"
-                      />
-                    </label>
-                  </div>
-                  <Divider />
-                  <div>
-                    <!-- TODO: impl form submission -->
-                    <label>
-                      <span>Vector</span>
-                      <InputText
-                        v-model="timerInputs.vect"
-                        :disabled="!sim.timer.enabled"
-                        class="w-24"
-                      />
-                    </label>
-                    <label>
-                      <span>Priority</span>
-                      <InputNumber
-                        v-model="timerInputs.priority"
-                        :use-grouping="false"
-                        :disabled="!sim.timer.enabled"
-                        :min="0"
-                        :max="7"
-                        input-class="w-24"
-                      />
-                    </label>
-                    <label>
-                      <span>Repeat</span>
-                      <InputNumber
-                        v-model="timerInputs.max"
-                        :use-grouping="false"
-                        :disabled="!sim.timer.enabled"
-                        :min="0"
-                        :max="2 ** 31 - 1"
-                        input-class="w-24"
-                      />
-                    </label>
-                  </div>
-                  <Divider />
-                  <div>
-                    Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
-                  </div>
-                </div>
-              </Popover>
-              <!-- <v-menu
-                  activator="parent"
-                  :close-on-content-click="false"
-                >
-                  <v-card>
-                    <v-container>
-                      <div class="d-flex justify-space-between align-center ga-5">
-                        <h3 class="flex-grow-1">
-                          Enable timer interrupt
-                        </h3>
-                        <v-switch
-                          v-model="sim.timer.enabled"
-                          class="flex-shrink-1"
-                          color="primary"
-                          hide-details
-                          @change="setTimerStatus()"
-                        />
-                      </div>
-                      <div class="d-flex justify-space-between align-center ga-5">
-                        <h3 class="flex-grow-1">
-                          Hide timer badge
-                        </h3>
-                        <v-switch
-                          v-model="sim.timer.hide_badge"
-                          class="flex-shrink-1"
-                          color="primary"
-                          hide-details
-                          :disabled="!sim.timer.enabled"
-                        />
-                      </div>
-                      <v-container>
-                        <v-row>
-                          <v-col class="align-self-center">
-                            <h3>
-                              Vector
-                            </h3>
-                          </v-col>
-                          <v-col class="py-0">
-                            <v-form @submit.prevent="setTimerProperty($event, 'vect')">
-                              <v-text-field
-                                v-model="timerInputs.vect"
-                                color="primary"
-                                variant="underlined"
-                                :disabled="!sim.timer.enabled"
-                                :rules="[rules.hex, rules.size8bit]"
-                              />
-                            </v-form>
-                          </v-col>
-                        </v-row>
-                        <v-row>
-                          <v-col class="align-self-center">
-                            <h3>
-                              Priority
-                            </h3>
-                          </v-col>
-                          <v-col class="py-0">
-                            <v-form @submit.prevent="setTimerProperty($event, 'priority')">
-                              <v-text-field
-                                v-model="timerInputs.priority"
-                                color="primary"
-                                variant="underlined"
-                                :disabled="!sim.timer.enabled"
-                                :rules="[rules.dec, rangeRule(0, 7)]"
-                              />
-                            </v-form>
-                          </v-col>
-                        </v-row>
-                        <v-row>
-                          <v-col class="align-self-center">
-                            <h3>
-                              Repeat
-                            </h3>
-                          </v-col>
-                          <v-col class="py-0">
-                            <v-form @submit.prevent="setTimerProperty($event, 'max')">
-                              <v-text-field
-                                v-model="timerInputs.max"
-                                color="primary"
-                                variant="underlined"
-                                :disabled="!sim.timer.enabled"
-                                :rules="[rules.dec, rangeRule(0, 2**31 - 1)]"
-                              />
-                            </v-form>
-                          </v-col>
-                        </v-row>
-                      </v-container>
-                      <div class="d-flex justify-space-between align-center">
-                        <h3>
-                          Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
-                        </h3>
-                      </div>
-                      <div class="d-flex justify-end pt-3">
-                        <v-btn
-                          variant="flat"
-                          color="primary"
-                          :disabled="!sim.timer.enabled"
-                          @click="resetTimer"
-                        >
-                          Reset
-                        </v-btn>
-                      </div>
-                    </v-container>
-                  </v-card>
-                </v-menu> -->
-            </div>
-            <v-data-table
-              class="elevation-4 sim-data-table"
-              hide-default-footer
-              density="compact"
-              :items-per-page="-1"
-              :items="memView.data"
+        <div class="flex flex-col gap-1">
+          <div class="header-bar">
+            <h3 class="header-bar-title">
+              Memory
+            </h3>
+            <OverlayBadge
+              severity="secondary"
+              :value="sim.timer.remaining || ''"
+              class="header-bar-right"
+              :class="{ 'hide-badge': !timerRemBadgeShow }"
             >
-              <template #colgroup>
-                <colgroup>
-                  <col style="width: 2em">
-                  <col style="width: 2em">
-                  <col style="width: 10%">
-                  <col style="width: 10%">
-                  <col style="width: 10%">
-                  <col style="width: 15%">
-                  <col style="width: 45%">
-                </colgroup>
-              </template>
-              <template #headers>
-                <tr>
-                  <th class="data-cell-btn">
-                    <strong>BP</strong>
-                  </th>
-                  <th class="data-cell-btn">
-                    <strong>PC</strong>
-                  </th>
-                  <th class="data-cell-num">
-                    <strong>Address</strong>
-                  </th>
-                  <th class="data-cell-num">
-                    <strong>Hex</strong>
-                  </th>
-                  <th class="data-cell-num">
-                    <strong>Decimal</strong>
-                  </th>
-                  <th class="data-cell-text">
-                    <strong>Label</strong>
-                  </th>
-                  <th class="data-cell-text">
-                    <strong>Instructions</strong>
-                  </th>
-                </tr>
-              </template>
-              <template #item="{ item }">
-                <tr
-                  :class="{
-                    'row-update-flash': item.flash,
-                    'row-updated': item.updated,
-                    'row-disabled': sim.running,
-                    'row-curr-pc': isPCAt(item.addr)
-                  }"
-                  @contextmenu="openMemContextMenu(item)"
-                >
-                  <td class="data-cell-btn">
-                    <v-btn
-                      icon
-                      flat
-                      block
-                      :ripple="false"
-                      @click="toggleBreakpoint(item.addr)"
-                    >
-                      <v-icon
-                        :icon="mdiAlertOctagon"
-                        class="breakpoint-icon"
-                        :color="isBreakpointAt(item.addr) ? 'red' : 'grey'"
-                        :size="isBreakpointAt(item.addr) ? 'default' : 'small'"
+              <Button
+                v-tooltip.left="'Configure Timer Interrupt'"
+                :variant="timerBtnVariant"
+                icon="pi"
+                rounded
+                :severity="timerBtnColor"
+                @click="e => {
+                  resetTimerInputs();
+                  timerPopover?.toggle(e);
+                }"
+              >
+                <MdiTimer />
+              </Button>
+            </OverlayBadge>
+            <Popover
+              v-if="!sim.running"
+              ref="timerPopover"
+            >
+              <div class="popover-menu">
+                <div>
+                  <label>
+                    <span>Enable timer interrupt</span>
+                    <ToggleSwitch v-model="sim.timer.enabled" />
+                  </label>
+                  <label>
+                    <span>Hide timer badge</span>
+                    <ToggleSwitch
+                      v-model="sim.timer.hide_badge"
+                      :disabled="!sim.timer.enabled"
+                    />
+                  </label>
+                </div>
+                <Divider />
+                <div>
+                  <!-- TODO: impl form submission -->
+                  <label>
+                    <span>Vector</span>
+                    <InputText
+                      v-model="timerInputs.vect"
+                      :disabled="!sim.timer.enabled"
+                      class="w-24"
+                    />
+                  </label>
+                  <label>
+                    <span>Priority</span>
+                    <InputNumber
+                      v-model="timerInputs.priority"
+                      :use-grouping="false"
+                      :disabled="!sim.timer.enabled"
+                      :min="0"
+                      :max="7"
+                      input-class="w-24"
+                    />
+                  </label>
+                  <label>
+                    <span>Repeat</span>
+                    <InputNumber
+                      v-model="timerInputs.max"
+                      :use-grouping="false"
+                      :disabled="!sim.timer.enabled"
+                      :min="0"
+                      :max="2 ** 31 - 1"
+                      input-class="w-24"
+                    />
+                  </label>
+                </div>
+                <Divider />
+                <div>
+                  Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
+                </div>
+              </div>
+            </Popover>
+            <!-- <v-menu
+                activator="parent"
+                :close-on-content-click="false"
+              >
+                <v-card>
+                  <v-container>
+                    <div class="d-flex justify-space-between align-center ga-5">
+                      <h3 class="flex-grow-1">
+                        Enable timer interrupt
+                      </h3>
+                      <v-switch
+                        v-model="sim.timer.enabled"
+                        class="flex-shrink-1"
+                        color="primary"
+                        hide-details
+                        @change="setTimerStatus()"
                       />
-                    </v-btn>
-                  </td>
-                  <td class="data-cell-btn">
-                    <v-btn
-                      icon
-                      flat
-                      block
-                      :ripple="false"
-                      @click="setPC(item.addr)"
-                    >
-                      <v-icon
-                        :icon="mdiPlay"
-                        class="pc-icon"
-                        :color="isPCAt(item.addr) ? 'blue' : 'grey'"
-                        :size="isPCAt(item.addr) ? 'default' : 'small'"
+                    </div>
+                    <div class="d-flex justify-space-between align-center ga-5">
+                      <h3 class="flex-grow-1">
+                        Hide timer badge
+                      </h3>
+                      <v-switch
+                        v-model="sim.timer.hide_badge"
+                        class="flex-shrink-1"
+                        color="primary"
+                        hide-details
+                        :disabled="!sim.timer.enabled"
                       />
-                    </v-btn>
-                  </td>
-                  <td class="data-cell-num">
-                    <strong>{{ toHex(item.addr) }}</strong>
-                  </td>
-                  <td
-                    class="data-cell-num clickable"
-                    @click="editValue = ($event.target as HTMLElement).textContent"
-                  >
-                    <span>{{
-                      toHex(item.value)
-                    }}</span>
-                    <v-menu
-                      v-if="!sim.running"
-                      activator="parent" 
-                      :close-on-content-click="false" 
-                      :width="200"
-                    >
-                      <v-card>
-                        <v-container>
-                          <v-text-field 
-                            v-model.lazy="editValue"
-                            label="Hex Value"
-                            variant="underlined"
-                            :rules="[rules.hex, rules.size16bit]"
-                            @focus="$event.target.select()"
-                            @change="
-                              setDataValue(item, 'mem', [
-                                rules.hex,
-                                rules.size16bit
-                              ])
-                            "
-                          />
-                        </v-container>
-                      </v-card>
-                    </v-menu>
-                  </td>
-                  <td
-                    class="data-cell-num clickable"
-                    @click="editValue = ($event.target as HTMLElement).textContent"
-                  >
-                    <span>{{
-                      toFormattedDec(item.value)
-                    }}</span>
-                    <v-menu
-                      v-if="!sim.running"
-                      activator="parent" 
-                      :close-on-content-click="false" 
-                      :width="200"
-                    >
-                      <v-card>
-                        <v-container>
-                          <v-text-field 
-                            v-model.lazy="editValue"
-                            label="Decimal Value"
-                            variant="underlined"
-                            :rules="[rules.dec, rules.size16bit]"
-                            @focus="$event.target.select()"
-                            @change="
-                              setDataValue(item, 'mem', [
-                                rules.dec,
-                                rules.size16bit
-                              ])
-                            "
-                          />
-                        </v-container>
-                      </v-card>
-                    </v-menu>
-                  </td>
-                  <td
-                    class="data-cell-text"
-                    :class="{
-                      'clickable': item.label.trim().length != 0
-                    }"
-                    @click="jumpToSource(item.label)"
-                  >
-                    <i>{{ item.label }}</i>
-                  </td>
-                  <td 
-                    class="data-cell-text" 
-                    :class="{
-                      'clickable': item.line.trim().length != 0
-                    }"
-                    @click="jumpToSource(item.addr)"
-                  >
-                    <i>{{ item.line }}</i>
-                  </td>
-                </tr>
-              </template>
-            </v-data-table>
+                    </div>
+                    <v-container>
+                      <v-row>
+                        <v-col class="align-self-center">
+                          <h3>
+                            Vector
+                          </h3>
+                        </v-col>
+                        <v-col class="py-0">
+                          <v-form @submit.prevent="setTimerProperty($event, 'vect')">
+                            <v-text-field
+                              v-model="timerInputs.vect"
+                              color="primary"
+                              variant="underlined"
+                              :disabled="!sim.timer.enabled"
+                              :rules="[rules.hex, rules.size8bit]"
+                            />
+                          </v-form>
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col class="align-self-center">
+                          <h3>
+                            Priority
+                          </h3>
+                        </v-col>
+                        <v-col class="py-0">
+                          <v-form @submit.prevent="setTimerProperty($event, 'priority')">
+                            <v-text-field
+                              v-model="timerInputs.priority"
+                              color="primary"
+                              variant="underlined"
+                              :disabled="!sim.timer.enabled"
+                              :rules="[rules.dec, rangeRule(0, 7)]"
+                            />
+                          </v-form>
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col class="align-self-center">
+                          <h3>
+                            Repeat
+                          </h3>
+                        </v-col>
+                        <v-col class="py-0">
+                          <v-form @submit.prevent="setTimerProperty($event, 'max')">
+                            <v-text-field
+                              v-model="timerInputs.max"
+                              color="primary"
+                              variant="underlined"
+                              :disabled="!sim.timer.enabled"
+                              :rules="[rules.dec, rangeRule(0, 2**31 - 1)]"
+                            />
+                          </v-form>
+                        </v-col>
+                      </v-row>
+                    </v-container>
+                    <div class="d-flex justify-space-between align-center">
+                      <h3>
+                        Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
+                      </h3>
+                    </div>
+                    <div class="d-flex justify-end pt-3">
+                      <v-btn
+                        variant="flat"
+                        color="primary"
+                        :disabled="!sim.timer.enabled"
+                        @click="resetTimer"
+                      >
+                        Reset
+                      </v-btn>
+                    </div>
+                  </v-container>
+                </v-card>
+              </v-menu> -->
           </div>
-  
-          <div class="flex items-center justify-between">
+          <table
+            ref="memViewWrapper"
+            class="sim-data-table" 
+          >
+            <colgroup>
+              <col style="width: 2em">
+              <col style="width: 2em">
+              <col style="width: 10%">
+              <col style="width: 10%">
+              <col style="width: 10%">
+              <col style="width: 15%">
+              <col style="width: 45%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="data-cell-btn">
+                  BP
+                </th>
+                <th class="data-cell-btn">
+                  PC
+                </th>
+                <th class="data-cell-num">
+                  Address
+                </th>
+                <th class="data-cell-num">
+                  Hex
+                </th>
+                <th class="data-cell-num">
+                  Decimal
+                </th>
+                <th class="data-cell-text">
+                  Label
+                </th>
+                <th class="data-cell-text">
+                  Instructions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item of memView.data"
+                :key="item.addr"
+                :class="{
+                  'row-update-flash': item.flash,
+                  'row-updated': item.updated,
+                  'row-disabled': sim.running,
+                  'row-curr-pc': isPCAt(item.addr)
+                }"
+                @contextmenu="openMemContextMenu(item)"
+              >
+                <td class="data-cell-btn">
+                  <div class="flex items-center">
+                    <button @click="toggleBreakpoint(item.addr)">
+                      <MdiAlertOctagon 
+                        class="breakpoint-icon"
+                        :class="{ 'icon-active': isBreakpointAt(item.addr) }"
+                      />
+                    </button>
+                  </div>
+                </td>
+                <td class="data-cell-btn">
+                  <div class="flex items-center">
+                    <button @click="setPC(item.addr)">
+                      <MdiPlay
+                        class="pc-icon"
+                        :class="{ 'icon-active': isPCAt(item.addr) }"
+                      />
+                    </button>
+                  </div>
+                </td>
+                <td class="data-cell-num">
+                  <strong>{{ toHex(item.addr) }}</strong>
+                </td>
+                <td
+                  class="data-cell-num clickable"
+                  @click="editValue = ($event.target as HTMLElement).textContent"
+                >
+                  <span>{{
+                    toHex(item.value)
+                  }}</span>
+                  <v-menu
+                    v-if="!sim.running"
+                    activator="parent" 
+                    :close-on-content-click="false" 
+                    :width="200"
+                  >
+                    <v-card>
+                      <v-container>
+                        <v-text-field 
+                          v-model.lazy="editValue"
+                          label="Hex Value"
+                          variant="underlined"
+                          :rules="[rules.hex, rules.size16bit]"
+                          @focus="$event.target.select()"
+                          @change="
+                            setDataValue(item, 'mem', [
+                              rules.hex,
+                              rules.size16bit
+                            ])
+                          "
+                        />
+                      </v-container>
+                    </v-card>
+                  </v-menu>
+                </td>
+                <td
+                  class="data-cell-num clickable"
+                  @click="editValue = ($event.target as HTMLElement).textContent"
+                >
+                  <span>{{
+                    toFormattedDec(item.value)
+                  }}</span>
+                  <v-menu
+                    v-if="!sim.running"
+                    activator="parent" 
+                    :close-on-content-click="false" 
+                    :width="200"
+                  >
+                    <v-card>
+                      <v-container>
+                        <v-text-field 
+                          v-model.lazy="editValue"
+                          label="Decimal Value"
+                          variant="underlined"
+                          :rules="[rules.dec, rules.size16bit]"
+                          @focus="$event.target.select()"
+                          @change="
+                            setDataValue(item, 'mem', [
+                              rules.dec,
+                              rules.size16bit
+                            ])
+                          "
+                        />
+                      </v-container>
+                    </v-card>
+                  </v-menu>
+                </td>
+                <td
+                  class="data-cell-text"
+                  :class="{
+                    'clickable': item.label.trim().length != 0
+                  }"
+                  @click="jumpToSource(item.label)"
+                >
+                  <i>{{ item.label }}</i>
+                </td>
+                <td 
+                  class="data-cell-text" 
+                  :class="{
+                    'clickable': item.line.trim().length != 0
+                  }"
+                  @click="jumpToSource(item.addr)"
+                >
+                  <i>{{ item.line }}</i>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- <v-data-table
+            class="elevation-4 sim-data-table"
+            hide-default-footer
+            density="compact"
+            :items-per-page="-1"
+            :items="memView.data"
+          >
+            <template #colgroup>
+              <colgroup>
+                <col style="width: 2em">
+                <col style="width: 2em">
+                <col style="width: 10%">
+                <col style="width: 10%">
+                <col style="width: 10%">
+                <col style="width: 15%">
+                <col style="width: 45%">
+              </colgroup>
+            </template>
+            <template #headers>
+              <tr>
+                <th class="data-cell-btn">
+                  <strong>BP</strong>
+                </th>
+                <th class="data-cell-btn">
+                  <strong>PC</strong>
+                </th>
+                <th class="data-cell-num">
+                  <strong>Address</strong>
+                </th>
+                <th class="data-cell-num">
+                  <strong>Hex</strong>
+                </th>
+                <th class="data-cell-num">
+                  <strong>Decimal</strong>
+                </th>
+                <th class="data-cell-text">
+                  <strong>Label</strong>
+                </th>
+                <th class="data-cell-text">
+                  <strong>Instructions</strong>
+                </th>
+              </tr>
+            </template>
+            <template #item="{ item }">
+              <tr
+                :class="{
+                  'row-update-flash': item.flash,
+                  'row-updated': item.updated,
+                  'row-disabled': sim.running,
+                  'row-curr-pc': isPCAt(item.addr)
+                }"
+                @contextmenu="openMemContextMenu(item)"
+              >
+                <td class="data-cell-btn">
+                  <v-btn
+                    icon
+                    flat
+                    block
+                    :ripple="false"
+                    @click="toggleBreakpoint(item.addr)"
+                  >
+                    <v-icon
+                      :icon="mdiAlertOctagon"
+                      class="breakpoint-icon"
+                      :color="isBreakpointAt(item.addr) ? 'red' : 'grey'"
+                      :size="isBreakpointAt(item.addr) ? 'default' : 'small'"
+                    />
+                  </v-btn>
+                </td>
+                <td class="data-cell-btn">
+                  <v-btn
+                    icon
+                    flat
+                    block
+                    :ripple="false"
+                    @click="setPC(item.addr)"
+                  >
+                    <v-icon
+                      :icon="mdiPlay"
+                      class="pc-icon"
+                      :color="isPCAt(item.addr) ? 'blue' : 'grey'"
+                      :size="isPCAt(item.addr) ? 'default' : 'small'"
+                    />
+                  </v-btn>
+                </td>
+                <td class="data-cell-num">
+                  <strong>{{ toHex(item.addr) }}</strong>
+                </td>
+                <td
+                  class="data-cell-num clickable"
+                  @click="editValue = ($event.target as HTMLElement).textContent"
+                >
+                  <span>{{
+                    toHex(item.value)
+                  }}</span>
+                  <v-menu
+                    v-if="!sim.running"
+                    activator="parent" 
+                    :close-on-content-click="false" 
+                    :width="200"
+                  >
+                    <v-card>
+                      <v-container>
+                        <v-text-field 
+                          v-model.lazy="editValue"
+                          label="Hex Value"
+                          variant="underlined"
+                          :rules="[rules.hex, rules.size16bit]"
+                          @focus="$event.target.select()"
+                          @change="
+                            setDataValue(item, 'mem', [
+                              rules.hex,
+                              rules.size16bit
+                            ])
+                          "
+                        />
+                      </v-container>
+                    </v-card>
+                  </v-menu>
+                </td>
+                <td
+                  class="data-cell-num clickable"
+                  @click="editValue = ($event.target as HTMLElement).textContent"
+                >
+                  <span>{{
+                    toFormattedDec(item.value)
+                  }}</span>
+                  <v-menu
+                    v-if="!sim.running"
+                    activator="parent" 
+                    :close-on-content-click="false" 
+                    :width="200"
+                  >
+                    <v-card>
+                      <v-container>
+                        <v-text-field 
+                          v-model.lazy="editValue"
+                          label="Decimal Value"
+                          variant="underlined"
+                          :rules="[rules.dec, rules.size16bit]"
+                          @focus="$event.target.select()"
+                          @change="
+                            setDataValue(item, 'mem', [
+                              rules.dec,
+                              rules.size16bit
+                            ])
+                          "
+                        />
+                      </v-container>
+                    </v-card>
+                  </v-menu>
+                </td>
+                <td
+                  class="data-cell-text"
+                  :class="{
+                    'clickable': item.label.trim().length != 0
+                  }"
+                  @click="jumpToSource(item.label)"
+                >
+                  <i>{{ item.label }}</i>
+                </td>
+                <td 
+                  class="data-cell-text" 
+                  :class="{
+                    'clickable': item.line.trim().length != 0
+                  }"
+                  @click="jumpToSource(item.addr)"
+                >
+                  <i>{{ item.line }}</i>
+                </td>
+              </tr>
+            </template>
+          </v-data-table> -->
+          <div class="flex items-center justify-between grow">
             <div>
               <!-- TODO: add form functionality: jumpToMemViewStr() -->
               <InputText placeholder="Jump to Location" />
@@ -1283,78 +1548,61 @@ function toInt16(value: number) {
   
 
 <style scoped lang="postcss">
-.h-limit {
-  height: calc(100vh - 90px);
-}
-
-/* Generic data table styles */
-.sim-data-table {
-  /* Supercompact! */
-  --v-table-header-height: 29px;
-  --v-table-row-height: 25px;
-}
-.sim-data-table:deep(table) {
-  /* Propagates this property into the <table> element of the <v-data-table> component */
-  table-layout: fixed;
-}
-
-.sim-data-table tr {
+.sim-data-table tbody tr {
   transition: 
     background-color 0.25s ease-in-out,
     color 0.25s ease-in-out
 }
-.sim-data-table thead tr {
-  background-color: #00000040;
-  column-gap: 5px;
+
+.sim-top:not(.reduce-flashing) .row-disabled {
+  color: gray;
+  background-color: lightgray;
 }
-.sim-data-table tbody tr {
-  font-family: Consolas, Menlo, Courier, monospace;
-  /* Force row to be 1 line wide */
-  overflow: hidden;
-  white-space: nowrap;
+.sim-top.reduce-flashing .row-disabled {
+  color: gray;
+}
+
+.sim-data-table {
+  @apply border shadow dark:border-surface-800 table-fixed w-full;
+}
+.sim-data-table th, .sim-data-table td {
+  @apply px-2;
+}
+.sim-data-table thead tr {
+  @apply bg-surface-300 dark:bg-surface-700;
+}
+.sim-data-table tr {
+  @apply border-b border-surface-200 dark:border-surface-800;
 }
 .sim-data-table tbody tr:hover {
-  background-color: #7f7f7f4d;
+  @apply bg-surface-500/25;
 }
-.sim-data-table tbody td {
+
+.sim-data-table tbody tr {
   /* Hide overlong labels + instrs */
   overflow: hidden;
   white-space: nowrap;
+}
+.sim-data-table tbody .data-cell-text, .sim-data-table tbody .data-cell-num {
+  @apply font-mono;
+}
+.data-cell-text {
+  @apply text-left;
+}
+.data-cell-btn {
+  @apply text-center;
+}
+.data-cell-btn button {
+  @apply h-6 w-6 flex justify-center items-center transition;
+}
+.data-cell-num {
+  @apply text-right;
 }
 .row-update-flash {
   background-color: #fff700a0;
 }
 .row-updated {
   background-color: #fff70038;
-}
-.sim-top:not(.reduce-flashing) .row-disabled {
-  color: gray;
-  background-color: lightgrey !important;
-}
-.sim-top.reduce-flashing .row-disabled {
-  color: gray;
-}
-
-.data-cell-text {
-  text-align: left !important;
-}
-.data-cell-btn {
-  text-align: center !important;
-}
-.data-cell-btn > * {
-  display: block;
-  margin: auto;
-}
-.data-cell-btn * {
-  transition: color 0.1s, font-size 0.2s;
-}
-.data-cell-btn:deep(button) {
-  background-color: transparent;
-  /* Force height of buttons to be smaller than the height of each row */
-  height: calc(var(--v-table-row-height) - 1);
-}
-.data-cell-num {
-  text-align: right !important;
 }
 
 tr:not(.row-disabled) .clickable {
@@ -1368,6 +1616,7 @@ tr:not(.row-disabled) .clickable {
   grid-template-rows: 100%;
   justify-items: center;
   align-items: center;
+  @apply h-10;
 }
 .header-bar-title {
   @apply font-bold text-lg text-center;
@@ -1385,12 +1634,25 @@ tr:not(.row-disabled) .clickable {
   background-color: #008cff4d;
 }
 
+tr .breakpoint-icon, tr .pc-icon {
+  @apply transition;
+}
+tr .breakpoint-icon:not(.icon-active), tr .pc-icon:not(.icon-active) {
+  @apply text-surface-400 scale-[80%];
+}
+tr .breakpoint-icon.icon-active {
+  @apply text-red-500;
+}
+tr .pc-icon.icon-active {
+  @apply text-blue-500;
+}
+
 tr:not(.row-disabled) .breakpoint-icon:hover {
-  color: red !important;
+  @apply text-red-500;
 }
 
 tr:not(.row-disabled) .pc-icon:hover {
-  color: #2196f3 !important;
+  @apply text-blue-500;
 }
 
 .popover-menu > div {

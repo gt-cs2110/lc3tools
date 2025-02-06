@@ -6,6 +6,6 @@
 
 <style scoped lang="postcss">
 .nav-menu {
-  @apply bg-white dark:bg-zinc-800 border-r dark:border-zinc-700;
+  @apply bg-surface-50 dark:bg-surface-800 border-r dark:border-surface-700;
 }
 </style>

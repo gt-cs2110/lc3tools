@@ -15,6 +15,7 @@ declare module 'vue' {
     InputNumber: typeof import('primevue/inputnumber')['default']
     InputText: typeof import('primevue/inputtext')['default']
     MdiAlert: typeof import('~icons/mdi/alert')['default']
+    MdiAlertOctagon: typeof import('~icons/mdi/alert-octagon')['default']
     MdiChevronDoubleLeft: typeof import('~icons/mdi/chevron-double-left')['default']
     MdiChevronDoubleRight: typeof import('~icons/mdi/chevron-double-right')['default']
     MdiChevronLeft: typeof import('~icons/mdi/chevron-left')['default']
