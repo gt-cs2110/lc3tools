@@ -8,11 +8,10 @@
 </script>
 
 <template>
-  <Button
+  <button
     v-tooltip.right="props.label"
-    variant="text"
     :aria-label="props.label"
-    class="nav-icon-btn"
+    class="flex items-center justify-center px-3 py-2 hover:bg-surface-500/25 transition"
     @click="$emit('click')"
   >
     <OverlayBadge
@@ -20,16 +19,13 @@
       severity="warn"
       :class="{ 'hide-badge': !props.badge }"
     >
-      <slot
-        name="default"
-        class="nav-icon"
-      />
+      <slot />
     </OverlayBadge>
-  </Button>
+  </button>
 </template>
 
 <style lang="postcss" scoped>
-.nav-icon-btn :deep(svg) {
+:deep(svg) {
     @apply text-surface-600 dark:text-surface-400;
 }
 .p-overlaybadge :deep(.p-badge) {

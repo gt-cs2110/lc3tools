@@ -86,10 +86,11 @@ function saveSettings(setting: SettingKeys) {
             icon="pi"
             variant="text"
             rounded
+            severity="secondary"
             aria-label="Settings"
             @click="settingsPopover?.toggle"
           >
-            <MdiCog class="text-black dark:text-white" />
+            <MdiCog />
           </Button>
         </div>
       </template>

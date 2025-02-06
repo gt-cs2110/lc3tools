@@ -827,9 +827,10 @@ function toInt16(value: number) {
                 icon="pi"
                 rounded
                 variant="text"
+                severity="secondary"
                 @click="clearConsoleOutput()"
               >
-                <MdiDelete class="text-black dark:text-white" />
+                <MdiDelete />
               </Button>
             </div>
             <console 
