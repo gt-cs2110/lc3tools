@@ -103,7 +103,7 @@ const editValue = ref("");
 
 const memViewWrapper = useTemplateRef("memViewWrapper");
 watch(memViewWrapper, el => {
-  el.addEventListener("wheel", handleMemoryScroll);
+  el.addEventListener("wheel", handleMemoryScroll, { passive: true });
 }, { once: true });
 
 onMounted(() => {
@@ -156,8 +156,6 @@ function refreshMemoryPanel() {
   jumpToPC(true);
 }
 function handleMemoryScroll(e: WheelEvent) {
-  e.preventDefault();
-
   if (!lc3.isSimRunning()) {
     memScrollOffset += e.deltaY;
     if (Math.abs(memScrollOffset) > 20) {
@@ -969,8 +967,8 @@ function toInt16(value: number) {
             </thead>
             <tbody>
               <tr
-                v-for="item of memView.data"
-                :key="item.addr"
+                v-for="(item, index) of memView.data"
+                :key="index"
                 :class="{
                   'row-update-flash': item.flash,
                   'row-updated': item.updated,
