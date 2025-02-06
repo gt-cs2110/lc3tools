@@ -2,10 +2,12 @@
 import { onMounted, useTemplateRef, watch } from "vue";
 import { LC3Settings, useSettingsStore } from "./store/settings";
 import { storeToRefs } from "pinia";
+import { useRoute } from "vue-router";
 
 const settingsPopover = useTemplateRef("settingsPopover");
 const { lc3, storage } = window.api;
 
+const route = useRoute();
 // Settings
 const settings = useSettingsStore();
 settings.$patch(storage.getAll());
@@ -92,7 +94,7 @@ function saveSettings(setting: SettingKeys) {
         </div>
       </template>
       <template #end>
-        <Tabs value="editor">
+        <Tabs :value="route.name as string">
           <TabList>
             <Tab
               v-tooltip.bottom="'Editor'"
