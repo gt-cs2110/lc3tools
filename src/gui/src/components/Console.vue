@@ -87,15 +87,14 @@ watch(consoleHtml, async () => {
 .console {
   @apply grow overflow-y-auto;
   @apply font-mono p-2 dark:bg-surface-800;
-  @apply border shadow dark:border-surface-800 transition;
+  @apply border shadow dark:border-surface-800;
   white-space: pre-wrap;
   user-select: text;
   overflow-wrap: anywhere;
 }
 
 .console.show-focus:focus {
-  @apply shadow-blue-500/40;
-  box-shadow: 0px 0px 6px 3px var(--tw-shadow-color) !important;
+  @apply ring-2;
 }
 
 .console.show-cursor::after {
