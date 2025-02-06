@@ -894,6 +894,7 @@ function toInt16(value: number) {
                       v-model="timerInputs.vect"
                       :disabled="!sim.timer.enabled"
                       class="w-24"
+                      size="small"
                     />
                   </label>
                   <label>
@@ -905,6 +906,7 @@ function toInt16(value: number) {
                       :min="0"
                       :max="7"
                       input-class="w-24"
+                      size="small"
                     />
                   </label>
                   <label>
@@ -916,6 +918,7 @@ function toInt16(value: number) {
                       :min="0"
                       :max="2 ** 31 - 1"
                       input-class="w-24"
+                      size="small"
                     />
                   </label>
                 </div>
