@@ -4,7 +4,6 @@ import { useSettingsStore } from '../../store/settings';
 // Vue stuff
 import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import "vuetify/components";
 //
 import Console from '../Console.vue';
 import { useToast } from 'primevue';
