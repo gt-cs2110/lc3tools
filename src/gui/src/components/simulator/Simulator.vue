@@ -138,10 +138,8 @@ function showEditPopover(popover: typeof timerPopover["value"], e: Event) {
   })
 }
 function refreshMemoryPanel() {
-  const rowWidth = Math.min(memViewWrapper.value.querySelector("tr")?.offsetHeight ?? 0, 25);
-
   memView.value.data = Array.from(
-    { length: Math.floor((window.innerHeight) / rowWidth) - 10},
+    { length: Math.floor((window.innerHeight) / 27) - 8},
     () => ({
       addr: 0,
       value: 0,
@@ -1033,7 +1031,7 @@ function toInt16(value: number) {
               </tr>
             </tbody>
           </table>
-          <div class="flex items-center justify-between grow">
+          <div class="flex items-end justify-between grow">
             <div>
               <!-- TODO: add form functionality: jumpToMemViewStr() -->
               <InputText placeholder="Jump to Location" />
