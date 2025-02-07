@@ -131,10 +131,11 @@ function showFileLoadedToast() {
 }
 function showEditPopover(popover: typeof timerPopover["value"], e: Event) {
   editValue.value = (e.target as HTMLElement).textContent;
-
   popover.hide();
   nextTick(() => {
-    popover.show(e);
+    // Adjust popover to always point to span
+    const target = e.target instanceof HTMLTableCellElement ? e.target.firstElementChild : e.target;
+    popover.show(e, target);
   })
 }
 function refreshMemoryPanel() {
