@@ -17,7 +17,6 @@ const toast = useToast();
 const timerPopover = useTemplateRef("timerPopover");
 const hexPopover = useTemplateRef("hexPopover");
 const decPopover = useTemplateRef("decPopover");
-
 const sim = ref({
   regs: [
     { flash: false, updated: false, name: "r0", value: 0 },
@@ -719,10 +718,13 @@ function toInt16(value: number) {
       ref="hexPopover"
     >
       <div>
-        <InputNumber
-          size="small"
-          placeholder="Hex Value"
-        />
+        <IftaLabel>
+          <InputNumber
+            id="hex-popover-input"
+            size="small"
+          />
+          <label for="hex-popover-input">Hex Value</label>
+        </IftaLabel>
       </div>
     </Popover>
     <!-- TODO: Validate (rules.dec, rules.size16bit) -->
@@ -731,10 +733,13 @@ function toInt16(value: number) {
       ref="decPopover"
     >
       <div>
-        <InputNumber
-          size="small"
-          placeholder="Dec Value"
-        />
+        <IftaLabel>
+          <InputNumber
+            id="dec-popover-input"
+            size="small"
+          />
+          <label for="dec-popover-input">Decimal Value</label>
+        </IftaLabel>
       </div>
     </Popover>
     <!-- Main editor content -->
@@ -1035,7 +1040,10 @@ function toInt16(value: number) {
           <div class="flex items-end justify-between grow">
             <div>
               <!-- TODO: add form functionality: jumpToMemViewStr() -->
-              <InputText placeholder="Jump to Location" />
+              <FloatLabel variant="on">
+                <InputText id="jump-loc-input" />
+                <label for="jump-loc-input">Jump to Location</label>
+              </FloatLabel>
             </div>
             <div class="flex gap-1">
               <Button

@@ -12,6 +12,8 @@ declare module 'vue' {
     Console: typeof import('./src/components/Console.vue')['default']
     Divider: typeof import('primevue/divider')['default']
     Editor: typeof import('./src/components/editor/Editor.vue')['default']
+    FloatLabel: typeof import('primevue/floatlabel')['default']
+    IftaLabel: typeof import('primevue/iftalabel')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
     InputText: typeof import('primevue/inputtext')['default']
     MdiAlert: typeof import('~icons/mdi/alert')['default']
