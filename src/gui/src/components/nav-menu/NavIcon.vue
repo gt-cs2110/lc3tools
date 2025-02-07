@@ -17,6 +17,7 @@
     <OverlayBadge
       value="!"
       severity="warn"
+      size="small"
       :class="{ 'hide-badge': !props.badge }"
     >
       <slot />
