@@ -4,9 +4,10 @@ import { useSettingsStore } from '../../store/settings';
 // Vue stuff
 import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'primevue';
+import { FormResolverOptions, FormSubmitEvent } from '@primevue/forms';
 //
 import Console from '../Console.vue';
-import { useToast } from 'primevue';
 
 const { lc3, dialog, fs } = window.api;
 
@@ -15,8 +16,15 @@ const activeFileStore = useActiveFileStore();
 const router = useRouter();
 const toast = useToast();
 const timerPopover = useTemplateRef("timerPopover");
-const hexPopover = useTemplateRef("hexPopover");
-const decPopover = useTemplateRef("decPopover");
+
+const editPopovers = {
+  hex: useTemplateRef("hexPopover"),
+  dec: useTemplateRef("decPopover")
+}
+const editInputs = {
+  item: undefined as MemDataRow | RegDataRow | undefined,
+  input: ref("")
+};
 const sim = ref({
   regs: [
     { flash: false, updated: false, name: "r0", value: 0 },
@@ -51,13 +59,6 @@ const memView = ref({
 })
 
 const consoleStr = ref("");
-const jumpToLocInput = ref("");
-const timerInputs = ref({
-  vect: "x81",
-  priority: 4,
-  max: 50
-});
-
 const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
 const timerBtnVariant = computed(() => {
   if (sim.value.timer.enabled) {
@@ -74,10 +75,6 @@ let memScrollOffset = 0;
 type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
-const rangeRule = (min: number, max: number) => (value: string) => {
-  const intValue = parseInputString(value);
-  return min <= intValue && intValue <= max || `Value must be between ${min} and ${max}`;
-};
 const rules: Record<string, ValidationRule> = {
   hex(value: string) {
     return /^0?[xX][0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
@@ -98,7 +95,6 @@ const rules: Record<string, ValidationRule> = {
   }
 }
 type ValidationRule = (value: string) => boolean | string;
-const editValue = ref("");
 
 const memViewWrapper = useTemplateRef("memViewWrapper");
 watch(memViewWrapper, el => {
@@ -128,14 +124,42 @@ onActivated(() => {
 function showFileLoadedToast() {
   toast.add({ severity: 'contrast', summary: 'Object File Loaded!', life: 2500 });
 }
-function showEditPopover(popover: typeof timerPopover["value"], e: Event) {
-  editValue.value = (e.target as HTMLElement).textContent;
+async function showEditPopover(popoverKey: keyof typeof editPopovers, e: Event, item: RegDataRow | MemDataRow) {
+  editInputs.item = item;
+  if (popoverKey === "dec") {
+    editInputs.input.value = toFormattedDec(item.value);
+  } else if (popoverKey === "hex") {
+    editInputs.input.value = toHex(item.value);
+  }
+
+  const popover = editPopovers[popoverKey].value;
   popover.hide();
-  nextTick(() => {
-    // Adjust popover to always point to span
-    const target = e.target instanceof HTMLTableCellElement ? e.target.firstElementChild : e.target;
-    popover.show(e, target);
-  })
+
+  await nextTick();
+  // Adjust popover to always point to span
+  const target = e.target instanceof HTMLTableCellElement ? e.target.firstElementChild : e.target;
+  popover.show(e, target);
+}
+function applyEditInput(e: FormSubmitEvent) {
+  if (e.valid) {
+    setDataValue(editInputs.item, parseInputString(e.states.input.value));
+    for (const popover of Object.values(editPopovers)) {
+      popover.value.hide();
+    }
+  }
+}
+function validateInput(key: string, input: string, rules: ValidationRule[]): { errors: Record<string, any> } {
+  for (const rule of rules) {
+    const result = rule(input);
+    if (typeof result === "string") {
+      return { errors: { [key]: [result] } };
+    }
+  }
+
+  return { errors: [] };
+}
+function validateEditInput(e: FormResolverOptions, ...rules: ValidationRule[]) {
+  return validateInput("input", e.values.input, rules);
 }
 function refreshMemoryPanel() {
   memView.value.data = Array.from(
@@ -340,7 +364,7 @@ async function openRegContextMenu(item: RegDataRow) {
       navigator.clipboard.writeText(toHex(item.value));
       break;
     case 2:
-      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      navigator.clipboard.writeText(toFormattedDec(item.value));
       break;
   }
 }
@@ -380,31 +404,16 @@ async function openMemContextMenu(item: MemDataRow) {
       navigator.clipboard.writeText(toHex(item.value));
       break;
     case "Copy Decimal":
-      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      navigator.clipboard.writeText(toFormattedDec(item.value));
       break;
   }
 }
-function setDataValue(dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
-function setDataValue(dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
-function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
-  const value = editValue.value;
-  const validated = rules.every(r => r(value) === true);
-  
-  // Validation failed, so ignore set
-  if (!validated) {
-    if (type === "reg" && "name" in dataCell) {
-      dataCell.value = lc3.getRegValue(dataCell.name);
-    } else if (type === "mem" && "addr" in dataCell) {
-      dataCell.value = lc3.getMemValue(dataCell.addr);
-    }
-    return;
-  }
-
-  dataCell.value = toUint16(parseInputString(value));
-  if (type === "reg" && "name" in dataCell) {
-    lc3.setRegValue(dataCell.name, dataCell.value);
-  } else if (type === "mem" && "addr" in dataCell) {
-    lc3.setMemValue(dataCell.addr, dataCell.value);
+function setDataValue(cell: RegDataRow | MemDataRow, value: number) {
+  cell.value = toUint16(value);
+  if ("name" in cell) {
+    lc3.setRegValue(cell.name, cell.value);
+  } else if ("addr" in cell) {
+    lc3.setMemValue(cell.addr, cell.value);
   }
   
   updateUI();
@@ -519,8 +528,8 @@ function jumpToMemView(newStart: number) {
   memView.value.start = toUint16(newStart);
   updateUI(false, false);
 }
-function jumpToMemViewStr() {
-  const match = jumpToLocInput.value.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
+function jumpToMemViewStr(input: string) {
+  const match = input.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
   if (match != null) {
     jumpToMemView(parseInt(match[1], 16));
   }
@@ -544,42 +553,49 @@ function jumpToPC(jumpIfInView: boolean) {
 }
 
 // Timer functions
-function setTimerStatus() {
-  lc3.setTimerStatus(sim.value.timer.enabled);
+watch(() => sim.value.timer.enabled, enabled => {
+  lc3.setTimerStatus(enabled);
   resetTimer();
-}
+})
 function resetTimer() {
   lc3.resetTimer();
   updateUI();
 }
-function resetTimerInputs() {
-  timerInputs.value = {
-    vect: "x" + lc3.getTimerVect().toString(16).padStart(2, "0"),
-    priority: lc3.getTimerPriority(),
-    max: lc3.getTimerMax()
-  }
-}
-async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, prop: keyof typeof timerInputs.value) {
-  const { valid } = await event;
-  if (!valid) return;
+function timerValidator(e: FormResolverOptions) {
+  const result = validateInput("vect", e.values.vect, [rules.hex, rules.size8bit]);
+  Object.assign(result.errors, {
+    priority: typeof e.values.priority != "number" ? ["Argument is required"] : [],
+    max: typeof e.values.max != "number" ? ["Argument is required"] : [],
+  });
 
-  if (prop === "vect") {
-    const intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
-    lc3.setTimerVect(intValue);
-    sim.value.timer[prop] = intValue;
-  } else if (prop === "priority") {
-    const intValue = timerInputs.value[prop];
-    lc3.setTimerPriority(intValue);
-    sim.value.timer[prop] = intValue;
-  } else if (prop === "max") {
-    const intValue = timerInputs.value[prop];
-    lc3.setTimerMax(intValue);
-    sim.value.timer[prop] = intValue;
-    resetTimer();
-  } else {
-    prop satisfies never;
+  return result;
+}
+function updateTimerProperties(e: FormSubmitEvent) {
+  if (e.valid) {
+    // Set vect:
+    const vect: number = parseInputString(e.states.vect.value) & 0xFF;
+    if (sim.value.timer.vect != vect) {
+      lc3.setTimerVect(vect);
+      sim.value.timer.vect = vect;
+    }
+
+    // Set priority:
+    const priority: number = e.states.priority.value;
+    if (sim.value.timer.priority != priority) {
+      lc3.setTimerPriority(priority);
+      sim.value.timer.priority = priority;
+    }
+    
+    // Set max/repeat
+    const max: number = e.states.max.value;
+    if (sim.value.timer.max != max) {
+      lc3.setTimerMax(max);
+      sim.value.timer.max = max;
+      resetTimer();
+    }
   }
 }
+
 // Helper functions
 function psrToCC(psr: number) {
   const cc = psr & 0b111;
@@ -590,22 +606,22 @@ function psrToCC(psr: number) {
     default: return "?"
   }
 }
-function toHex(value: number) {
+function toHex(value: number): string {
   const hex = toUint16(value).toString(16).toUpperCase();
   return `x${hex.padStart(4, "0")}`;
 }
-function toFormattedDec(value: number) {
+function toFormattedDec(value: number): string {
   if (settings.numbers === "signed") {
-    return toInt16(value);
+    return String(toInt16(value));
   } else if (settings.numbers === "unsigned") {
-    return toUint16(value);
+    return String(toUint16(value));
   } else {
     // statically assert no other branches exist:
     settings.numbers satisfies never;
   }
 }
 function parseInputString(value: string) {
-  if (value.startsWith("x")) value = "0" + value;
+  if (value.startsWith("x") || value.startsWith("X")) value = "0" + value;
   return parseInt(value);
 }
 function regLabel(item: RegDataRow) {
@@ -712,34 +728,70 @@ function toInt16(value: number) {
     </Toast>
 
     <!-- Edit value popovers -->
-    <!-- TODO: Validate (rules.hex, rules.size16bit) -->
     <Popover
       v-if="!sim.running"
       ref="hexPopover"
     >
       <div>
-        <IftaLabel>
-          <InputNumber
-            id="hex-popover-input"
-            size="small"
-          />
-          <label for="hex-popover-input">Hex Value</label>
-        </IftaLabel>
+        <Form
+          v-slot="$form"
+          :initial-values="{ input: editInputs.input.value }"
+          :resolver="e => validateEditInput(e, rules.hex, rules.size16bit)"
+          @submit="e => applyEditInput(e)"
+        >
+          <div class="flex flex-col gap-1">
+            <IftaLabel>
+              <InputText
+                id="hex-popover-input"
+                name="input"
+                size="small"
+                :invalid="$form.input?.invalid"
+              />
+              <label for="hex-popover-input">Hex Value</label>
+            </IftaLabel>
+            <Message
+              v-if="$form.input?.invalid"
+              severity="error"
+              variant="simple"
+              size="small"
+            >
+              {{ $form.input?.error }}
+            </Message>
+          </div>
+        </Form>
       </div>
     </Popover>
-    <!-- TODO: Validate (rules.dec, rules.size16bit) -->
     <Popover
       v-if="!sim.running"
       ref="decPopover"
     >
       <div>
-        <IftaLabel>
-          <InputNumber
-            id="dec-popover-input"
-            size="small"
-          />
-          <label for="dec-popover-input">Decimal Value</label>
-        </IftaLabel>
+        <Form
+          v-slot="$form"
+          :initial-values="{ input: editInputs.input.value }"
+          :resolver="e => validateEditInput(e, rules.dec, rules.size16bit)"
+          @submit="e => applyEditInput(e)"
+        >
+          <div class="flex flex-col gap-1">
+            <IftaLabel>
+              <InputText
+                id="dec-popover-input"
+                name="input"
+                size="small"
+                :invalid="$form.input?.invalid"
+              />
+              <label for="dec-popover-input">Decimal Value</label>
+            </IftaLabel>
+            <Message
+              v-if="$form.input?.invalid"
+              severity="error"
+              variant="simple"
+              size="small"
+            >
+              {{ $form.input?.error }}
+            </Message>
+          </div>
+        </Form>
       </div>
     </Popover>
     <!-- Main editor content -->
@@ -748,8 +800,8 @@ function toInt16(value: number) {
       @drop.prevent="dropFile"
       @dragover.prevent
     >
-      <div class="grid grid-cols-[1fr_2fr] w-full gap-4 p-4 pt-2">
-        <div class="flex flex-col gap-1">
+      <div class="grid grid-cols-[1fr_2fr] w-full h-full gap-4 p-4 pt-2">
+        <div class="flex flex-col gap-1 overflow-auto">
           <div class="header-bar">
             <div />
             <h3 class="header-bar-title">
@@ -798,7 +850,7 @@ function toInt16(value: number) {
                   </td>
                   <td
                     class="data-cell-num clickable"
-                    @click="(e) => showEditPopover(hexPopover, e)"
+                    @click="e => showEditPopover('hex', e, item)"
                   >
                     <span>
                       {{ toHex(item.value) }}
@@ -806,7 +858,7 @@ function toInt16(value: number) {
                   </td>
                   <td
                     class="data-cell-num clickable"
-                    @click="(e) => showEditPopover(decPopover, e)"
+                    @click="e => showEditPopover('dec', e, item)"
                   >
                     <span>{{ toFormattedDec(item.value) }}</span>
                   </td>
@@ -817,7 +869,7 @@ function toInt16(value: number) {
               </tbody>
             </table>
           </div>
-          <div class="flex flex-col flex-1">
+          <div class="flex flex-col flex-1 min-h-0 overflow-auto">
             <div class="header-bar">
               <div />
               <h3 class="header-bar-title">
@@ -843,7 +895,7 @@ function toInt16(value: number) {
             />
           </div>
         </div>
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1 overflow-auto">
           <div class="header-bar">
             <div />
             <h3 class="header-bar-title">
@@ -851,7 +903,7 @@ function toInt16(value: number) {
             </h3>
             <OverlayBadge
               severity="secondary"
-              :value="sim.timer.remaining || ''"
+              :value="sim.timer.remaining"
               :class="{ 'hide-badge': !timerRemBadgeShow }"
             >
               <Button
@@ -860,10 +912,7 @@ function toInt16(value: number) {
                 icon="pi"
                 rounded
                 :severity="timerBtnColor"
-                @click="e => {
-                  resetTimerInputs();
-                  timerPopover?.toggle(e);
-                }"
+                @click="e => timerPopover?.toggle(e)"
               >
                 <MdiTimer />
               </Button>
@@ -887,46 +936,75 @@ function toInt16(value: number) {
                   </label>
                 </div>
                 <Divider />
-                <div>
-                  <!-- TODO: impl form submission -->
-                  <label>
-                    <span>Vector</span>
-                    <!-- TODO: Validate (rules.hex, rules.size8bit) -->
-                    <InputText
-                      v-model="timerInputs.vect"
-                      :disabled="!sim.timer.enabled"
-                      class="w-24"
+                <Form
+                  v-slot="$form"
+                  :initial-values="{
+                    vect: 'x' + lc3.getTimerVect().toString(16).padStart(2, '0'),
+                    priority: lc3.getTimerPriority(),
+                    max: lc3.getTimerMax()
+                  }"
+                  :validate-on-value-update="false"
+                  :resolver="timerValidator"
+                  @submit="e => updateTimerProperties(e)"
+                >
+                  <div>
+                    <label>
+                      <span>Vector</span>
+                      <InputText
+                        name="vect"
+                        :disabled="!sim.timer.enabled"
+                        class="w-24"
+                        size="small"
+                        :invalid="$form.vect?.invalid"
+                      />
+                    </label>
+                    <Message
+                      v-if="$form.vect?.invalid"
+                      severity="error"
+                      variant="simple"
                       size="small"
-                    />
-                  </label>
+                    >
+                      {{ $form.vect?.error }}
+                    </Message>
+                  </div>
                   <label>
                     <span>Priority</span>
                     <InputNumber
-                      v-model="timerInputs.priority"
+                      name="priority"
                       :use-grouping="false"
                       :disabled="!sim.timer.enabled"
                       :min="0"
                       :max="7"
                       input-class="w-24"
                       size="small"
+                      :invalid="$form.priority?.invalid"
                     />
                   </label>
                   <label>
                     <span>Repeat</span>
                     <InputNumber
-                      v-model="timerInputs.max"
+                      name="max"
                       :use-grouping="false"
                       :disabled="!sim.timer.enabled"
                       :min="0"
                       :max="2 ** 31 - 1"
                       input-class="w-24"
                       size="small"
+                      :invalid="$form.max?.invalid"
                     />
                   </label>
-                </div>
+                  <Button
+                    :disabled="!sim.timer.enabled"
+                    type="submit"
+                    size="small"
+                  >
+                    Save
+                  </Button>
+                </Form>
                 <Divider />
-                <div>
-                  Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
+                <div class="text-center">
+                  Interrupt activates in <br>
+                  {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
                 </div>
               </div>
             </Popover>
@@ -1006,13 +1084,13 @@ function toInt16(value: number) {
                 </td>
                 <td
                   class="data-cell-num clickable"
-                  @click="(e) => showEditPopover(hexPopover, e)"
+                  @click="e => showEditPopover('hex', e, item)"
                 >
                   <span>{{ toHex(item.value) }}</span>
                 </td>
                 <td
                   class="data-cell-num clickable"
-                  @click="(e) => showEditPopover(decPopover, e)"
+                  @click="e => showEditPopover('dec', e, item)"
                 >
                   <span>{{ toFormattedDec(item.value) }}</span>
                 </td>
@@ -1039,11 +1117,15 @@ function toInt16(value: number) {
           </table>
           <div class="flex items-end justify-between grow">
             <div>
-              <!-- TODO: add form functionality: jumpToMemViewStr() -->
-              <FloatLabel variant="on">
-                <InputText id="jump-loc-input" />
-                <label for="jump-loc-input">Jump to Location</label>
-              </FloatLabel>
+              <Form @submit="e => jumpToMemViewStr(e.states.input.value)">
+                <FloatLabel variant="on">
+                  <InputText
+                    id="jump-loc-input"
+                    name="input"
+                  />
+                  <label for="jump-loc-input">Jump to Location</label>
+                </FloatLabel>
+              </Form>
             </div>
             <div class="flex gap-1">
               <Button
@@ -1195,14 +1277,17 @@ tr:not(.row-disabled) .pc-icon:hover {
   @apply text-blue-500;
 }
 
-.popover-menu > div {
+.popover-menu > * {
   @apply flex flex-col gap-3;
 }
-.popover-menu > div > label {
+.popover-menu label {
   @apply flex justify-between items-center gap-2;
 }
 .p-overlaybadge :deep(.p-badge) {
   @apply transition;
+  /* Move badge to the left side (for the timer button specifically) */
+  transform: translate(-2em, 0%);
+  transform-origin: right;
 }
 .p-overlaybadge.hide-badge :deep(.p-badge) {
   @apply opacity-0;

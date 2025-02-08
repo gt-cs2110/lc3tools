@@ -55,6 +55,7 @@
   },
   "keywords": [],
   "dependencies": {
+    "@primevue/forms": "^4.2.5",
     "@primevue/themes": "^4.2.5",
     "ace-builds": "^1.37.0",
     "ansi-to-html": "^0.7.2",
