@@ -50,7 +50,7 @@
     "typescript-eslint": "^8.18.1",
     "unplugin-icons": "^22.0.0",
     "unplugin-vue-components": "^28.0.0",
-    "vite": "^6.0.4",
+    "vite": "^6.1.0",
     "vue-eslint-parser": "^9.4.3"
   },
   "keywords": [],
