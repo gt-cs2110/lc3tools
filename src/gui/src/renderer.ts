@@ -30,27 +30,68 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from "./router/index";
 
-// Vuetify
-import 'vuetify/styles'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
-const vuetify = createVuetify({
-    components,
-    directives,
-    icons: {
-        aliases,
-        sets: { mdi }
-    }
-});
+// Theming
+import PrimeVue from 'primevue/config';
+import ToastService from 'primevue/toastservice';
+import Aura from '@primevue/themes/aura';
+import "./style.pcss";
 
 // Pinia
 import { createPinia } from 'pinia';
+import { definePreset } from '@primevue/themes';
 const pinia = createPinia();
 
 createApp(App)
     .use(router)
-    .use(vuetify)
+    .use(PrimeVue, {
+        theme: {
+            preset: definePreset(Aura, {
+                semantic: {
+                    colorScheme: {
+                        light: {
+                            surface: {
+                                0: '#ffffff',
+                                50: '{zinc.50}',
+                                100: '{zinc.100}',
+                                200: '{zinc.200}',
+                                300: '{zinc.300}',
+                                400: '{zinc.400}',
+                                500: '{zinc.500}',
+                                600: '{zinc.600}',
+                                700: '{zinc.700}',
+                                800: '{zinc.800}',
+                                900: '{zinc.900}',
+                                950: '{zinc.950}'
+                            }
+                        },
+                        dark: {
+                            surface: {
+                                0: '#ffffff',
+                                50: '{zinc.50}',
+                                100: '{zinc.100}',
+                                200: '{zinc.200}',
+                                300: '{zinc.300}',
+                                400: '{zinc.400}',
+                                500: '{zinc.500}',
+                                600: '{zinc.600}',
+                                700: '{zinc.700}',
+                                800: '{zinc.800}',
+                                900: '{zinc.900}',
+                                950: '{zinc.950}'
+                            }
+                        }
+                    }
+                }
+            }),
+            options: {
+                darkModeSelector: ".dark",
+                cssLayer: {
+                    name: 'primevue',
+                    order: 'tailwind-base, primevue, tailwind-utilities'
+                }
+            },
+        }
+    })
+    .use(ToastService)
     .use(pinia)
     .mount('#app');

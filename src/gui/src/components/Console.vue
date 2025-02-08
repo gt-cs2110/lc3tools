@@ -10,7 +10,7 @@
 <template>
   <div
     ref="consoleRef"
-    class="elevation-4 console"
+    class="console"
     :class="{
       'show-focus': props.showFocus,
       'show-cursor': props.showCursor
@@ -83,21 +83,18 @@ watch(consoleHtml, async () => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 .console {
-  flex: 1;
-  font-family: Consolas, Menlo, Courier, monospace;
-  padding: 8px;
-  overflow-y: auto;
+  @apply grow overflow-y-auto;
+  @apply font-mono p-2 dark:bg-surface-800;
+  @apply border shadow dark:border-surface-800;
   white-space: pre-wrap;
-  background-color: rgb(var(--v-theme-surface));
   user-select: text;
   overflow-wrap: anywhere;
 }
 
 .console.show-focus:focus {
-  outline: none;
-  box-shadow: 0px 0px 6px 3px rgba(var(--v-theme-primary), 0.6) !important;
+  @apply ring-2;
 }
 
 .console.show-cursor::after {

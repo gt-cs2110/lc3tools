@@ -1,711 +1,30 @@
-<template>
-  <div 
-    class="contents sim-top"
-    :class="{
-      'reduce-flashing': settings.reduce_flashing
-    }"
-  >
-    <v-navigation-drawer
-      permanent
-      rail
-    >
-      <v-list-item
-        :prepend-icon="mdiFolderOpen"
-        @click="openFile()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Open File"
-        />
-      </v-list-item>
-      <v-list-item @click="toggleSimulator('run')">
-        <template #prepend>
-          <v-icon
-            v-if="!sim.running"
-            :icon="mdiPlay"
-          />
-          <v-icon
-            v-else
-            :icon="mdiPause"
-          />
-        </template>
-        <v-tooltip
-          v-if="!sim.running"
-          location="right"
-          activator="parent"
-          text="Run"
-        />
-        <v-tooltip
-          v-else
-          location="right"
-          activator="parent"
-          text="Pause"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiRefresh"
-        @click="reloadFile()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Reload Object Files"
-        />
-      </v-list-item>
-      <v-divider />
-      <v-list-item
-        :prepend-icon="mdiDebugStepOver"
-        @click="toggleSimulator('over')"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Step Over"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiDebugStepInto"
-        @click="toggleSimulator('in')"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Step In"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiDebugStepOut"
-        @click="toggleSimulator('out')"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Step Out"
-        />
-      </v-list-item>
-      <v-divider />
-      <v-list-item
-        :prepend-icon="mdiPower"
-        @click="reinitializeMachine()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Reinitialize Machine"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiShuffle"
-        @click="randomizeMachine()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Randomize Machine"
-        />
-      </v-list-item>
-    </v-navigation-drawer>
-    <!-- Main editor content -->
-    <v-main
-      @drop.prevent="dropFile"
-      @dragover.prevent
-    >
-      <v-container
-        fluid
-        class="fill-height"
-      >
-        <v-snackbar
-          v-model="isSnackBarVisible"
-          :timeout="2500"
-          location="top"
-        >
-          <span>Object File Loaded!</span>
-          <template #actions>
-            <v-btn
-              color="red"
-              flat
-              variant="text"
-              @click="isSnackBarVisible = false"
-            >
-              Close
-            </v-btn>
-          </template>
-        </v-snackbar>
-        <v-row class="align-self-stretch">
-          <v-col
-            :cols="4"
-            class="d-flex flex-column ga-3 h-limit"
-          >
-            <div>
-              <div class="header-bar">
-                <h3 class="header-bar-title">
-                  Registers
-                </h3>
-              </div>
-              <v-data-table
-                class="elevation-4 sim-data-table"
-                density="compact"
-                hide-default-footer
-                :items-per-page="-1"
-                :items="sim.regs"
-              >
-                <template #colgroup>
-                  <colgroup>
-                    <col style="width: 20%">
-                    <col style="width: 20%">
-                    <col style="width: 20%">
-                    <col style="width: 40%">
-                  </colgroup>
-                </template>
-                <template #headers>
-                  <tr>
-                    <th class="data-cell-text">
-                      <strong>Registers</strong>
-                    </th>
-                    <th class="data-cell-num">
-                      <strong>Hex</strong>
-                    </th>
-                    <th class="data-cell-num">
-                      <strong>Decimal</strong>
-                    </th>
-                    <th class="data-cell-text">
-                      <strong>ASCII / Misc</strong>
-                    </th>
-                  </tr>
-                </template>
-                <template #item="{ item }">
-                  <tr
-                    :class="{
-                      'row-update-flash': item.flash,
-                      'row-updated': item.updated,
-                      'row-disabled': sim.running
-                    }"
-                    @contextmenu="openRegContextMenu(item)"
-                  >
-                    <td
-                      class="data-cell-text"
-                    >
-                      <strong>{{ item.name.toUpperCase() }}</strong>
-                    </td>
-                    <td
-                      class="data-cell-num clickable"
-                      @click="editValue = ($event.target as HTMLElement).textContent"
-                    >
-                      <span>{{
-                        toHex(item.value)
-                      }}</span>
-                      <v-menu 
-                        v-if="!sim.running"
-                        activator="parent" 
-                        :close-on-content-click="false" 
-                        :width="200"
-                      >
-                        <v-card>
-                          <v-container>
-                            <v-text-field 
-                              v-model.lazy="editValue"
-                              label="Hex Value"
-                              variant="underlined"
-                              :rules="[rules.hex, rules.size16bit]"
-                              @focus="$event.target.select()"
-                              @change="
-                                setDataValue(item, 'reg', [
-                                  rules.hex,
-                                  rules.size16bit
-                                ])
-                              "
-                            />
-                          </v-container>
-                        </v-card>
-                      </v-menu>
-                    </td>
-                    <td
-                      class="data-cell-num clickable"
-                      @click="editValue = ($event.target as HTMLElement).textContent"
-                    >
-                      <span>{{
-                        toFormattedDec(item.value)
-                      }}</span>
-                      <v-menu
-                        v-if="!sim.running"
-                        activator="parent" 
-                        :close-on-content-click="false" 
-                        :width="200"
-                      >
-                        <v-card>
-                          <v-container>
-                            <v-text-field 
-                              v-model.lazy="editValue"
-                              label="Decimal Value"
-                              variant="underlined"
-                              :rules="[rules.dec, rules.size16bit]"
-                              @focus="$event.target.select()"
-                              @change="
-                                setDataValue(item, 'reg', [
-                                  rules.dec,
-                                  rules.size16bit
-                                ])
-                              "
-                            />
-                          </v-container>
-                        </v-card>
-                      </v-menu>
-                    </td>
-                    <td class="data-cell-text">
-                      <span>{{ regLabel(item) }}</span>
-                    </td>
-                  </tr>
-                </template>
-              </v-data-table>
-            </div>
-            <div id="console-wrapper">
-              <div class="header-bar">
-                <h3 class="header-bar-title">
-                  Console (click to focus)
-                </h3>
-                <v-btn
-                  class="header-bar-right"
-                  icon
-                  flat
-                  variant="text"
-                  @click="clearConsoleOutput()"
-                >
-                  <v-icon :icon="mdiDelete" />
-                  <v-tooltip
-                    location="left"
-                    activator="parent"
-                    text="Clear Console"
-                  />
-                </v-btn>
-              </div>
-              <console 
-                v-model="consoleStr"
-                float="bottom"
-                show-focus
-                show-cursor
-                @keydown="handleConsoleInput"
-              />
-            </div>
-          </v-col>
-          <v-col
-            :cols="8"
-            class="d-flex flex-column justify-space-between"
-          >
-            <div ref="memViewWrapper">
-              <div class="header-bar">
-                <h3 class="header-bar-title">
-                  Memory
-                </h3>
-                <v-btn
-                  class="header-bar-right"
-                  icon
-                  flat
-                  :variant="timerBtnVariant"
-                  :color="timerBtnColor"
-                  @click="resetTimerInputs()"
-                >
-                  <v-badge
-                    v-model="timerRemBadgeShow"
-                    location="top start"
-                  >
-                    <template #badge>
-                      <strong>{{ sim.timer.remaining || '' }}</strong>
-                    </template>
-                    <v-icon :icon="mdiTimer" />
-                  </v-badge>
-                  <v-tooltip
-                    location="left"
-                    activator="parent"
-                    text="Configure Timer Interrupt"
-                  />
-                  <v-menu
-                    activator="parent"
-                    :close-on-content-click="false"
-                  >
-                    <v-card>
-                      <v-container>
-                        <!-- Should use v-row, v-col, but those are grid not flex -->
-                        <div class="d-flex justify-space-between align-center ga-5">
-                          <h3 class="flex-grow-1">
-                            Enable timer interrupt
-                          </h3>
-                          <v-switch
-                            v-model="sim.timer.enabled"
-                            class="flex-shrink-1"
-                            color="primary"
-                            hide-details
-                            @change="setTimerStatus()"
-                          />
-                        </div>
-                        <div class="d-flex justify-space-between align-center ga-5">
-                          <h3 class="flex-grow-1">
-                            Hide timer badge
-                          </h3>
-                          <v-switch
-                            v-model="sim.timer.hide_badge"
-                            class="flex-shrink-1"
-                            color="primary"
-                            hide-details
-                            :disabled="!sim.timer.enabled"
-                          />
-                        </div>
-                        <v-container>
-                          <v-row>
-                            <v-col class="align-self-center">
-                              <h3>
-                                Vector
-                              </h3>
-                            </v-col>
-                            <v-col class="py-0">
-                              <v-form @submit.prevent="setTimerProperty($event, 'vect')">
-                                <v-text-field
-                                  v-model="timerInputs.vect"
-                                  color="primary"
-                                  variant="underlined"
-                                  :disabled="!sim.timer.enabled"
-                                  :rules="[rules.hex, rules.size8bit]"
-                                />
-                              </v-form>
-                            </v-col>
-                          </v-row>
-                          <v-row>
-                            <v-col class="align-self-center">
-                              <h3>
-                                Priority
-                              </h3>
-                            </v-col>
-                            <v-col class="py-0">
-                              <v-form @submit.prevent="setTimerProperty($event, 'priority')">
-                                <v-text-field
-                                  v-model="timerInputs.priority"
-                                  color="primary"
-                                  variant="underlined"
-                                  :disabled="!sim.timer.enabled"
-                                  :rules="[rules.dec, rangeRule(0, 7)]"
-                                />
-                              </v-form>
-                            </v-col>
-                          </v-row>
-                          <v-row>
-                            <v-col class="align-self-center">
-                              <h3>
-                                Repeat
-                              </h3>
-                            </v-col>
-                            <v-col class="py-0">
-                              <v-form @submit.prevent="setTimerProperty($event, 'max')">
-                                <v-text-field
-                                  v-model="timerInputs.max"
-                                  color="primary"
-                                  variant="underlined"
-                                  :disabled="!sim.timer.enabled"
-                                  :rules="[rules.dec, rangeRule(0, 2**31 - 1)]"
-                                />
-                              </v-form>
-                            </v-col>
-                          </v-row>
-                        </v-container>
-                        <div class="d-flex justify-space-between align-center">
-                          <h3>
-                            Interrupt activates in {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
-                          </h3>
-                        </div>
-                        <div class="d-flex justify-end pt-3">
-                          <v-btn
-                            variant="flat"
-                            color="primary"
-                            :disabled="!sim.timer.enabled"
-                            @click="resetTimer"
-                          >
-                            Reset
-                          </v-btn>
-                        </div>
-                      </v-container>
-                    </v-card>
-                  </v-menu>
-                </v-btn>
-              </div>
-              <v-data-table
-                class="elevation-4 sim-data-table"
-                hide-default-footer
-                density="compact"
-                :items-per-page="-1"
-                :items="memView.data"
-              >
-                <template #colgroup>
-                  <colgroup>
-                    <col style="width: 2em">
-                    <col style="width: 2em">
-                    <col style="width: 10%">
-                    <col style="width: 10%">
-                    <col style="width: 10%">
-                    <col style="width: 15%">
-                    <col style="width: 45%">
-                  </colgroup>
-                </template>
-                <template #headers>
-                  <tr>
-                    <th class="data-cell-btn">
-                      <strong>BP</strong>
-                    </th>
-                    <th class="data-cell-btn">
-                      <strong>PC</strong>
-                    </th>
-                    <th class="data-cell-num">
-                      <strong>Address</strong>
-                    </th>
-                    <th class="data-cell-num">
-                      <strong>Hex</strong>
-                    </th>
-                    <th class="data-cell-num">
-                      <strong>Decimal</strong>
-                    </th>
-                    <th class="data-cell-text">
-                      <strong>Label</strong>
-                    </th>
-                    <th class="data-cell-text">
-                      <strong>Instructions</strong>
-                    </th>
-                  </tr>
-                </template>
-                <template #item="{ item }">
-                  <tr
-                    :class="{
-                      'row-update-flash': item.flash,
-                      'row-updated': item.updated,
-                      'row-disabled': sim.running,
-                      'row-curr-pc': isPCAt(item.addr)
-                    }"
-                    @contextmenu="openMemContextMenu(item)"
-                  >
-                    <td class="data-cell-btn">
-                      <v-btn
-                        icon
-                        flat
-                        block
-                        :ripple="false"
-                        @click="toggleBreakpoint(item.addr)"
-                      >
-                        <v-icon
-                          :icon="mdiAlertOctagon"
-                          class="breakpoint-icon"
-                          :color="isBreakpointAt(item.addr) ? 'red' : 'grey'"
-                          :size="isBreakpointAt(item.addr) ? 'default' : 'small'"
-                        />
-                      </v-btn>
-                    </td>
-                    <td class="data-cell-btn">
-                      <v-btn
-                        icon
-                        flat
-                        block
-                        :ripple="false"
-                        @click="setPC(item.addr)"
-                      >
-                        <v-icon
-                          :icon="mdiPlay"
-                          class="pc-icon"
-                          :color="isPCAt(item.addr) ? 'blue' : 'grey'"
-                          :size="isPCAt(item.addr) ? 'default' : 'small'"
-                        />
-                      </v-btn>
-                    </td>
-                    <td class="data-cell-num">
-                      <strong>{{ toHex(item.addr) }}</strong>
-                    </td>
-                    <td
-                      class="data-cell-num clickable"
-                      @click="editValue = ($event.target as HTMLElement).textContent"
-                    >
-                      <span>{{
-                        toHex(item.value)
-                      }}</span>
-                      <v-menu
-                        v-if="!sim.running"
-                        activator="parent" 
-                        :close-on-content-click="false" 
-                        :width="200"
-                      >
-                        <v-card>
-                          <v-container>
-                            <v-text-field 
-                              v-model.lazy="editValue"
-                              label="Hex Value"
-                              variant="underlined"
-                              :rules="[rules.hex, rules.size16bit]"
-                              @focus="$event.target.select()"
-                              @change="
-                                setDataValue(item, 'mem', [
-                                  rules.hex,
-                                  rules.size16bit
-                                ])
-                              "
-                            />
-                          </v-container>
-                        </v-card>
-                      </v-menu>
-                    </td>
-                    <td
-                      class="data-cell-num clickable"
-                      @click="editValue = ($event.target as HTMLElement).textContent"
-                    >
-                      <span>{{
-                        toFormattedDec(item.value)
-                      }}</span>
-                      <v-menu
-                        v-if="!sim.running"
-                        activator="parent" 
-                        :close-on-content-click="false" 
-                        :width="200"
-                      >
-                        <v-card>
-                          <v-container>
-                            <v-text-field 
-                              v-model.lazy="editValue"
-                              label="Decimal Value"
-                              variant="underlined"
-                              :rules="[rules.dec, rules.size16bit]"
-                              @focus="$event.target.select()"
-                              @change="
-                                setDataValue(item, 'mem', [
-                                  rules.dec,
-                                  rules.size16bit
-                                ])
-                              "
-                            />
-                          </v-container>
-                        </v-card>
-                      </v-menu>
-                    </td>
-                    <td
-                      class="data-cell-text"
-                      :class="{
-                        'clickable': item.label.trim().length != 0
-                      }"
-                      @click="jumpToSource(item.label)"
-                    >
-                      <i>{{ item.label }}</i>
-                    </td>
-                    <td 
-                      class="data-cell-text" 
-                      :class="{
-                        'clickable': item.line.trim().length != 0
-                      }"
-                      @click="jumpToSource(item.addr)"
-                    >
-                      <i>{{ item.line }}</i>
-                    </td>
-                  </tr>
-                </template>
-              </v-data-table>
-            </div>
-  
-            <div id="controls">
-              <div id="jump-to-location">
-                <v-form @submit.prevent="jumpToMemViewStr()">
-                  <v-text-field
-                    v-model="jumpToLocInput"
-                    single-line
-                    variant="underlined"
-                    label="Jump To Location"
-                  />
-                </v-form>
-              </div>
-              <div id="jump-buttons">
-                <v-btn
-                  variant="flat"
-                  class="mr-3"
-                  @click="jumpToPC(true)"
-                >
-                  <span class="title">PC</span>
-                  <v-tooltip
-                    location="top"
-                    activator="parent"
-                    text="Jump to PC"
-                  />
-                </v-btn>
-                
-                <v-btn 
-                  flat
-                  icon
-                  @click="jumpToPrevMemView()"
-                >
-                  <v-icon
-                    size="x-large"
-                    :icon="mdiArrowLeft"
-                  />
-                  <v-tooltip
-                    location="top"
-                    activator="parent"
-                    :text="toHex(toUint16(memView.start - memView.data.length))"
-                  />
-                </v-btn>
-                <v-btn 
-                  flat
-                  icon
-                  @click="jumpToPartMemView(-5)"
-                >
-                  <v-icon :icon="mdiArrowLeft" />
-                  <v-tooltip
-                    location="top"
-                    activator="parent"
-                    :text="toHex(toUint16(memView.start - 5))"
-                  />
-                </v-btn>
-                <v-btn 
-                  flat
-                  icon
-                  @click="jumpToPartMemView(+5)"
-                >
-                  <v-icon :icon="mdiArrowRight" />
-                  <v-tooltip
-                    location="top"
-                    activator="parent"
-                    :text="toHex(toUint16(memView.start + 5))"
-                  />
-                </v-btn>
-                <v-btn 
-                  flat
-                  icon
-                  @click="jumpToNextMemView()"
-                >
-                  <v-icon
-                    size="x-large"
-                    :icon="mdiArrowRight"
-                  />
-                  <v-tooltip
-                    location="top"
-                    activator="parent"
-                    :text="toHex(toUint16(memView.start + memView.data.length))"
-                  />
-                </v-btn>
-              </div>
-            </div>
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-main>
-  </div>
-</template>
-  
 <script setup lang="ts">
 import { useActiveFileStore } from '../../store/active_file';
 import { useSettingsStore } from '../../store/settings';
 // Vue stuff
-import { computed, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import "vuetify/components";
+import { useToast } from 'primevue';
+import { FormResolverOptions, FormSubmitEvent } from '@primevue/forms';
 //
 import Console from '../Console.vue';
-import { mdiAlertOctagon, mdiArrowLeft, mdiArrowRight, mdiDebugStepInto, mdiDebugStepOut, mdiDebugStepOver, mdiDelete, mdiFolderOpen, mdiPause, mdiPlay, mdiPower, mdiRefresh, mdiShuffle, mdiTimer } from '@mdi/js';
 
 const { lc3, dialog, fs } = window.api;
 
 const settings = useSettingsStore();
 const activeFileStore = useActiveFileStore();
 const router = useRouter();
+const toast = useToast();
+const timerPopover = useTemplateRef("timerPopover");
 
+const editPopovers = {
+  hex: useTemplateRef("hexPopover"),
+  dec: useTemplateRef("decPopover")
+}
+const editInputs = {
+  item: undefined as MemDataRow | RegDataRow | undefined,
+  input: ref("")
+};
 const sim = ref({
   regs: [
     { flash: false, updated: false, name: "r0", value: 0 },
@@ -739,24 +58,16 @@ const memView = ref({
   symTable: {} as Record<number, string>
 })
 
-const isSnackBarVisible = ref(false);
 const consoleStr = ref("");
-const jumpToLocInput = ref("");
-const timerInputs = ref({
-  vect: "x81",
-  priority: "4",
-  max: "50"
-});
-
 const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
 const timerBtnVariant = computed(() => {
   if (sim.value.timer.enabled) {
-    if (!sim.value.running && sim.value.timer.remaining == 0) return "flat";
-    return "tonal";
+    if (!sim.value.running && sim.value.timer.remaining == 0) return null;
+    return "outlined";
   }
   return "text";
 });
-const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : undefined);
+const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : "secondary");
 let lastLoadedFile: string | null = null;
 let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
 let memScrollOffset = 0;
@@ -764,10 +75,6 @@ let memScrollOffset = 0;
 type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
-const rangeRule = (min: number, max: number) => (value: string) => {
-  const intValue = parseInputString(value);
-  return min <= intValue && intValue <= max || `Value must be between ${min} and ${max}`;
-};
 const rules: Record<string, ValidationRule> = {
   hex(value: string) {
     return /^0?[xX][0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
@@ -788,11 +95,10 @@ const rules: Record<string, ValidationRule> = {
   }
 }
 type ValidationRule = (value: string) => boolean | string;
-const editValue = ref("");
 
 const memViewWrapper = useTemplateRef("memViewWrapper");
 watch(memViewWrapper, el => {
-  el.addEventListener("wheel", handleMemoryScroll);
+  el.addEventListener("wheel", handleMemoryScroll, { passive: true });
 }, { once: true });
 
 onMounted(() => {
@@ -815,9 +121,49 @@ onActivated(() => {
   }
 })
 
+function showFileLoadedToast() {
+  toast.add({ severity: 'contrast', summary: 'Object File Loaded!', life: 2500 });
+}
+async function showEditPopover(popoverKey: keyof typeof editPopovers, e: Event, item: RegDataRow | MemDataRow) {
+  editInputs.item = item;
+  if (popoverKey === "dec") {
+    editInputs.input.value = toFormattedDec(item.value);
+  } else if (popoverKey === "hex") {
+    editInputs.input.value = toHex(item.value);
+  }
+
+  const popover = editPopovers[popoverKey].value;
+  popover.hide();
+
+  await nextTick();
+  // Adjust popover to always point to span
+  const target = e.target instanceof HTMLTableCellElement ? e.target.firstElementChild : e.target;
+  popover.show(e, target);
+}
+function applyEditInput(e: FormSubmitEvent) {
+  if (e.valid) {
+    setDataValue(editInputs.item, parseInputString(e.states.input.value));
+    for (const popover of Object.values(editPopovers)) {
+      popover.value.hide();
+    }
+  }
+}
+function validateInput(key: string, input: string, rules: ValidationRule[]): { errors: Record<string, any> } {
+  for (const rule of rules) {
+    const result = rule(input);
+    if (typeof result === "string") {
+      return { errors: { [key]: [result] } };
+    }
+  }
+
+  return { errors: [] };
+}
+function validateEditInput(e: FormResolverOptions, ...rules: ValidationRule[]) {
+  return validateInput("input", e.values.input, rules);
+}
 function refreshMemoryPanel() {
   memView.value.data = Array.from(
-    { length: Math.floor((window.innerHeight - 140) / 25) - 4},
+    { length: Math.floor((window.innerHeight) / 27) - 8},
     () => ({
       addr: 0,
       value: 0,
@@ -832,8 +178,6 @@ function refreshMemoryPanel() {
   jumpToPC(true);
 }
 function handleMemoryScroll(e: WheelEvent) {
-  e.preventDefault();
-
   if (!lc3.isSimRunning()) {
     memScrollOffset += e.deltaY;
     if (Math.abs(memScrollOffset) > 20) {
@@ -894,9 +238,9 @@ function loadFile(path: string) {
     lastLoadedFile = path;
     memView.value.start = lc3.getRegValue("pc");
     memView.value.symTable = lc3.getCurrSymTable();
+    showFileLoadedToast();
   }
   updateUI();
-  isSnackBarVisible.value = success;
 }
 function reloadFile() {
   loadFile(lastLoadedFile);
@@ -1020,7 +364,7 @@ async function openRegContextMenu(item: RegDataRow) {
       navigator.clipboard.writeText(toHex(item.value));
       break;
     case 2:
-      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      navigator.clipboard.writeText(toFormattedDec(item.value));
       break;
   }
 }
@@ -1060,31 +404,16 @@ async function openMemContextMenu(item: MemDataRow) {
       navigator.clipboard.writeText(toHex(item.value));
       break;
     case "Copy Decimal":
-      navigator.clipboard.writeText(String(toFormattedDec(item.value)));
+      navigator.clipboard.writeText(toFormattedDec(item.value));
       break;
   }
 }
-function setDataValue(dataCell: RegDataRow, type: "reg", rules: ValidationRule[]): void;
-function setDataValue(dataCell: MemDataRow, type: "mem", rules: ValidationRule[]): void;
-function setDataValue(dataCell: RegDataRow | MemDataRow, type: "reg" | "mem", rules: ValidationRule[]) {
-  const value = editValue.value;
-  const validated = rules.every(r => r(value) === true);
-  
-  // Validation failed, so ignore set
-  if (!validated) {
-    if (type === "reg" && "name" in dataCell) {
-      dataCell.value = lc3.getRegValue(dataCell.name);
-    } else if (type === "mem" && "addr" in dataCell) {
-      dataCell.value = lc3.getMemValue(dataCell.addr);
-    }
-    return;
-  }
-
-  dataCell.value = toUint16(parseInputString(value));
-  if (type === "reg" && "name" in dataCell) {
-    lc3.setRegValue(dataCell.name, dataCell.value);
-  } else if (type === "mem" && "addr" in dataCell) {
-    lc3.setMemValue(dataCell.addr, dataCell.value);
+function setDataValue(cell: RegDataRow | MemDataRow, value: number) {
+  cell.value = toUint16(value);
+  if ("name" in cell) {
+    lc3.setRegValue(cell.name, cell.value);
+  } else if ("addr" in cell) {
+    lc3.setMemValue(cell.addr, cell.value);
   }
   
   updateUI();
@@ -1199,8 +528,8 @@ function jumpToMemView(newStart: number) {
   memView.value.start = toUint16(newStart);
   updateUI(false, false);
 }
-function jumpToMemViewStr() {
-  const match = jumpToLocInput.value.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
+function jumpToMemViewStr(input: string) {
+  const match = input.match(/^(?:0?[xX])?([0-9A-Fa-f]+)$/);
   if (match != null) {
     jumpToMemView(parseInt(match[1], 16));
   }
@@ -1224,42 +553,49 @@ function jumpToPC(jumpIfInView: boolean) {
 }
 
 // Timer functions
-function setTimerStatus() {
-  lc3.setTimerStatus(sim.value.timer.enabled);
+watch(() => sim.value.timer.enabled, enabled => {
+  lc3.setTimerStatus(enabled);
   resetTimer();
-}
+})
 function resetTimer() {
   lc3.resetTimer();
   updateUI();
 }
-function resetTimerInputs() {
-  timerInputs.value = {
-    vect: "x" + lc3.getTimerVect().toString(16).padStart(2, "0"),
-    priority: String(lc3.getTimerPriority()),
-    max: String(lc3.getTimerMax())
-  }
-}
-async function setTimerProperty(event: SubmitEvent & Promise<{valid: boolean}>, prop: keyof typeof timerInputs.value) {
-  const { valid } = await event;
-  if (!valid) return;
+function timerValidator(e: FormResolverOptions) {
+  const result = validateInput("vect", e.values.vect, [rules.hex, rules.size8bit]);
+  Object.assign(result.errors, {
+    priority: typeof e.values.priority != "number" ? ["Argument is required"] : [],
+    max: typeof e.values.max != "number" ? ["Argument is required"] : [],
+  });
 
-  if (prop === "vect") {
-    const intValue = parseInputString(timerInputs.value[prop]) & 0xFF;
-    lc3.setTimerVect(intValue);
-    sim.value.timer[prop] = intValue;
-  } else if (prop === "priority") {
-    const intValue = parseInputString(timerInputs.value[prop]);
-    lc3.setTimerPriority(intValue);
-    sim.value.timer[prop] = intValue;
-  } else if (prop === "max") {
-    const intValue = parseInputString(timerInputs.value[prop]);
-    lc3.setTimerMax(intValue);
-    sim.value.timer[prop] = intValue;
-    resetTimer();
-  } else {
-    prop satisfies never;
+  return result;
+}
+function updateTimerProperties(e: FormSubmitEvent) {
+  if (e.valid) {
+    // Set vect:
+    const vect: number = parseInputString(e.states.vect.value) & 0xFF;
+    if (sim.value.timer.vect != vect) {
+      lc3.setTimerVect(vect);
+      sim.value.timer.vect = vect;
+    }
+
+    // Set priority:
+    const priority: number = e.states.priority.value;
+    if (sim.value.timer.priority != priority) {
+      lc3.setTimerPriority(priority);
+      sim.value.timer.priority = priority;
+    }
+    
+    // Set max/repeat
+    const max: number = e.states.max.value;
+    if (sim.value.timer.max != max) {
+      lc3.setTimerMax(max);
+      sim.value.timer.max = max;
+      resetTimer();
+    }
   }
 }
+
 // Helper functions
 function psrToCC(psr: number) {
   const cc = psr & 0b111;
@@ -1270,22 +606,22 @@ function psrToCC(psr: number) {
     default: return "?"
   }
 }
-function toHex(value: number) {
+function toHex(value: number): string {
   const hex = toUint16(value).toString(16).toUpperCase();
   return `x${hex.padStart(4, "0")}`;
 }
-function toFormattedDec(value: number) {
+function toFormattedDec(value: number): string {
   if (settings.numbers === "signed") {
-    return toInt16(value);
+    return String(toInt16(value));
   } else if (settings.numbers === "unsigned") {
-    return toUint16(value);
+    return String(toUint16(value));
   } else {
     // statically assert no other branches exist:
     settings.numbers satisfies never;
   }
 }
 function parseInputString(value: string) {
-  if (value.startsWith("x")) value = "0" + value;
+  if (value.startsWith("x") || value.startsWith("X")) value = "0" + value;
   return parseInt(value);
 }
 function regLabel(item: RegDataRow) {
@@ -1306,45 +642,590 @@ function toInt16(value: number) {
 }
 </script>
 
+<template>
+  <div 
+    class="sim-top"
+    :class="{
+      'reduce-flashing': settings.reduce_flashing
+    }"
+  >
+    <nav-menu>
+      <!-- File buttons -->
+      <nav-icon
+        label="Open File"
+        @click="openFile()"
+      >
+        <MdiFolderOpen />
+      </nav-icon>
+      <nav-icon
+        :label="sim.running ? 'Pause' : 'Play'"
+        @click="toggleSimulator('run')"
+      >
+        <MdiPause v-if="sim.running" />
+        <MdiPlay v-else />
+      </nav-icon>
+      <nav-icon
+        label="Reload Object Files"
+        @click="reloadFile()"
+      >
+        <MdiRefresh />
+      </nav-icon>
 
-<style scoped>
-.h-limit {
-  height: calc(100vh - 90px);
+      <!-- Debug -->
+      <Divider class="my-0" />
+      <nav-icon
+        label="Step Over"
+        @click="toggleSimulator('over')"
+      >
+        <MdiDebugStepOver />
+      </nav-icon>
+      <nav-icon
+        label="Step In"
+        @click="toggleSimulator('in')"
+      >
+        <MdiDebugStepInto />
+      </nav-icon>
+      <nav-icon
+        label="Step Out"
+        @click="toggleSimulator('out')"
+      >
+        <MdiDebugStepOut />
+      </nav-icon>
+
+      <!-- Machine -->
+      <Divider class="my-0" />
+      <nav-icon
+        label="Reinitialize Machine"
+        @click="reinitializeMachine()"
+      >
+        <MdiPower />
+      </nav-icon>
+      <nav-icon
+        label="Randomize Machine"
+        @click="randomizeMachine()"
+      >
+        <MdiShuffle />
+      </nav-icon>
+    </nav-menu>
+    <!-- Toast popup -->
+    <Toast position="top-center">
+      <template #container="{ message, closeCallback }">
+        <div class="flex p-2 items-center">
+          <div class="px-2 flex-1">
+            {{ message.summary }}
+          </div>
+          <Button
+            icon="pi"
+            variant="text"
+            rounded
+            severity="danger"
+            @click="closeCallback"
+          >
+            <MdiClose />
+          </Button>
+        </div>
+      </template>
+    </Toast>
+
+    <!-- Edit value popovers -->
+    <Popover
+      v-if="!sim.running"
+      ref="hexPopover"
+    >
+      <div>
+        <Form
+          v-slot="$form"
+          :initial-values="{ input: editInputs.input.value }"
+          :resolver="e => validateEditInput(e, rules.hex, rules.size16bit)"
+          @submit="e => applyEditInput(e)"
+        >
+          <div class="flex flex-col gap-1">
+            <IftaLabel>
+              <InputText
+                id="hex-popover-input"
+                name="input"
+                size="small"
+                :invalid="$form.input?.invalid"
+              />
+              <label for="hex-popover-input">Hex Value</label>
+            </IftaLabel>
+            <Message
+              v-if="$form.input?.invalid"
+              severity="error"
+              variant="simple"
+              size="small"
+            >
+              {{ $form.input?.error }}
+            </Message>
+          </div>
+        </Form>
+      </div>
+    </Popover>
+    <Popover
+      v-if="!sim.running"
+      ref="decPopover"
+    >
+      <div>
+        <Form
+          v-slot="$form"
+          :initial-values="{ input: editInputs.input.value }"
+          :resolver="e => validateEditInput(e, rules.dec, rules.size16bit)"
+          @submit="e => applyEditInput(e)"
+        >
+          <div class="flex flex-col gap-1">
+            <IftaLabel>
+              <InputText
+                id="dec-popover-input"
+                name="input"
+                size="small"
+                :invalid="$form.input?.invalid"
+              />
+              <label for="dec-popover-input">Decimal Value</label>
+            </IftaLabel>
+            <Message
+              v-if="$form.input?.invalid"
+              severity="error"
+              variant="simple"
+              size="small"
+            >
+              {{ $form.input?.error }}
+            </Message>
+          </div>
+        </Form>
+      </div>
+    </Popover>
+    <!-- Main editor content -->
+    <main
+      class="contents"
+      @drop.prevent="dropFile"
+      @dragover.prevent
+    >
+      <div class="grid grid-cols-[1fr_2fr] w-full h-full gap-4 p-4 pt-2">
+        <div class="flex flex-col gap-1 overflow-auto">
+          <div class="header-bar">
+            <div />
+            <h3 class="header-bar-title">
+              Registers
+            </h3>
+          </div>
+          <div>
+            <table class="sim-data-table">
+              <colgroup>
+                <col style="width: 20%">
+                <col style="width: 20%">
+                <col style="width: 20%">
+                <col style="width: 40%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="data-cell-text">
+                    Registers
+                  </th>
+                  <th class="data-cell-num">
+                    Hex
+                  </th>
+                  <th class="data-cell-num">
+                    Decimal
+                  </th>
+                  <th class="data-cell-text">
+                    ASCII / Misc
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item of sim.regs"
+                  :key="item.name"
+                  :class="{
+                    'row-update-flash': item.flash,
+                    'row-updated': item.updated,
+                    'row-disabled': sim.running
+                  }"
+                  @contextmenu="openRegContextMenu(item)"
+                >
+                  <td
+                    class="data-cell-text"
+                  >
+                    <strong>{{ item.name.toUpperCase() }}</strong>
+                  </td>
+                  <td
+                    class="data-cell-num clickable"
+                    @click="e => showEditPopover('hex', e, item)"
+                  >
+                    <span>
+                      {{ toHex(item.value) }}
+                    </span>
+                  </td>
+                  <td
+                    class="data-cell-num clickable"
+                    @click="e => showEditPopover('dec', e, item)"
+                  >
+                    <span>{{ toFormattedDec(item.value) }}</span>
+                  </td>
+                  <td class="data-cell-text">
+                    <span>{{ regLabel(item) }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex flex-col flex-1 min-h-0 overflow-auto">
+            <div class="header-bar">
+              <div />
+              <h3 class="header-bar-title">
+                Console (click to focus)
+              </h3>
+              <Button
+                v-tooltip.left="'Clear Console'"
+                icon="pi"
+                rounded
+                variant="text"
+                severity="secondary"
+                @click="clearConsoleOutput()"
+              >
+                <MdiDelete />
+              </Button>
+            </div>
+            <console 
+              v-model="consoleStr"
+              float="bottom"
+              show-focus
+              show-cursor
+              @keydown="handleConsoleInput"
+            />
+          </div>
+        </div>
+        <div class="flex flex-col gap-1 overflow-auto">
+          <div class="header-bar">
+            <div />
+            <h3 class="header-bar-title">
+              Memory
+            </h3>
+            <OverlayBadge
+              severity="secondary"
+              :value="sim.timer.remaining"
+              :class="{ 'hide-badge': !timerRemBadgeShow }"
+            >
+              <Button
+                v-tooltip.left="'Configure Timer Interrupt'"
+                :variant="timerBtnVariant"
+                icon="pi"
+                rounded
+                :severity="timerBtnColor"
+                @click="e => timerPopover?.toggle(e)"
+              >
+                <MdiTimer />
+              </Button>
+            </OverlayBadge>
+            <Popover
+              v-if="!sim.running"
+              ref="timerPopover"
+            >
+              <div class="popover-menu">
+                <div>
+                  <label>
+                    <span>Enable timer interrupt</span>
+                    <ToggleSwitch v-model="sim.timer.enabled" />
+                  </label>
+                  <label>
+                    <span>Hide timer badge</span>
+                    <ToggleSwitch
+                      v-model="sim.timer.hide_badge"
+                      :disabled="!sim.timer.enabled"
+                    />
+                  </label>
+                </div>
+                <Divider />
+                <Form
+                  v-slot="$form"
+                  :initial-values="{
+                    vect: 'x' + lc3.getTimerVect().toString(16).padStart(2, '0'),
+                    priority: lc3.getTimerPriority(),
+                    max: lc3.getTimerMax()
+                  }"
+                  :validate-on-value-update="false"
+                  :resolver="timerValidator"
+                  @submit="e => updateTimerProperties(e)"
+                >
+                  <div>
+                    <label>
+                      <span>Vector</span>
+                      <InputText
+                        name="vect"
+                        :disabled="!sim.timer.enabled"
+                        class="w-24"
+                        size="small"
+                        :invalid="$form.vect?.invalid"
+                      />
+                    </label>
+                    <Message
+                      v-if="$form.vect?.invalid"
+                      severity="error"
+                      variant="simple"
+                      size="small"
+                    >
+                      {{ $form.vect?.error }}
+                    </Message>
+                  </div>
+                  <label>
+                    <span>Priority</span>
+                    <InputNumber
+                      name="priority"
+                      :use-grouping="false"
+                      :disabled="!sim.timer.enabled"
+                      :min="0"
+                      :max="7"
+                      input-class="w-24"
+                      size="small"
+                      :invalid="$form.priority?.invalid"
+                    />
+                  </label>
+                  <label>
+                    <span>Repeat</span>
+                    <InputNumber
+                      name="max"
+                      :use-grouping="false"
+                      :disabled="!sim.timer.enabled"
+                      :min="0"
+                      :max="2 ** 31 - 1"
+                      input-class="w-24"
+                      size="small"
+                      :invalid="$form.max?.invalid"
+                    />
+                  </label>
+                  <Button
+                    :disabled="!sim.timer.enabled"
+                    type="submit"
+                    size="small"
+                  >
+                    Save
+                  </Button>
+                </Form>
+                <Divider />
+                <div class="text-center">
+                  Interrupt activates in <br>
+                  {{ sim.timer.enabled ? sim.timer.remaining : "-" }} instruction{{ sim.timer.remaining !== 1 ? 's' : '' }}
+                </div>
+              </div>
+            </Popover>
+          </div>
+          <table
+            ref="memViewWrapper"
+            class="sim-data-table" 
+          >
+            <colgroup>
+              <col style="width: 2em">
+              <col style="width: 2em">
+              <col style="width: 10%">
+              <col style="width: 10%">
+              <col style="width: 10%">
+              <col style="width: 15%">
+              <col style="width: 45%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="data-cell-btn">
+                  BP
+                </th>
+                <th class="data-cell-btn">
+                  PC
+                </th>
+                <th class="data-cell-num">
+                  Address
+                </th>
+                <th class="data-cell-num">
+                  Hex
+                </th>
+                <th class="data-cell-num">
+                  Decimal
+                </th>
+                <th class="data-cell-text">
+                  Label
+                </th>
+                <th class="data-cell-text">
+                  Instructions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, index) of memView.data"
+                :key="index"
+                :class="{
+                  'row-update-flash': item.flash,
+                  'row-updated': item.updated,
+                  'row-disabled': sim.running,
+                  'row-curr-pc': isPCAt(item.addr)
+                }"
+                @contextmenu="openMemContextMenu(item)"
+              >
+                <td class="data-cell-btn">
+                  <div class="flex items-center">
+                    <button @click="toggleBreakpoint(item.addr)">
+                      <MdiAlertOctagon 
+                        class="breakpoint-icon"
+                        :class="{ 'icon-active': isBreakpointAt(item.addr) }"
+                      />
+                    </button>
+                  </div>
+                </td>
+                <td class="data-cell-btn">
+                  <div class="flex items-center">
+                    <button @click="setPC(item.addr)">
+                      <MdiPlay
+                        class="pc-icon"
+                        :class="{ 'icon-active': isPCAt(item.addr) }"
+                      />
+                    </button>
+                  </div>
+                </td>
+                <td class="data-cell-num">
+                  <strong>{{ toHex(item.addr) }}</strong>
+                </td>
+                <td
+                  class="data-cell-num clickable"
+                  @click="e => showEditPopover('hex', e, item)"
+                >
+                  <span>{{ toHex(item.value) }}</span>
+                </td>
+                <td
+                  class="data-cell-num clickable"
+                  @click="e => showEditPopover('dec', e, item)"
+                >
+                  <span>{{ toFormattedDec(item.value) }}</span>
+                </td>
+                <td
+                  class="data-cell-text"
+                  :class="{
+                    'clickable': item.label.trim().length != 0
+                  }"
+                  @click="jumpToSource(item.label)"
+                >
+                  <i>{{ item.label }}</i>
+                </td>
+                <td 
+                  class="data-cell-text" 
+                  :class="{
+                    'clickable': item.line.trim().length != 0
+                  }"
+                  @click="jumpToSource(item.addr)"
+                >
+                  <i>{{ item.line }}</i>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="flex items-end justify-between grow">
+            <div>
+              <Form @submit="e => jumpToMemViewStr(e.states.input.value)">
+                <FloatLabel variant="on">
+                  <InputText
+                    id="jump-loc-input"
+                    name="input"
+                  />
+                  <label for="jump-loc-input">Jump to Location</label>
+                </FloatLabel>
+              </Form>
+            </div>
+            <div class="flex gap-1">
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start - memView.data.length))"
+                icon="pi"
+                rounded
+                severity="secondary"
+                @click="jumpToPrevMemView()"
+              >
+                <MdiChevronDoubleLeft />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start - 5))"
+                icon="pi"
+                rounded
+                severity="secondary"
+                @click="jumpToPartMemView(-5)"
+              >
+                <MdiChevronLeft />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to PC'"
+                icon="pi"
+                severity="secondary"
+                @click="jumpToPC(true)"
+              >
+                <MdiHome />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start + 5))"
+                icon="pi"
+                rounded
+                severity="secondary"
+                @click="jumpToPartMemView(+5)"
+              >
+                <MdiChevronRight />
+              </Button>
+              <Button
+                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start + memView.data.length))"
+                icon="pi"
+                rounded
+                severity="secondary"
+                @click="jumpToNextMemView()"
+              >
+                <MdiChevronDoubleRight />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+  
+
+<style scoped lang="postcss">
+.sim-data-table tbody tr {
+  @apply transition duration-300 ease-in-out;
 }
 
-/* Generic data table styles */
+.sim-top:not(.reduce-flashing) .row-disabled {
+  @apply text-surface-500 bg-surface-300 dark:bg-surface-700;
+
+}
+.sim-top.reduce-flashing .row-disabled {
+  @apply text-surface-500;
+}
+
 .sim-data-table {
-  /* Supercompact! */
-  --v-table-header-height: 29px;
-  --v-table-row-height: 25px;
+  @apply border shadow dark:border-surface-800 table-fixed w-full;
 }
-.sim-data-table:deep(table) {
-  /* Propagates this property into the <table> element of the <v-data-table> component */
-  table-layout: fixed;
-}
-
-.sim-data-table tr {
-  transition: 
-    background-color 0.25s ease-in-out,
-    color 0.25s ease-in-out
+.sim-data-table th, .sim-data-table td {
+  /* Add padding to all cells */
+  /* Hide overlong labels */
+  @apply px-2 overflow-hidden whitespace-nowrap;
 }
 .sim-data-table thead tr {
-  background-color: #00000040;
-  column-gap: 5px;
+  @apply bg-surface-400 dark:bg-surface-600;
 }
-.sim-data-table tbody tr {
-  font-family: Consolas, Menlo, Courier, monospace;
-  /* Force row to be 1 line wide */
-  overflow: hidden;
-  white-space: nowrap;
+.sim-data-table tr {
+  @apply border-b border-surface-200 dark:border-surface-800;
 }
 .sim-data-table tbody tr:hover {
-  background-color: #7f7f7f4d;
+  @apply bg-surface-500/25;
 }
-.sim-data-table tbody td {
-  /* Hide overlong labels + instrs */
-  overflow: hidden;
-  white-space: nowrap;
+
+.sim-data-table tbody .data-cell-text, .sim-data-table tbody .data-cell-num {
+  @apply font-mono;
+}
+.data-cell-text {
+  @apply text-left;
+}
+.data-cell-btn {
+  @apply text-center;
+}
+.data-cell-btn button {
+  @apply h-6 w-6 flex justify-center items-center transition;
+}
+.data-cell-num {
+  @apply text-right;
 }
 .row-update-flash {
   background-color: #fff700a0;
@@ -1352,46 +1233,9 @@ function toInt16(value: number) {
 .row-updated {
   background-color: #fff70038;
 }
-.sim-top:not(.reduce-flashing) .row-disabled {
-  color: gray;
-  background-color: lightgrey !important;
-}
-.sim-top.reduce-flashing .row-disabled {
-  color: gray;
-}
-
-.data-cell-text {
-  text-align: left !important;
-}
-.data-cell-btn {
-  text-align: center !important;
-}
-.data-cell-btn > * {
-  display: block;
-  margin: auto;
-}
-.data-cell-btn * {
-  transition: color 0.1s, font-size 0.2s;
-}
-.data-cell-btn:deep(button) {
-  background-color: transparent;
-  /* Force height of buttons to be smaller than the height of each row */
-  height: calc(var(--v-table-row-height) - 1);
-}
-.data-cell-num {
-  text-align: right !important;
-}
 
 tr:not(.row-disabled) .clickable {
   cursor: pointer;
-}
-/* Console styles */
-#console-wrapper {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  /* Prevents console from overflowing past page */
-  min-height: 0;
 }
 
 /* A header with icons around it */
@@ -1401,18 +1245,10 @@ tr:not(.row-disabled) .clickable {
   grid-template-rows: 100%;
   justify-items: center;
   align-items: center;
-  overflow: hidden;
+  @apply min-h-10;
 }
 .header-bar-title {
-  text-align: center;
-  padding-bottom: 5px;
-
-  grid-column: 2;
-  grid-row: 1;
-}
-.header-bar-right {
-  grid-column: 3;
-  grid-row: 1;
+  @apply font-bold text-lg text-center;
 }
 
 /* Memory view styles */
@@ -1420,37 +1256,40 @@ tr:not(.row-disabled) .clickable {
   background-color: #008cff4d;
 }
 
+tr .breakpoint-icon, tr .pc-icon {
+  @apply transition;
+}
+tr .breakpoint-icon:not(.icon-active), tr .pc-icon:not(.icon-active) {
+  @apply text-surface-400 scale-[80%];
+}
+tr .breakpoint-icon.icon-active {
+  @apply text-red-500;
+}
+tr .pc-icon.icon-active {
+  @apply text-blue-500;
+}
+
 tr:not(.row-disabled) .breakpoint-icon:hover {
-  color: red !important;
+  @apply text-red-500;
 }
 
 tr:not(.row-disabled) .pc-icon:hover {
-  color: #2196f3 !important;
+  @apply text-blue-500;
 }
 
-/* Memory view controls styles */
-#controls {
-  flex-basis: content;
-  order: 2;
-
-  display: grid;
-  grid-template-columns: 30% auto;
-  grid-template-rows: auto;
-  align-items: center;
+.popover-menu > * {
+  @apply flex flex-col gap-3;
 }
-
-#jump-to-location {
-  grid-column: 1;
-  grid-row: 1;
+.popover-menu label {
+  @apply flex justify-between items-center gap-2;
 }
-
-#jump-buttons {
-  grid-column: 2;
-  grid-row: 1;
-  text-align: right;
+.p-overlaybadge :deep(.p-badge) {
+  @apply transition;
+  /* Move badge to the left side (for the timer button specifically) */
+  transform: translate(-2em, 0%);
+  transform-origin: right;
 }
-
-.contents {
-  display: contents;
+.p-overlaybadge.hide-badge :deep(.p-badge) {
+  @apply opacity-0;
 }
 </style>

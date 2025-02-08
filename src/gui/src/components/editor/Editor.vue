@@ -1,129 +1,8 @@
-<template>
-  <div class="contents">
-    <!-- Sidebar -->
-    <v-navigation-drawer
-      permanent
-      rail
-    >
-      <v-list-item
-        :prepend-icon="mdiFolderOpen"
-        @click="openFile()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Open File"
-        />
-      </v-list-item>
-      <v-list-item @click="saveFileThen(build)">
-        <template #prepend>
-          <v-badge
-            v-model="editorContentChanged"
-            color="orange-darken-2"
-          >
-            <template #badge>
-              <strong>!</strong>
-            </template>
-            <v-icon :icon="mdiContentSave" />
-          </v-badge>
-        </template>
-
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Save File"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiContentSaveEdit"
-        @click="saveFileAs()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Save File As"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiWrench"
-        @click="build()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-        >
-          <span>Assemble</span>
-        </v-tooltip>
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiConsole"
-        @click="toggleConsole()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Toggle Console"
-        />
-      </v-list-item>
-      <v-list-item
-        :prepend-icon="mdiLinkVariant"
-        @click="link()"
-      >
-        <v-tooltip
-          location="right"
-          activator="parent"
-          text="Link Object Files"
-        />
-      </v-list-item>
-    </v-navigation-drawer>
-    <!-- Main editor content -->
-    <v-main>
-      <!-- Don't mind me, just blatantly ignoring Vuetify grid to use flex -->
-      <v-container
-        fluid
-        class="fill-height"
-      >
-        <v-row
-          class="align-self-stretch flex-column"
-          no-gutters
-        >
-          <h3 class="view-header">
-            {{ filename }}
-          </h3>
-          <v-col class="d-flex flex-grow-1 flex-shrink-0">
-            <v-ace-editor
-              id="ace-editor"
-              ref="aceEditorRef"
-              v-model:value="editor.current_content"
-              class="flex-grow-1 elevation-2"
-              lang="lc3"
-              :theme="editorTheme"
-              @drop.prevent="dropFile"
-              @dragover.prevent
-            />
-          </v-col>
-          <v-col
-            v-if="showConsole"
-            class="flex-grow-0 flex-shrink-1"
-          >
-            <console 
-              id="console"
-              v-model="consoleStr"
-              float="top"
-            />
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-main>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { useActiveFileStore } from "../../store/active_file";
 import { useSettingsStore } from "../../store/settings";
 // Vue stuff
 import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
-import "vuetify/components";
 import { storeToRefs } from "pinia";
 // Editor
 import "./ace-cfg";
@@ -133,8 +12,6 @@ import type { VAceEditorInstance } from "vue3-ace-editor/types";
 import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
-import { mdiConsole, mdiContentSave, mdiContentSaveEdit, mdiFolderOpen, mdiLinkVariant, mdiWrench } from "@mdi/js";
-
 const { lc3, dialog, fs } = window.api;
 const activeFileStore = useActiveFileStore();
 const settings = useSettingsStore();
@@ -435,30 +312,78 @@ export default {
 }
 </script>
 
+<template>
+  <div>
+    <nav-menu>
+      <nav-icon
+        label="Open File"
+        @click="openFile()"
+      >
+        <MdiFolderOpen />
+      </nav-icon>
+      <nav-icon
+        label="Save File"
+        :badge="editorContentChanged"
+        @click="saveFileThen(build)"
+      >
+        <MdiContentSave />
+      </nav-icon>
+      <nav-icon
+        label="Save File As"
+        @click="saveFileAs()"
+      >
+        <MdiContentSaveEdit />
+      </nav-icon>
+      <nav-icon
+        label="Assemble"
+        @click="build()"
+      >
+        <MdiWrench />
+      </nav-icon>
+      <nav-icon
+        label="Toggle Console"
+        @click="toggleConsole()"
+      >
+        <MdiConsole />
+      </nav-icon>
+      <nav-icon
+        label="Link Object Files"
+        @click="link()"
+      >
+        <MdiLinkVariant />
+      </nav-icon>
+    </nav-menu>
+    <main class="contents">
+      <div class="flex flex-col flex-grow gap-3 p-4">
+        <h3 class="font-bold text-lg text-center">
+          {{ filename }}
+        </h3>
+        <v-ace-editor
+          ref="aceEditorRef"
+          v-model:value="editor.current_content"
+          class="border shadow dark:border-surface-800 overflow-hidden h-full"
+          lang="lc3"
+          :theme="editorTheme"
+          @drop.prevent="dropFile"
+          @dragover.prevent
+        />
+        <div
+          v-if="showConsole"
+          class="flex-initial"
+        >
+          <console 
+            v-model="consoleStr"
+            float="top"
+            class="h-48"
+          />
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style>
 .ace-twilight .ace_marker-layer .ace_selection {
   background: rgb(60, 97, 146) !important;
-}
-</style>
-
-<style scoped>
-.view-header {
-  text-align: center;
-  padding-bottom: 5px;
-}
-
-#ace-editor {
-  overflow: hidden;
-  justify-self: center;
-  height: 100%;
-}
-
-#console {
-  margin: 15px 0 5px 0;
-  height: 170px;
-}
-
-.contents {
-  display: contents;
 }
 </style>
