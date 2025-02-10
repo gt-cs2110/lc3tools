@@ -661,8 +661,8 @@ function toInt16(value: number) {
         :label="sim.running ? 'Pause' : 'Play'"
         @click="toggleSimulator('run')"
       >
-        <MdiPause v-if="sim.running" />
-        <MdiPlay v-else />
+        <MdiPause v-show="sim.running" />
+        <MdiPlay v-show="!sim.running" />
       </nav-icon>
       <nav-icon
         label="Reload Object Files"
