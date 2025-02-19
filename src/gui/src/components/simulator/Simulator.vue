@@ -39,7 +39,7 @@ const sim = ref({
     { flash: false, updated: false, name: "pc", value: 0 },
     { flash: false, updated: false, name: "mcr", value: 0 }
   ],
-  breakpoints: [] as number[],
+  breakpoints: [] as { addr: number, enabled: boolean }[],
   running: false,
   timer: {
     enabled: false,
@@ -71,6 +71,18 @@ const timerBtnColor = computed(() => sim.value.timer.enabled ? "primary" : "seco
 let lastLoadedFile: string | null = null;
 let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
 let memScrollOffset = 0;
+
+const panels = ref({
+  showConsole: true,
+  showDebugger: true
+});
+const stackDialog = ref({
+  show: false,
+  stackReg: 6,
+  pushInput: "",
+  offset: 0,
+  wheelOffset: 0
+});
 
 type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
@@ -243,7 +255,11 @@ function loadFile(path: string) {
   updateUI();
 }
 function reloadFile() {
-  loadFile(lastLoadedFile);
+  if (lastLoadedFile == null) {
+    openFile();
+  } else {
+    loadFile(lastLoadedFile);
+  }
   updateUI();
 }
 function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
@@ -479,16 +495,71 @@ function updateTimer() {
     sim.value.timer.remaining = lc3.getTimerRemaining();
   }
 }
+
+/**
+ * Handles internal breakpoint status when using enabled/disabled.
+ * @param addr The address of the breakpoint
+ * @param enabled The enabled status of the breakpoint
+ */
+function setInternalBreakpointStatus(addr: number, enabled: boolean) {
+  if (lc3.isSimRunning()) return;
+
+  if (enabled) {
+    lc3.setBreakpoint(addr);
+  } else {
+    lc3.removeBreakpoint(addr);
+  }
+}
+/**
+ * Adds a breakpoint and sets it to enabled.
+ * @param addr The address of the breakpoint
+ */
+function addBreakpoint(addr: number) {
+  if (lc3.isSimRunning()) return;
+
+  lc3.setBreakpoint(addr);
+  // There are more efficient ways of doing this, 
+  // but I do not wish to reimplement partition_point currently.
+  sim.value.breakpoints.push({addr, enabled: true });
+  sim.value.breakpoints.sort((a, b) => a.addr - b.addr);
+}
+/**
+ * Removes a breakpoint. This is different from disabling a breakpoint 
+ * because it is completely removed from the UI.
+ * @param addr The address of the breakpoint
+ * @param idx Optionally, the index of the breakpoint in the breakpoint list. 
+ *     If not provided, this is computed.
+ */
+function removeBreakpoint(addr: number, idx?: number) {
+  if (lc3.isSimRunning()) return;
+  if (typeof idx === "undefined") {
+    idx = sim.value.breakpoints.findIndex(bp => bp.addr == addr);
+  }
+
+  lc3.removeBreakpoint(addr);
+  sim.value.breakpoints.splice(idx, 1);
+}
+/**
+ * Toggles breakpoint to the next state.
+ * - If breakpoint exists and is enabled, this removes the breakpoint.
+ * - If breakpoint exists and is disabled, this enables the breakpoint.
+ * - If the breakpoint does not exist, this creates the breakpoint and enables it.
+ * @param addr The address of the breakpoint
+ */
 function toggleBreakpoint(addr: number) {
-  const idx = sim.value.breakpoints.indexOf(addr);
+  const idx = sim.value.breakpoints.findIndex(bp => bp.addr == addr);
 
   if (!lc3.isSimRunning()) {
     if (idx == -1) {
-      lc3.setBreakpoint(addr);
-      sim.value.breakpoints.push(addr);
+      addBreakpoint(addr);
     } else {
-      lc3.removeBreakpoint(addr);
-      sim.value.breakpoints.splice(idx, 1);
+      const bp = sim.value.breakpoints[idx];
+      if (!bp.enabled) {
+        bp.enabled = true;
+        setInternalBreakpointStatus(addr, true);
+      } else {
+        removeBreakpoint(addr, idx);
+      }
     }
   }
 }
@@ -517,7 +588,7 @@ function jumpToSource(location: string | number) {
   }
 }
 function isBreakpointAt(addr: number) {
-  return sim.value.breakpoints.includes(addr)
+  return sim.value.breakpoints.some(bp => bp.addr == addr);
 }
 function isPCAt(addr: number) {
   return addr == sim.value.regs[9].value && !sim.value.running;
@@ -706,6 +777,21 @@ function toInt16(value: number) {
       >
         <MdiShuffle />
       </nav-icon>
+      <Divider class="my-0" />
+      <nav-icon
+        label="Console"
+        :toggle="panels.showConsole"
+        @click="panels.showConsole = !panels.showConsole"
+      >
+        <MdiConsole />
+      </nav-icon>
+      <nav-icon
+        label="Debugger"
+        :toggle="panels.showDebugger"
+        @click="panels.showDebugger = !panels.showDebugger"
+      >
+        <MdiBug />
+      </nav-icon>
     </nav-menu>
     <!-- Toast popup -->
     <Toast position="top-center">
@@ -801,7 +887,7 @@ function toInt16(value: number) {
       @dragover.prevent
     >
       <div class="grid grid-cols-[1fr_2fr] grid-rows-1 w-full h-full gap-4 p-4 pt-2">
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1 min-h-0">
           <div class="header-bar">
             <div />
             <h3 class="header-bar-title">
@@ -869,11 +955,14 @@ function toInt16(value: number) {
               </tbody>
             </table>
           </div>
-          <div class="flex flex-col flex-1 min-h-0">
+          <div
+            v-if="panels.showConsole"
+            class="flex flex-col flex-1"
+          >
             <div class="header-bar">
               <div />
               <h3 class="header-bar-title">
-                Console (click to focus)
+                Console
               </h3>
               <Button
                 v-tooltip.left="'Clear Console'"
@@ -893,6 +982,269 @@ function toInt16(value: number) {
               show-cursor
               @keydown="handleConsoleInput"
             />
+          </div>
+          <div
+            v-if="panels.showDebugger"
+            class="flex flex-col flex-1 gap-1 min-h-0"
+          >
+            <div class="header-bar">
+              <div />
+              <h3 class="header-bar-title">
+                Debugger
+              </h3>
+              <div />
+            </div>
+            <div>
+              <!-- TODO: Add functionality -->
+              <div class="flex rounded bg-surface-100 dark:bg-surface-800">
+                <Button
+                  v-tooltip.top="'Step Over'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Step Over"
+                  @click="toggleSimulator('over')"
+                >
+                  <MdiDebugStepOver />
+                </Button>
+                <Button
+                  v-tooltip.top="'Step In'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Step In"
+                  @click="toggleSimulator('in')"
+                >
+                  <MdiDebugStepInto />
+                </Button>
+                <Button
+                  v-tooltip.top="'Step Out'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Step Out"
+                  @click="toggleSimulator('out')"
+                >
+                  <MdiDebugStepOut />
+                </Button>
+                <div class="flex-1" />
+                <Button
+                  v-tooltip.top="'Adjust Stack'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Adjust Stack"
+                  :disabled="sim.running"
+                  @click="stackDialog.show = true"
+                >
+                  <MdiViewAgenda />
+                </Button>
+              </div>
+            </div>
+            <Dialog
+              v-model:visible="stackDialog.show"
+              modal
+              header="Adjust Stack"
+              dismissable-mask
+            >
+              <div
+                v-if="stackDialog.show"
+                class="grid grid-cols-[1fr_auto] grid-rows-1 gap-3"
+              >
+                <div class="grid grid-cols-[1fr_1fr_6em] border shadow dark:border-surface-800 gap-x-2">
+                  <div class="grid grid-cols-subgrid col-span-3 border-t last:border-b dark:border-surface-800 px-2 even:bg-surface-100 even:dark:bg-surface-900 bg-surface-400 dark:bg-surface-600 font-bold">
+                    <div class="text-right">
+                      Addr
+                    </div>
+                    <div class="text-right">
+                      Hex
+                    </div>
+                    <div class="text-right">
+                      Dec
+                    </div>
+                  </div>
+                  <div
+                    v-for="(_, i) in Array.from({ length: 15 })"
+                    :key="i"
+                    class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 dark:border-surface-800"
+                    :class="{
+                      'even:bg-surface-100 even:dark:bg-surface-900': stackDialog.offset + i < 0,
+                      'odd:bg-indigo-200 even:bg-indigo-300 odd:dark:bg-indigo-800 even:dark:bg-indigo-900': stackDialog.offset + i >= 0
+                    }"
+                    @wheel.passive="e => {
+                      if (!lc3.isSimRunning()) {
+                        stackDialog.wheelOffset += e.deltaY;
+                        if (Math.abs(stackDialog.wheelOffset) > 20) {
+                          stackDialog.offset += Math.floor(stackDialog.wheelOffset / 20);
+                          stackDialog.wheelOffset = 0;
+                        }
+                      }
+                    }"
+                  >
+                    <div
+                      class="text-right"
+                      :class="{'underline': stackDialog.offset + i == 0 }"
+                    >
+                      {{ toHex(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i) }}
+                    </div>
+                    <div class="text-right">
+                      {{ toHex(lc3.getMemValue(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)) }}
+                    </div>
+                    <div class="text-right">
+                      {{ toFormattedDec(lc3.getMemValue(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)) }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-center gap-1">
+                    <Button
+                      v-tooltip.bottom="'Up'"
+                      icon="pi"
+                      severity="secondary"
+                      rounded
+                      @click="stackDialog.offset--"
+                    >
+                      <MdiChevronUp />
+                    </Button>
+                    <Button
+                      v-tooltip.bottom="'Home'"
+                      icon="pi"
+                      severity="secondary"
+                      @click="stackDialog.offset = 0"
+                    >
+                      <MdiHome />
+                    </Button>
+                    <Button
+                      v-tooltip.bottom="'Down'"
+                      icon="pi"
+                      severity="secondary"
+                      rounded
+                      @click="stackDialog.offset++"
+                    >
+                      <MdiChevronDown />
+                    </Button>
+                  </div>
+                  <Divider class="my-1" />
+                  <label class="flex justify-between items-center gap-2">
+                    <span>Stack Pointer:</span>
+                    <div>
+                      R<InputNumber
+                        v-model="stackDialog.stackReg"
+                        :min="0"
+                        :max="7"
+                        input-class="w-12"
+                        size="small"
+                      />
+                    </div>
+                  </label>
+                  <Form
+                    v-slot="$form"
+                    :resolver="e => validateEditInput(e, rules.size16bit)"
+                    :validate-on-value-update="false"
+                    @submit="(e) => {
+                      if (e.valid) {
+                        const reg = sim.regs[stackDialog.stackReg];
+                        const value = parseInputString(e.states.input.value);
+                        if (typeof value === 'number') {
+                          lc3.setMemValue(reg.value - 1, value);
+                          setDataValue(reg, reg.value - 1);
+                        }
+                        if (-15 + 1 < stackDialog.offset && stackDialog.offset < 0) {
+                          stackDialog.offset++;
+                        } else {
+                          stackDialog.offset = 0;
+                        }
+                      }
+                    }"
+                  >
+                    <div class="flex items-center">
+                      <InputText
+                        name="input"
+                        placeholder="x2110"
+                        class="w-24"
+                        size="small"
+                        :invalid="$form.input?.invalid"
+                      />
+                      <Button
+                        v-tooltip.bottom="'Push'"
+                        icon="pi"
+                        variant="text"
+                        severity="secondary"
+                        rounded
+                        type="submit"
+                      >
+                        <MdiPlus />
+                      </Button>
+                      <Button
+                        v-tooltip.bottom="'Pop'"
+                        icon="pi"
+                        variant="text"
+                        severity="secondary"
+                        rounded
+                        @click="() => {
+                          const reg = sim.regs[stackDialog.stackReg];
+                          setDataValue(reg, reg.value + 1);
+                          if (-15 + 1 < stackDialog.offset && stackDialog.offset < 0) {
+                            stackDialog.offset--;
+                          } else {
+                            stackDialog.offset = 0;
+                          }
+                        }"
+                      >
+                        <MdiMinus />
+                      </Button>
+                    </div>
+                    <Message
+                      v-if="$form.input?.invalid"
+                      severity="error"
+                      variant="simple"
+                      size="small"
+                      class="w-40"
+                    >
+                      {{ $form.input?.error }}
+                    </Message>
+                  </Form>
+                </div>
+              </div>
+            </Dialog>
+            <div class="border shadow dark:border-surface-800 flex-1 auto-rows-fr max-h-full overflow-auto">
+              <div class="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-1">
+                <div
+                  v-for="bp of sim.breakpoints"
+                  :key="bp.addr"
+                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b dark:border-surface-800 px-4 even:bg-surface-100 even:dark:bg-surface-900"
+                >
+                  <div>
+                    <MdiCircleMedium class="breakpoint-icon icon-active" />
+                  </div>
+                  <Checkbox
+                    v-model="bp.enabled"
+                    binary
+                    @change="setInternalBreakpointStatus(bp.addr, bp.enabled)"
+                  />
+                  <div class>
+                    <span class="font-mono">
+                      {{ toHex(bp.addr) }}
+                    </span>
+                    <span v-if="bp.addr in memView.symTable">
+                      {{ ' \xB7 ' + memView.symTable[bp.addr] }}
+                    </span>
+                  </div>
+                  <button
+                    @click="removeBreakpoint(bp.addr)"
+                  >
+                    <MdiClose
+                      width="1em"
+                      height="1em"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="flex flex-col gap-1">
@@ -1064,7 +1416,10 @@ function toInt16(value: number) {
                     <button @click="toggleBreakpoint(item.addr)">
                       <MdiAlertOctagon 
                         class="breakpoint-icon"
-                        :class="{ 'icon-active': isBreakpointAt(item.addr) }"
+                        :class="{
+                          'icon-active': isBreakpointAt(item.addr),
+                          '!text-red-500/50': sim.breakpoints.some(bp => bp.addr == item.addr && !bp.enabled)
+                        }"
                       />
                     </button>
                   </div>
@@ -1256,16 +1611,16 @@ tr:not(.row-disabled) .clickable {
   background-color: #008cff4d;
 }
 
-tr .breakpoint-icon, tr .pc-icon {
+.breakpoint-icon, .pc-icon {
   @apply transition;
 }
-tr .breakpoint-icon:not(.icon-active), tr .pc-icon:not(.icon-active) {
+.breakpoint-icon:not(.icon-active), .pc-icon:not(.icon-active) {
   @apply text-surface-400 scale-[80%];
 }
-tr .breakpoint-icon.icon-active {
+.breakpoint-icon.icon-active {
   @apply text-red-500;
 }
-tr .pc-icon.icon-active {
+.pc-icon.icon-active {
   @apply text-blue-500;
 }
 
