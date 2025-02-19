@@ -887,7 +887,7 @@ function toInt16(value: number) {
       @dragover.prevent
     >
       <div class="grid grid-cols-[1fr_2fr] grid-rows-1 w-full h-full gap-4 p-4 pt-2">
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1 min-h-0">
           <div class="header-bar">
             <div />
             <h3 class="header-bar-title">
@@ -985,7 +985,7 @@ function toInt16(value: number) {
           </div>
           <div
             v-if="panels.showDebugger"
-            class="flex flex-col flex-1 gap-1"
+            class="flex flex-col flex-1 gap-1 min-h-0"
           >
             <div class="header-bar">
               <div />
@@ -1216,7 +1216,7 @@ function toInt16(value: number) {
                 <div
                   v-for="bp of sim.breakpoints"
                   :key="bp.addr"
-                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b dark:border-surface-800 px-2 even:bg-surface-100 even:dark:bg-surface-900"
+                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b dark:border-surface-800 px-4 even:bg-surface-100 even:dark:bg-surface-900"
                 >
                   <div>
                     <MdiCircleMedium class="breakpoint-icon icon-active" />
