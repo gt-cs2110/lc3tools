@@ -39,7 +39,7 @@ const sim = ref({
     { flash: false, updated: false, name: "pc", value: 0 },
     { flash: false, updated: false, name: "mcr", value: 0 }
   ],
-  breakpoints: [] as number[],
+  breakpoints: [] as { addr: number, enabled: boolean }[],
   running: false,
   timer: {
     enabled: false,
@@ -243,7 +243,11 @@ function loadFile(path: string) {
   updateUI();
 }
 function reloadFile() {
-  loadFile(lastLoadedFile);
+  if (lastLoadedFile == null) {
+    openFile();
+  } else {
+    loadFile(lastLoadedFile);
+  }
   updateUI();
 }
 function toggleSimulator(runKind: "in" | "out" | "over" | "run") {
@@ -479,16 +483,71 @@ function updateTimer() {
     sim.value.timer.remaining = lc3.getTimerRemaining();
   }
 }
+
+/**
+ * Handles internal breakpoint status when using enabled/disabled.
+ * @param addr The address of the breakpoint
+ * @param enabled The enabled status of the breakpoint
+ */
+function setInternalBreakpointStatus(addr: number, enabled: boolean) {
+  if (lc3.isSimRunning()) return;
+
+  if (enabled) {
+    lc3.setBreakpoint(addr);
+  } else {
+    lc3.removeBreakpoint(addr);
+  }
+}
+/**
+ * Adds a breakpoint and sets it to enabled.
+ * @param addr The address of the breakpoint
+ */
+function addBreakpoint(addr: number) {
+  if (lc3.isSimRunning()) return;
+
+  lc3.setBreakpoint(addr);
+  // There are more efficient ways of doing this, 
+  // but I do not wish to reimplement partition_point currently.
+  sim.value.breakpoints.push({addr, enabled: true });
+  sim.value.breakpoints.sort((a, b) => a.addr - b.addr);
+}
+/**
+ * Removes a breakpoint. This is different from disabling a breakpoint 
+ * because it is completely removed from the UI.
+ * @param addr The address of the breakpoint
+ * @param idx Optionally, the index of the breakpoint in the breakpoint list. 
+ *     If not provided, this is computed.
+ */
+function removeBreakpoint(addr: number, idx?: number) {
+  if (lc3.isSimRunning()) return;
+  if (typeof idx === "undefined") {
+    idx = sim.value.breakpoints.findIndex(bp => bp.addr == addr);
+  }
+
+  lc3.removeBreakpoint(addr);
+  sim.value.breakpoints.splice(idx, 1);
+}
+/**
+ * Toggles breakpoint to the next state.
+ * - If breakpoint exists and is enabled, this removes the breakpoint.
+ * - If breakpoint exists and is disabled, this enables the breakpoint.
+ * - If the breakpoint does not exist, this creates the breakpoint and enables it.
+ * @param addr The address of the breakpoint
+ */
 function toggleBreakpoint(addr: number) {
-  const idx = sim.value.breakpoints.indexOf(addr);
+  const idx = sim.value.breakpoints.findIndex(bp => bp.addr == addr);
 
   if (!lc3.isSimRunning()) {
     if (idx == -1) {
-      lc3.setBreakpoint(addr);
-      sim.value.breakpoints.push(addr);
+      addBreakpoint(addr);
     } else {
-      lc3.removeBreakpoint(addr);
-      sim.value.breakpoints.splice(idx, 1);
+      const bp = sim.value.breakpoints[idx];
+      if (!bp.enabled) {
+        bp.enabled = true;
+        setInternalBreakpointStatus(addr, true);
+      } else {
+        removeBreakpoint(addr, idx);
+      }
     }
   }
 }
@@ -517,7 +576,7 @@ function jumpToSource(location: string | number) {
   }
 }
 function isBreakpointAt(addr: number) {
-  return sim.value.breakpoints.includes(addr)
+  return sim.value.breakpoints.some(bp => bp.addr == addr);
 }
 function isPCAt(addr: number) {
   return addr == sim.value.regs[9].value && !sim.value.running;
@@ -706,6 +765,19 @@ function toInt16(value: number) {
       >
         <MdiShuffle />
       </nav-icon>
+      <Divider class="my-0" />
+      <nav-icon
+        label="Console"
+        @click="console.log($event)"
+      >
+        <MdiConsole />
+      </nav-icon>
+      <nav-icon
+        label="Breakpoints"
+        @click="console.log($event)"
+      >
+        <MdiBug />
+      </nav-icon>
     </nav-menu>
     <!-- Toast popup -->
     <Toast position="top-center">
@@ -869,11 +941,11 @@ function toInt16(value: number) {
               </tbody>
             </table>
           </div>
-          <div class="flex flex-col flex-1 min-h-0">
+          <div class="flex flex-col flex-1">
             <div class="header-bar">
               <div />
               <h3 class="header-bar-title">
-                Console (click to focus)
+                Console
               </h3>
               <Button
                 v-tooltip.left="'Clear Console'"
@@ -893,6 +965,98 @@ function toInt16(value: number) {
               show-cursor
               @keydown="handleConsoleInput"
             />
+          </div>
+          <div class="flex flex-col flex-1 min-h-0 gap-1">
+            <div class="header-bar">
+              <div />
+              <h3 class="header-bar-title">
+                Debugger
+              </h3>
+              <div />
+            </div>
+            <div>
+              <!-- TODO: Add functionality -->
+              <div class="flex rounded bg-surface-100 dark:bg-surface-800">
+                <Button
+                  v-tooltip.top="'Step Over'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Step Over"
+                  @click="toggleSimulator('over')"
+                >
+                  <MdiDebugStepOver />
+                </Button>
+                <Button
+                  v-tooltip.top="'Step In'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Step In"
+                  @click="toggleSimulator('in')"
+                >
+                  <MdiDebugStepInto />
+                </Button>
+                <Button
+                  v-tooltip.top="'Step Out'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Step Out"
+                  @click="toggleSimulator('out')"
+                >
+                  <MdiDebugStepOut />
+                </Button>
+                <div class="flex-1" />
+                <Button
+                  v-tooltip.top="'Adjust Stack'"
+                  icon="pi"
+                  variant="text"
+                  severity="info"
+                  rounded
+                  label="Adjust Stack"
+                >
+                  <MdiViewAgenda />
+                </Button>
+              </div>
+            </div>
+            <div class="border shadow dark:border-surface-800 flex-1 auto-rows-fr max-h-full overflow-auto">
+              <div class="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-1">
+                <div
+                  v-for="bp of sim.breakpoints"
+                  :key="bp.addr"
+                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b dark:border-surface-800 px-2 even:bg-surface-100 even:dark:bg-surface-900"
+                >
+                  <div>
+                    <MdiCircleMedium class="breakpoint-icon icon-active" />
+                  </div>
+                  <Checkbox
+                    v-model="bp.enabled"
+                    binary
+                    @change="setInternalBreakpointStatus(bp.addr, bp.enabled)"
+                  />
+                  <div class>
+                    <span class="font-mono">
+                      {{ toHex(bp.addr) }}
+                    </span>
+                    <span v-if="bp.addr in memView.symTable">
+                      {{ ' · ' + memView.symTable[bp.addr] }}
+                    </span>
+                  </div>
+                  <button
+                    @click="removeBreakpoint(bp.addr)"
+                  >
+                    <MdiClose
+                      width="1em"
+                      height="1em"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="flex flex-col gap-1">
@@ -1064,7 +1228,10 @@ function toInt16(value: number) {
                     <button @click="toggleBreakpoint(item.addr)">
                       <MdiAlertOctagon 
                         class="breakpoint-icon"
-                        :class="{ 'icon-active': isBreakpointAt(item.addr) }"
+                        :class="{
+                          'icon-active': isBreakpointAt(item.addr),
+                          '!text-red-500/50': sim.breakpoints.some(bp => bp.addr == item.addr && !bp.enabled)
+                        }"
                       />
                     </button>
                   </div>
@@ -1256,16 +1423,16 @@ tr:not(.row-disabled) .clickable {
   background-color: #008cff4d;
 }
 
-tr .breakpoint-icon, tr .pc-icon {
+.breakpoint-icon, .pc-icon {
   @apply transition;
 }
-tr .breakpoint-icon:not(.icon-active), tr .pc-icon:not(.icon-active) {
+.breakpoint-icon:not(.icon-active), .pc-icon:not(.icon-active) {
   @apply text-surface-400 scale-[80%];
 }
-tr .breakpoint-icon.icon-active {
+.breakpoint-icon.icon-active {
   @apply text-red-500;
 }
-tr .pc-icon.icon-active {
+.pc-icon.icon-active {
   @apply text-blue-500;
 }
 
