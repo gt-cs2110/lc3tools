@@ -78,6 +78,7 @@ const panels = ref({
 });
 const stackDialog = ref({
   show: false,
+  frameReg: 5,
   stackReg: 6,
   pushInput: "",
   offset: 0,
@@ -1071,7 +1072,7 @@ function toInt16(value: number) {
                     </div>
                   </div>
                   <div
-                    v-for="(_, i) in Array.from({ length: 15 })"
+                    v-for="(addr, i) in Array.from({ length: 15 }, (_, i) => sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)"
                     :key="i"
                     class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 dark:border-surface-800"
                     :class="{
@@ -1089,16 +1090,23 @@ function toInt16(value: number) {
                     }"
                   >
                     <div
+                      v-tooltip.top="
+                        addr == sim.regs[stackDialog.stackReg].value ? 
+                          'Stack Pointer' : 
+                          addr == sim.regs[stackDialog.frameReg].value ? 
+                            'Frame Pointer' :
+                            ''
+                      "
                       class="text-right"
-                      :class="{'underline': stackDialog.offset + i == 0 }"
+                      :class="{'underline': [sim.regs[stackDialog.frameReg].value, sim.regs[stackDialog.stackReg].value].includes(addr) }"
                     >
-                      {{ toHex(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i) }}
+                      {{ toHex(addr) }}
                     </div>
                     <div class="text-right">
-                      {{ toHex(lc3.getMemValue(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)) }}
+                      {{ toHex(lc3.getMemValue(addr)) }}
                     </div>
                     <div class="text-right">
-                      {{ toFormattedDec(lc3.getMemValue(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)) }}
+                      {{ toFormattedDec(lc3.getMemValue(addr)) }}
                     </div>
                   </div>
                 </div>
@@ -1132,6 +1140,18 @@ function toInt16(value: number) {
                     </Button>
                   </div>
                   <Divider class="my-1" />
+                  <label class="flex justify-between items-center gap-2">
+                    <span>Frame Pointer:</span>
+                    <div>
+                      R<InputNumber
+                        v-model="stackDialog.frameReg"
+                        :min="0"
+                        :max="7"
+                        input-class="w-12"
+                        size="small"
+                      />
+                    </div>
+                  </label>
                   <label class="flex justify-between items-center gap-2">
                     <span>Stack Pointer:</span>
                     <div>
