@@ -88,6 +88,9 @@ type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
 const rules: Record<string, ValidationRule> = {
+  required(value: string) {
+    return !!value || "Input cannot be empty";
+  },
   hex(value: string) {
     return /^0?[xX][0-9A-Fa-f]+$/.test(value) || "Invalid hex number";
   },
@@ -1143,7 +1146,7 @@ function toInt16(value: number) {
                   </label>
                   <Form
                     v-slot="$form"
-                    :resolver="e => validateEditInput(e, rules.size16bit)"
+                    :resolver="e => validateEditInput(e, rules.required, rules.size16bit)"
                     :validate-on-value-update="false"
                     @submit="(e) => {
                       if (e.valid) {
