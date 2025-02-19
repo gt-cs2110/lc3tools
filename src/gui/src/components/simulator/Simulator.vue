@@ -72,6 +72,18 @@ let lastLoadedFile: string | null = null;
 let pollOutputHandle: ReturnType<typeof setInterval> | null = null;
 let memScrollOffset = 0;
 
+const panels = ref({
+  showConsole: true,
+  showDebugger: true
+});
+const stackDialog = ref({
+  show: false,
+  stackReg: 6,
+  pushInput: "",
+  offset: 0,
+  wheelOffset: 0
+});
+
 type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
@@ -768,13 +780,15 @@ function toInt16(value: number) {
       <Divider class="my-0" />
       <nav-icon
         label="Console"
-        @click="console.log($event)"
+        :toggle="panels.showConsole"
+        @click="panels.showConsole = !panels.showConsole"
       >
         <MdiConsole />
       </nav-icon>
       <nav-icon
-        label="Breakpoints"
-        @click="console.log($event)"
+        label="Debugger"
+        :toggle="panels.showDebugger"
+        @click="panels.showDebugger = !panels.showDebugger"
       >
         <MdiBug />
       </nav-icon>
@@ -941,7 +955,10 @@ function toInt16(value: number) {
               </tbody>
             </table>
           </div>
-          <div class="flex flex-col flex-1">
+          <div
+            v-if="panels.showConsole"
+            class="flex flex-col flex-1"
+          >
             <div class="header-bar">
               <div />
               <h3 class="header-bar-title">
@@ -966,7 +983,10 @@ function toInt16(value: number) {
               @keydown="handleConsoleInput"
             />
           </div>
-          <div class="flex flex-col flex-1 min-h-0 gap-1">
+          <div
+            v-if="panels.showDebugger"
+            class="flex flex-col flex-1 gap-1"
+          >
             <div class="header-bar">
               <div />
               <h3 class="header-bar-title">
@@ -1018,11 +1038,179 @@ function toInt16(value: number) {
                   severity="info"
                   rounded
                   label="Adjust Stack"
+                  :disabled="sim.running"
+                  @click="stackDialog.show = true"
                 >
                   <MdiViewAgenda />
                 </Button>
               </div>
             </div>
+            <Dialog
+              v-model:visible="stackDialog.show"
+              modal
+              header="Adjust Stack"
+              dismissable-mask
+            >
+              <div
+                v-if="stackDialog.show"
+                class="grid grid-cols-[1fr_auto] grid-rows-1 gap-3"
+              >
+                <div class="grid grid-cols-[1fr_1fr_6em] border shadow dark:border-surface-800 gap-x-2">
+                  <div class="grid grid-cols-subgrid col-span-3 border-t last:border-b dark:border-surface-800 px-2 even:bg-surface-100 even:dark:bg-surface-900 bg-surface-400 dark:bg-surface-600 font-bold">
+                    <div class="text-right">
+                      Addr
+                    </div>
+                    <div class="text-right">
+                      Hex
+                    </div>
+                    <div class="text-right">
+                      Dec
+                    </div>
+                  </div>
+                  <div
+                    v-for="(_, i) in Array.from({ length: 15 })"
+                    :key="i"
+                    class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 dark:border-surface-800"
+                    :class="{
+                      'even:bg-surface-100 even:dark:bg-surface-900': stackDialog.offset + i < 0,
+                      'odd:bg-indigo-200 even:bg-indigo-300 odd:dark:bg-indigo-800 even:dark:bg-indigo-900': stackDialog.offset + i >= 0
+                    }"
+                    @wheel.passive="e => {
+                      if (!lc3.isSimRunning()) {
+                        stackDialog.wheelOffset += e.deltaY;
+                        if (Math.abs(stackDialog.wheelOffset) > 20) {
+                          stackDialog.offset += Math.floor(stackDialog.wheelOffset / 20);
+                          stackDialog.wheelOffset = 0;
+                        }
+                      }
+                    }"
+                  >
+                    <div
+                      class="text-right"
+                      :class="{'underline': stackDialog.offset + i == 0 }"
+                    >
+                      {{ toHex(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i) }}
+                    </div>
+                    <div class="text-right">
+                      {{ toHex(lc3.getMemValue(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)) }}
+                    </div>
+                    <div class="text-right">
+                      {{ toFormattedDec(lc3.getMemValue(sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)) }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-center gap-1">
+                    <Button
+                      v-tooltip.bottom="'Up'"
+                      icon="pi"
+                      severity="secondary"
+                      rounded
+                      @click="stackDialog.offset--"
+                    >
+                      <MdiChevronUp />
+                    </Button>
+                    <Button
+                      v-tooltip.bottom="'Home'"
+                      icon="pi"
+                      severity="secondary"
+                      @click="stackDialog.offset = 0"
+                    >
+                      <MdiHome />
+                    </Button>
+                    <Button
+                      v-tooltip.bottom="'Down'"
+                      icon="pi"
+                      severity="secondary"
+                      rounded
+                      @click="stackDialog.offset++"
+                    >
+                      <MdiChevronDown />
+                    </Button>
+                  </div>
+                  <Divider class="my-1" />
+                  <label class="flex justify-between items-center gap-2">
+                    <span>Stack Pointer:</span>
+                    <div>
+                      R<InputNumber
+                        v-model="stackDialog.stackReg"
+                        :min="0"
+                        :max="7"
+                        input-class="w-12"
+                        size="small"
+                      />
+                    </div>
+                  </label>
+                  <Form
+                    v-slot="$form"
+                    :resolver="e => validateEditInput(e, rules.size16bit)"
+                    :validate-on-value-update="false"
+                    @submit="(e) => {
+                      if (e.valid) {
+                        const reg = sim.regs[stackDialog.stackReg];
+                        const value = parseInputString(e.states.input.value);
+                        if (typeof value === 'number') {
+                          lc3.setMemValue(reg.value - 1, value);
+                          setDataValue(reg, reg.value - 1);
+                        }
+                        if (-15 + 1 < stackDialog.offset && stackDialog.offset < 0) {
+                          stackDialog.offset++;
+                        } else {
+                          stackDialog.offset = 0;
+                        }
+                      }
+                    }"
+                  >
+                    <div class="flex items-center">
+                      <InputText
+                        name="input"
+                        placeholder="x2110"
+                        class="w-24"
+                        size="small"
+                        :invalid="$form.input?.invalid"
+                      />
+                      <Button
+                        v-tooltip.bottom="'Push'"
+                        icon="pi"
+                        variant="text"
+                        severity="secondary"
+                        rounded
+                        type="submit"
+                      >
+                        <MdiPlus />
+                      </Button>
+                      <Button
+                        v-tooltip.bottom="'Pop'"
+                        icon="pi"
+                        variant="text"
+                        severity="secondary"
+                        rounded
+                        @click="() => {
+                          const reg = sim.regs[stackDialog.stackReg];
+                          setDataValue(reg, reg.value + 1);
+                          if (-15 + 1 < stackDialog.offset && stackDialog.offset < 0) {
+                            stackDialog.offset--;
+                          } else {
+                            stackDialog.offset = 0;
+                          }
+                        }"
+                      >
+                        <MdiMinus />
+                      </Button>
+                    </div>
+                    <Message
+                      v-if="$form.input?.invalid"
+                      severity="error"
+                      variant="simple"
+                      size="small"
+                      class="w-40"
+                    >
+                      {{ $form.input?.error }}
+                    </Message>
+                  </Form>
+                </div>
+              </div>
+            </Dialog>
             <div class="border shadow dark:border-surface-800 flex-1 auto-rows-fr max-h-full overflow-auto">
               <div class="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-1">
                 <div
@@ -1043,7 +1231,7 @@ function toInt16(value: number) {
                       {{ toHex(bp.addr) }}
                     </span>
                     <span v-if="bp.addr in memView.symTable">
-                      {{ ' · ' + memView.symTable[bp.addr] }}
+                      {{ ' \xB7 ' + memView.symTable[bp.addr] }}
                     </span>
                   </div>
                   <button

@@ -1,7 +1,8 @@
 <script setup lang="ts">
     const props = defineProps<{
         label: string,
-        badge?: boolean
+        badge?: boolean,
+        toggle?: boolean
     }>();
 
     defineEmits(["click"]);
@@ -12,6 +13,7 @@
     v-tooltip.right="props.label"
     :aria-label="props.label"
     class="flex items-center justify-center px-3 py-2 hover:bg-surface-500/25 transition"
+    :class="{'toggled': props.toggle }"
     @click="$emit('click')"
   >
     <OverlayBadge
@@ -26,6 +28,12 @@
 </template>
 
 <style lang="postcss" scoped>
+.toggled {
+  @apply bg-surface-200 dark:bg-surface-700;
+}
+.toggled :deep(svg) {
+    @apply text-sky-600 dark:text-sky-400;
+}
 :deep(svg) {
     @apply text-surface-600 dark:text-surface-400;
 }
