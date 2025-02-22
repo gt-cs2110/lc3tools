@@ -961,7 +961,7 @@ function toInt16(value: number) {
           </div>
           <div
             v-if="panels.showConsole"
-            class="flex flex-col flex-1"
+            class="flex flex-col flex-1 min-h-0"
           >
             <div class="header-bar">
               <div />
