@@ -1566,6 +1566,8 @@ function toInt16(value: number) {
 
 .sim-top:not(.reduce-flashing) .row-disabled {
   @apply text-surface-500 bg-surface-300 dark:bg-surface-700;
+  /* For slow computers, add a delay so we aren't flashing the disabled BG repeatedly */
+  @apply delay-100;
 
 }
 .sim-top.reduce-flashing .row-disabled {

@@ -24,7 +24,7 @@ export const useSettingsStore = defineStore("settings", {
         soft_tab_size: 4,
         numbers: "signed",
         ignore_privilege: false,
-        pause_on_fatal_trap: false,
+        pause_on_fatal_trap: true,
         clear_out_on_reload: true,
         reduce_flashing: false
     } as LC3Settings)
