@@ -11,9 +11,10 @@ This document is a brief discussion of how to build an executable and does not g
 You will need:
 
 - Cargo
-- Node and `npm`
+- Node (22+) and `npm`
 
-No specific version of the above dependencies are required, but as of writing, builds have been made with: Cargo 1.81.0, Node v20.17.0, npm 10.8.2.
+As of writing, builds have been made with: Cargo 1.81.0, Node v22.11.0, npm 10.9.2.
+
 
 ### Steps
 
