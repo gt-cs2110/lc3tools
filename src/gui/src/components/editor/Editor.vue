@@ -343,6 +343,7 @@ export default {
       </nav-icon>
       <nav-icon
         label="Toggle Console"
+        :toggle="showConsole"
         @click="toggleConsole()"
       >
         <MdiConsole />
