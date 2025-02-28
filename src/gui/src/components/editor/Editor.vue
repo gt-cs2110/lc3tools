@@ -52,7 +52,8 @@ watch(aceEditor, (editor) => {
     enableBasicAutocompletion: [
       CreateLc3CompletionProvider(() => autocompleteMode.value)
     ],
-    enableLiveAutocompletion: true
+    enableLiveAutocompletion: true,
+    fixedWidthGutter: true,
   });
   editor.commands.addCommands([
     {
