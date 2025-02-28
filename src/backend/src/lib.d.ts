@@ -148,6 +148,10 @@ declare module "lc3-backend" {
     export function clearOutput(): void;
 
     /**
+     * Gets the list of breakpoints currently registered in the engine.
+     */
+    export function getBreakpoints(): number[];
+    /**
      * Sets a breakpoint at the given memory address.
      * @param addr The memory address to add a breakpoint to.
      * @return whether inserting the breakpoint was successful

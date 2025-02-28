@@ -488,6 +488,11 @@ function updateUI(showUpdates = false, updateReg = true) {
     }
   }
 
+  // Update breakpoints (in case the engine's breakpoints get desynced):
+  sim.value.breakpoints = sim.value.breakpoints.filter(({enabled}) => !enabled)
+    .concat(lc3.getBreakpoints().map(addr => ({ addr, enabled: true })))
+    .sort((a, b) => a.addr - b.addr);
+
   updateConsole();
   updateTimer();
 }

@@ -383,6 +383,20 @@ fn add_input(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
+fn get_breakpoints(mut cx: FunctionContext) -> JsResult<JsArray> {
+    let mut controller = controller();
+    let sim = controller.simulator().or_throw(&mut cx)?;
+    
+    let mut breakpoints: Vec<_> = sim.breakpoints.iter()
+        .filter_map(|bp| match *bp {
+            Breakpoint::PC(pc) => Some(pc),
+            _ => None
+        })
+        .collect();
+    breakpoints.sort();
+
+    breakpoints.try_into_js(&mut cx)
+}
 fn set_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn(addr: u16) -> Result<bool>
     let addr = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
@@ -556,6 +570,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("addInput", add_input)?;
     cx.export_function("getAndClearOutput", get_and_clear_output)?;
     cx.export_function("clearOutput", clear_output)?;
+    cx.export_function("getBreakpoints", get_breakpoints)?;
     cx.export_function("setBreakpoint", set_breakpoint)?;
     cx.export_function("removeBreakpoint", remove_breakpoint)?;
     cx.export_function("didHitBreakpoint", did_hit_breakpoint)?;
