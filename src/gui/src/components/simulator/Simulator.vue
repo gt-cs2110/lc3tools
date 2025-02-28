@@ -48,7 +48,8 @@ const sim = ref({
     priority: 4,
     remaining: 0,
     max: 0,
-  }
+  },
+  frame_no: 0
 })
 const memView = ref({
   start: 0x3000,
@@ -492,7 +493,9 @@ function updateUI(showUpdates = false, updateReg = true) {
   sim.value.breakpoints = sim.value.breakpoints.filter(({enabled}) => !enabled)
     .concat(lc3.getBreakpoints().map(addr => ({ addr, enabled: true })))
     .sort((a, b) => a.addr - b.addr);
-
+  // Update frame number:
+  sim.value.frame_no = lc3.getFrameNumber();
+  // Update these:
   updateConsole();
   updateTimer();
 }
@@ -1039,6 +1042,14 @@ function toInt16(value: number) {
                 >
                   <MdiDebugStepOut />
                 </Button>
+                <div class="flex items-center">
+                  <Badge
+                    v-tooltip.top="'Frame Count'"
+                    :value="sim.frame_no"
+                    :class="{ 'hide-badge': sim.frame_no <= 0 }"
+                    severity="info"
+                  />
+                </div>
                 <div class="flex-1" />
                 <Button
                   v-tooltip.top="'Adjust Stack'"
@@ -1668,13 +1679,19 @@ tr:not(.row-disabled) .pc-icon:hover {
 .popover-menu label {
   @apply flex justify-between items-center gap-2;
 }
-.p-overlaybadge :deep(.p-badge) {
+
+:deep(.p-badge) {
   @apply transition;
+}
+.p-overlaybadge :deep(.p-badge) {
   /* Move badge to the left side (for the timer button specifically) */
   transform: translate(-2em, 0%);
   transform-origin: right;
 }
 .p-overlaybadge.hide-badge :deep(.p-badge) {
+  @apply opacity-0;
+}
+:deep(.p-badge).hide-badge {
   @apply opacity-0;
 }
 </style>

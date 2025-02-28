@@ -428,6 +428,17 @@ fn did_hit_breakpoint(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     
     Ok(cx.boolean(hit))
 }
+
+fn get_frame_number(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    let mut controller = controller();
+    let fno = controller.simulator()
+        .or_throw(&mut cx)?
+        .frame_stack
+        .len();
+
+    fno.try_into_js(&mut cx)
+}
+
 fn is_sim_running(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     // fn() -> bool
     Ok(cx.boolean(controller().is_running()))
@@ -574,6 +585,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("setBreakpoint", set_breakpoint)?;
     cx.export_function("removeBreakpoint", remove_breakpoint)?;
     cx.export_function("didHitBreakpoint", did_hit_breakpoint)?;
+    cx.export_function("getFrameNumber", get_frame_number)?;
     cx.export_function("isSimRunning", is_sim_running)?;
     cx.export_function("getLabelSourceRange", get_label_source_range)?;
     cx.export_function("getAddrSourceRange", get_addr_source_range)?;

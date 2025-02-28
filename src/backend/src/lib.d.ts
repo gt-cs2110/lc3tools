@@ -167,6 +167,11 @@ declare module "lc3-backend" {
      * Checks if a breakpoint was tripped.
      */
     export function didHitBreakpoint(): boolean;
+    
+    /**
+     * Gets the frame number (number of calls deep) from the engine.
+     */
+    export function getFrameNumber(): number;
     /**
      * Checks if the simulator is currently running.
      */
