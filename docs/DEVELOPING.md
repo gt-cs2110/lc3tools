@@ -109,8 +109,8 @@ Note that the workflow will publish to the release which matches the `package.js
 
 1. Create a commit bumping the `package.json` version.
 2. Trigger the workflow by:
+   - **creating a new release with a tag on that commit** (preferred),
    - creating a new tag of the form `vX.X.X`,
-   - creating a new release with a tag on that commit,
    - or by triggering `workflow_dispatch`
 3. If the release is in draft/prerelease mode, then fix the settings! (Also if a new tag is created, be sure to cancel the workflow).
 
