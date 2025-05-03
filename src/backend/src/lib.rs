@@ -342,7 +342,10 @@ fn take_mem_changes(mut cx: FunctionContext) -> JsResult<JsArray> {
     let mut contents = obj_contents();
     
     let simulator = controller.simulator().or_throw(&mut cx)?;
-    let changes: Vec<_> = simulator.observer.take_mem_changes().collect();
+    let changes: Vec<_> = simulator.observer
+        .take_mem_accesses()
+        .filter_map(|(addr, access)| access.modified().then_some(addr))
+        .collect();
     // Update mem lines:
     for &addr in &changes {
         let value = controller.read_mem(addr).or_throw(&mut cx)?;
