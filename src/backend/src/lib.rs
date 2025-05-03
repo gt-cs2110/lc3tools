@@ -113,7 +113,7 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
     
     std::fs::write(&out_path, TextFormat::serialize(&obj))
-        .map_err(|e| io_reporter(&e, &in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| io_reporter(&e, &out_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
 
     writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
