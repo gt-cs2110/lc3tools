@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ariadne = "0.5.0"
-lc3-ensemble = "0.9.2"
+lc3-ensemble = "0.10.0"
+miette = { version = "7.6.0", features = ["fancy"] }
 neon = "1"
+owo-colors = "4.2.0"

@@ -20,7 +20,7 @@ use lc3_ensemble::sim::device::ExternalDevice;
 use lc3_ensemble::sim::mem::MachineInitStrategy;
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
-use err::{error_reporter, io_reporter, simple_reporter};
+use err::Reporter;
 use obj::ObjContents;
 use sim::SimController;
 
@@ -108,12 +108,12 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(&in_path).or_throw(&mut cx)?;
 
     let ast = parse_ast(&src)
-        .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| Reporter::ensemble(&e, &in_path, &src).report_and_throw(&mut controller().output_buf(), &mut cx))?;
     let obj = assemble_debug(ast, &src)
-        .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| Reporter::ensemble(&e, &in_path, &src).report_and_throw(&mut controller().output_buf(), &mut cx))?;
     
     std::fs::write(&out_path, TextFormat::serialize(&obj))
-        .map_err(|e| io_reporter(&e, &out_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| Reporter::io(&e, &out_path).report_and_throw(&mut controller().output_buf(), &mut cx))?;
 
     writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
     Ok(cx.undefined())
@@ -139,7 +139,7 @@ fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
         // Link to current result obj:
         result_obj = ObjectFile::link(result_obj, obj)
-            .map_err(|e| simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+            .map_err(|e| Reporter::simple(&e).report_and_throw(&mut controller().output_buf(), &mut cx))?;
     }
     std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
 
@@ -168,12 +168,15 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let bytes = std::fs::read(&in_path).or_throw(&mut cx)?;
     
     let Some(obj) = deserialize_obj_file(bytes) else {
-        return Err(io_reporter("malformed object file", &in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
+        return Err(
+            Reporter::io("malformed object file", &in_path)
+                .report_and_throw(&mut controller().output_buf(), &mut cx)
+        );
     };
     
     match load_obj_file(obj) {
         Ok(_) => Ok(cx.undefined()),
-        Err(e) => Err(simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx)),
+        Err(e) => Err(Reporter::simple(&e).report_and_throw(&mut controller().output_buf(), &mut cx)),
     }
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -200,8 +203,8 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
                 .or_throw(&mut cx)?
                 .prefetch_pc();
             
-            simple_reporter(&format!("{e} (PC: x{pc:04X})"))
-                .report(&mut *controller().output_buf());
+            Reporter::simple(&format!("{e} (PC: x{pc:04X})"))
+                .report(&mut controller().output_buf());
         }
 
         cb.into_inner(&mut cx)
