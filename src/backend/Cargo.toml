@@ -2,9 +2,9 @@
 name = "lc3-backend"
 version = "0.1.0"
 license = "MIT"
-edition = "2021"
+edition = "2024"
 exclude = ["index.node"]
-rust-version = "1.80"
+rust-version = "1.85"
 
 [lib]
 crate-type = ["cdylib"]
