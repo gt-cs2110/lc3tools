@@ -134,8 +134,10 @@ fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         // Parse object file:
         let src = std::fs::read_to_string(fp).or_throw(&mut cx)?;
         let obj = deserialize_obj_file(src.into_bytes())
-            .ok_or(())
-            .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {}", fp.display())))?;
+            .ok_or_else(|| {
+                Reporter::io("cannot deserialize object file", fp)
+                    .report_and_throw(&mut controller().output_buf(), &mut cx)
+            })?;
 
         // Link to current result obj:
         result_obj = ObjectFile::link(result_obj, obj)
