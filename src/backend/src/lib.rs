@@ -6,7 +6,7 @@ mod obj;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::{Range, RangeBounds};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
@@ -22,6 +22,7 @@ use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
 use err::Reporter;
 use obj::ObjContents;
+use owo_colors::OwoColorize;
 use sim::SimController;
 
 static CONTROLLER: LazyLock<Mutex<SimController>> = LazyLock::new(Mutex::default);
@@ -33,12 +34,28 @@ fn obj_contents() -> MutexGuard<'static, ObjContents> {
 fn controller() -> MutexGuard<'static, SimController> {
     CONTROLLER.lock().unwrap_or_else(|e| e.into_inner())
 }
-
 pub fn deserialize_obj_file(bytes: Vec<u8>) -> Option<ObjectFile> {
     match String::from_utf8(bytes) {
         Ok(s) => TextFormat::deserialize(&s),
         Err(e) => BinaryFormat::deserialize(e.as_bytes()),
     }
+}
+
+/// Get the common ancestor of all listed paths.
+fn common_ancestor<'p>(p: impl IntoIterator<Item=&'p Path>) -> &'p Path {
+    fn common_ancestor2<'p>(p1: &'p Path, p2: &'p Path) -> &'p Path {
+        p1.ancestors()
+            .find(|ancestor| p2.starts_with(ancestor))
+            .unwrap_or_else(|| Path::new(""))
+    }
+
+    p.into_iter()
+        .reduce(common_ancestor2)
+        .unwrap_or_else(|| Path::new(""))
+}
+/// Get a path display, assuming `p` is relative to `ancestor`.
+fn display_path<'p>(p: &'p Path, ancestor: &'p Path) -> impl std::fmt::Display + 'p {
+    p.strip_prefix(ancestor).unwrap_or(p).display()
 }
 
 fn reset_machine(zeroed: bool) {
@@ -115,7 +132,11 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     std::fs::write(&out_path, TextFormat::serialize(&obj))
         .map_err(|e| Reporter::io(&e, &out_path).report_and_throw(&mut controller().output_buf(), &mut cx))?;
 
-    writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    let ancestor = common_ancestor([&*in_path, &*out_path]);
+    let rel_in = display_path(&in_path, ancestor);
+    let rel_out = display_path(&out_path, ancestor);
+    writeln!(controller().output_buf(), "successfully assembled {} into {}", rel_in.underline(), rel_out.underline())
+        .unwrap();
     Ok(cx.undefined())
 }
 
@@ -145,7 +166,15 @@ fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     }
     std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
 
-    writeln!(controller().output_buf(), "successfully linked object files {file_paths:?} to {}", out.display()).unwrap();
+    let ancestor = common_ancestor(file_paths.iter().chain([&out]).map(|p| &**p));
+    let in_fs = file_paths.iter()
+        .map(|p| display_path(p, ancestor).underline().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let out_f = display_path(&out, ancestor);
+
+    writeln!(controller().output_buf(), "successfully linked object files [{}] to {}", in_fs.underline(), out_f.underline()).unwrap();
+
     Ok(cx.undefined())
 }
 //--------- SIMULATOR FUNCTIONS ---------//

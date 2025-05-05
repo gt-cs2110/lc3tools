@@ -357,7 +357,10 @@ export default {
     </nav-menu>
     <main class="contents">
       <div class="flex flex-col flex-grow gap-3 p-4">
-        <h3 class="font-bold text-lg text-center">
+        <h3
+          class="font-bold text-lg text-center"
+          :title="activeFileStore.path"
+        >
           {{ filename }}
         </h3>
         <v-ace-editor
