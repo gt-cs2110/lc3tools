@@ -4,8 +4,10 @@
   </div>
 </template>
 
-<style scoped lang="postcss">
+<style scoped>
+@reference "@/style.css";
+
 .nav-menu {
-  @apply bg-surface-50 dark:bg-surface-800 border-r dark:border-surface-700;
+  @apply bg-surface-50 dark:bg-surface-800 border-r border-surface;
 }
 </style>

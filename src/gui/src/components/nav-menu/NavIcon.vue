@@ -27,7 +27,9 @@
   </button>
 </template>
 
-<style lang="postcss" scoped>
+<style scoped>
+@reference "@/style.css";
+
 .toggled {
   @apply bg-surface-200 dark:bg-surface-700;
 }
@@ -40,7 +42,7 @@
 .p-overlaybadge :deep(.p-badge) {
   @apply transition;
 }
-.p-overlaybadge.hide-badge :deep(.p-badge) {
-  @apply opacity-0;
+.p-overlaybadge.hide-badge :deep(.p-badge), :deep(.p-badge).hide-badge {
+  opacity: 0;
 }
 </style>

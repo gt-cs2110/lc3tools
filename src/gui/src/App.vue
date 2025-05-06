@@ -263,7 +263,9 @@ html {
 }
 </style>
 
-<style scoped lang="postcss">
+<style scoped>
+@reference "@/style.css";
+
 .popover-menu > div {
   @apply flex flex-col gap-3;
 }

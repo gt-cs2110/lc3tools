@@ -34,7 +34,7 @@ import router from "./router/index";
 import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
 import Aura from '@primevue/themes/aura';
-import "./style.pcss";
+import "./style.css";
 
 // Pinia
 import { createPinia } from 'pinia';
@@ -87,7 +87,7 @@ createApp(App)
                 darkModeSelector: ".dark",
                 cssLayer: {
                     name: 'primevue',
-                    order: 'tailwind-base, primevue, tailwind-utilities'
+                    order: 'theme, base, primevue'
                 }
             },
         }

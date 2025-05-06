@@ -1,10 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron';
-// electron-store is ESM only, 
-// but i cba to try to convert this module from CJS to ESM,
-// so anything involving this module is going to be hacky
-//
-// also because this module is CJS, top-level await doesn't work
-const electronStore = import('electron-store');
+import Store from 'electron-store';
 import fs from 'fs';
 import path from 'path';
 import { API, Handler, SyncHandler } from './api';
@@ -156,35 +151,25 @@ ipcMain.handle("show_modal", (e, kind, config) => {
 });
 
 // config storage
-// refer to import for hacky BS
-// also, because of the ESM thing, 
-// this module also doesn't have typing on CJS... whatever
-electronStore.then((module) => {
-  const Store = module.default;
-  const store = new Store();
+const store = new Store();
 
-  ipcMain.on("config_get", ((e, key: string) => {
-    /* @ts-expect-error Types broken due to CJS */
-    e.returnValue = store.get(key);
-  }) satisfies SyncHandler<API["storage"]["get"]>);
+ipcMain.on("config_get", ((e, key: string) => {
+  e.returnValue = store.get(key);
+}) satisfies SyncHandler<API["storage"]["get"]>);
 
-  ipcMain.on("config_set", ((e, key: string, val: any) => {
-    /* @ts-expect-error Types broken due to CJS */
-    store.set(key, val);
-    e.returnValue = undefined;
-  }) satisfies SyncHandler<API["storage"]["set"]>);
+ipcMain.on("config_set", ((e, key: string, val: any) => {
+  store.set(key, val);
+  e.returnValue = undefined;
+}) satisfies SyncHandler<API["storage"]["set"]>);
 
-  ipcMain.on("config_get_all", (e => {
-    /* @ts-expect-error Types broken due to CJS */
-    e.returnValue = store.store;
-  }) satisfies SyncHandler<API["storage"]["getAll"]>);
+ipcMain.on("config_get_all", (e => {
+  e.returnValue = store.store;
+}) satisfies SyncHandler<API["storage"]["getAll"]>);
 
-  ipcMain.on("config_set_all", ((e, data: object) => {
-    /* @ts-expect-error Types broken due to CJS */
-    store.set(data);
-    e.returnValue = undefined;
-  }) satisfies SyncHandler<API["storage"]["setAll"]>);
-});
+ipcMain.on("config_set_all", ((e, data: object) => {
+  store.set(data);
+  e.returnValue = undefined;
+}) satisfies SyncHandler<API["storage"]["setAll"]>);
 
 // fs
 ipcMain.handle("fs_read", ((e, fp: string) => {

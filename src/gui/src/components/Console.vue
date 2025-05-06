@@ -83,18 +83,20 @@ watch(consoleHtml, async () => {
 });
 </script>
 
-<style scoped lang="postcss">
+<style scoped>
+@reference "@/style.css";
+
 .console {
   @apply grow overflow-y-auto;
   @apply font-mono p-2 dark:bg-surface-800;
-  @apply border shadow dark:border-surface-800;
+  @apply border shadow border-surface;
   white-space: pre-wrap;
   user-select: text;
   overflow-wrap: anywhere;
 }
 
 .console.show-focus:focus {
-  @apply ring-2;
+  @apply ring-2 ring-blue-500/50;
 }
 
 .console.show-cursor::after {

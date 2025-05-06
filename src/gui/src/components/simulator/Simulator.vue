@@ -1075,8 +1075,8 @@ function toInt16(value: number) {
                 v-if="stackDialog.show"
                 class="grid grid-cols-[1fr_auto] grid-rows-1 gap-3"
               >
-                <div class="grid grid-cols-[1fr_1fr_6em] border shadow dark:border-surface-800 gap-x-2">
-                  <div class="grid grid-cols-subgrid col-span-3 border-t last:border-b dark:border-surface-800 px-2 even:bg-surface-100 even:dark:bg-surface-900 bg-surface-400 dark:bg-surface-600 font-bold">
+                <div class="grid grid-cols-[1fr_1fr_6em] border shadow border-surface gap-x-2">
+                  <div class="grid grid-cols-subgrid col-span-3 border-t last:border-b border-surface px-2 even:bg-surface-100 even:dark:bg-surface-900 bg-surface-400 dark:bg-surface-600 font-bold">
                     <div class="text-right">
                       Addr
                     </div>
@@ -1090,7 +1090,7 @@ function toInt16(value: number) {
                   <div
                     v-for="(addr, i) in Array.from({ length: 15 }, (_, i) => sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)"
                     :key="i"
-                    class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 dark:border-surface-800"
+                    class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 border-surface"
                     :class="{
                       'even:bg-surface-100 even:dark:bg-surface-900': stackDialog.offset + i < 0,
                       'odd:bg-indigo-200 even:bg-indigo-300 odd:dark:bg-indigo-800 even:dark:bg-indigo-900': stackDialog.offset + i >= 0
@@ -1250,12 +1250,12 @@ function toInt16(value: number) {
                 </div>
               </div>
             </Dialog>
-            <div class="border shadow dark:border-surface-800 flex-1 auto-rows-fr max-h-full overflow-auto">
+            <div class="border shadow border-surface flex-1 auto-rows-fr max-h-full overflow-auto">
               <div class="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-1">
                 <div
                   v-for="bp of sim.breakpoints"
                   :key="bp.addr"
-                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b dark:border-surface-800 px-4 even:bg-surface-100 even:dark:bg-surface-900"
+                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b border-surface px-4 even:bg-surface-100 even:dark:bg-surface-900"
                 >
                   <div>
                     <MdiCircleMedium class="breakpoint-icon icon-active" />
@@ -1457,7 +1457,7 @@ function toInt16(value: number) {
                         class="breakpoint-icon"
                         :class="{
                           'icon-active': isBreakpointAt(item.addr),
-                          '!text-red-500/50': sim.breakpoints.some(bp => bp.addr == item.addr && !bp.enabled)
+                          'text-red-500/50!': sim.breakpoints.some(bp => bp.addr == item.addr && !bp.enabled)
                         }"
                       />
                     </button>
@@ -1575,7 +1575,9 @@ function toInt16(value: number) {
 </template>
   
 
-<style scoped lang="postcss">
+<style scoped>
+@reference "@/style.css";
+
 .sim-data-table tbody tr {
   @apply transition duration-300 ease-in-out;
 }
@@ -1591,7 +1593,7 @@ function toInt16(value: number) {
 }
 
 .sim-data-table {
-  @apply border shadow dark:border-surface-800 table-fixed w-full;
+  @apply border shadow border-surface table-fixed w-full;
 }
 .sim-data-table th, .sim-data-table td {
   /* Add padding to all cells */
@@ -1602,7 +1604,7 @@ function toInt16(value: number) {
   @apply bg-surface-400 dark:bg-surface-600;
 }
 .sim-data-table tr {
-  @apply border-b border-surface-200 dark:border-surface-800;
+  @apply border-b border-surface;
 }
 .sim-data-table tbody tr:hover {
   @apply bg-surface-500/25;
@@ -1688,10 +1690,7 @@ tr:not(.row-disabled) .pc-icon:hover {
   transform: translate(-2em, 0%);
   transform-origin: right;
 }
-.p-overlaybadge.hide-badge :deep(.p-badge) {
-  @apply opacity-0;
-}
-:deep(.p-badge).hide-badge {
-  @apply opacity-0;
+.p-overlaybadge.hide-badge :deep(.p-badge), :deep(.p-badge).hide-badge {
+  opacity: 0;
 }
 </style>
