@@ -31,7 +31,7 @@ import App from './App.vue';
 import router from "./router/index";
 
 // Theming
-import PrimeVue from 'primevue/config';
+import PrimeVue, { PrimeVueConfiguration } from 'primevue/config';
 import ToastService from 'primevue/toastservice';
 import Aura from '@primevue/themes/aura';
 import "./style.css";
@@ -62,6 +62,10 @@ createApp(App)
                                 800: '{zinc.800}',
                                 900: '{zinc.900}',
                                 950: '{zinc.950}'
+                            },
+                            content: {
+                                hoverBackground: '{surface.300}',
+                                borderColor: '{surface.200}'
                             }
                         },
                         dark: {
@@ -78,6 +82,10 @@ createApp(App)
                                 800: '{zinc.800}',
                                 900: '{zinc.900}',
                                 950: '{zinc.950}'
+                            },
+                            content: {
+                                hoverBackground: '{surface.700}',
+                                borderColor: '{surface.800}'
                             }
                         }
                     }
@@ -90,8 +98,22 @@ createApp(App)
                     order: 'theme, base, primevue'
                 }
             },
+        },
+        pt: {
+            global: {
+                css: `
+                    /* Hide badges if the "hide-badge" class is added to a badge or an overlay badge */
+                    .p-overlaybadge.hide-badge .p-badge, .p-badge.hide-badge {
+                        opacity: 0;
+                    }
+                `,
+            },
+            // Make badges opacity transition
+            badge: {
+                root: 'transition-opacity',
+            }
         }
-    })
+    } satisfies PrimeVueConfiguration)
     .use(ToastService)
     .use(pinia)
     .mount('#app');

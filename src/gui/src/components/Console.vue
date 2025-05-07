@@ -88,8 +88,8 @@ watch(consoleHtml, async () => {
 
 .console {
   @apply grow overflow-y-auto;
-  @apply font-mono p-2 dark:bg-surface-800;
-  @apply border shadow border-surface;
+  @apply font-mono p-2 bg-surface-elevated-0;
+  @apply shadow border border-surface rounded;
   white-space: pre-wrap;
   user-select: text;
   overflow-wrap: anywhere;

@@ -367,7 +367,7 @@ export default {
         <v-ace-editor
           ref="aceEditorRef"
           v-model:value="editor.current_content"
-          class="border shadow border-surface overflow-hidden h-full"
+          class="shadow border border-surface overflow-hidden h-full rounded"
           lang="lc3"
           :theme="editorTheme"
           @drop.prevent="dropFile"

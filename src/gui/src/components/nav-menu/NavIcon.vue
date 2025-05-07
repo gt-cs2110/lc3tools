@@ -12,7 +12,7 @@
   <button
     v-tooltip.right="props.label"
     :aria-label="props.label"
-    class="flex items-center justify-center px-3 py-2 hover:bg-surface-500/25 transition"
+    class="flex items-center justify-center px-3 py-2"
     :class="{'toggled': props.toggle }"
     @click="$emit('click')"
   >
@@ -30,19 +30,16 @@
 <style scoped>
 @reference "@/style.css";
 
-.toggled {
-  @apply bg-surface-200 dark:bg-surface-700;
-}
-.toggled :deep(svg) {
-    @apply text-sky-600 dark:text-sky-400;
+button:hover {
+  @apply bg-emphasis;
 }
 :deep(svg) {
-    @apply text-surface-600 dark:text-surface-400;
+  @apply text-muted-color;
 }
-.p-overlaybadge :deep(.p-badge) {
-  @apply transition;
+button.toggled {
+  @apply bg-highlight hover:bg-highlight-emphasis;
 }
-.p-overlaybadge.hide-badge :deep(.p-badge), :deep(.p-badge).hide-badge {
-  opacity: 0;
+button.toggled :deep(svg) {
+  @apply text-primary;
 }
 </style>
