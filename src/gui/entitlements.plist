@@ -4,23 +4,11 @@
 <dict>
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
-	<key>com.apple.security.cs.disable-library-validation</key>
+    <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
-	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-	<true/>
-	<key>com.apple.security.cs.allow-jit</key>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
-    <key>com.apple.security.device.bluetooth</key>
-    <true/>
-    <key>com.apple.security.device.camera</key>
-    <true/>
-    <key>com.apple.security.device.print</key>
-    <true/>
-    <key>com.apple.security.device.usb</key>
-    <true/>
-    <key>com.apple.security.personal-information.location</key>
+    <key>com.apple.security.cs.allow-jit</key>
     <true/>
 </dict>
 </plist>

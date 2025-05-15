@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+@import 'tailwindcss-primeui';
+
+@custom-variant dark (&:where(.dark, .dark *));
+@theme {
+    --font-mono: Consolas, Menlo, Courier, monospace;
+}
+
+/* Background for surface item which is "one level above" the plain background (e.g., console panel) */
+@utility bg-surface-elevated-0 {
+    background-color: var(--p-surface-50);
+    @variant dark {
+        background-color: var(--p-surface-900);
+    }
+}
+/* Background for surface item which is "two levels above" the plain background (e.g., tables in panel, navbar) */
+@utility bg-surface-elevated-1 {
+    background-color: var(--p-surface-100);
+    @variant dark {
+        background-color: var(--p-surface-800);
+    }
+}
+
+/* Used for the alternating colors in stack view */
+@utility bg-stack-lo {
+    background-color: var(--p-indigo-100);
+    @variant dark {
+        background-color: var(--p-indigo-900);
+    }
+}
+@utility bg-stack-hi {
+    background-color: var(--p-indigo-200);
+    @variant dark {
+        background-color: var(--p-indigo-800);
+    }
+}
+/* Used for table headers (e.g., simulator table) */
+@utility bg-table-header {
+    background-color: var(--p-surface-700);
+    @variant dark {
+        background-color: var(--p-surface-800);
+    }
+
+    color: var(--p-surface-50);
+    border-bottom: 1px solid var(--p-surface-950);
+}
+
+/* Not sure why this doesn't exist anymore */
+button {
+    cursor: pointer;
+}
+

@@ -120,6 +120,7 @@ watch(memViewWrapper, el => {
 
 onMounted(() => {
   refreshMemoryPanel();
+  jumpToPC(true);
   window.addEventListener("resize", refreshMemoryPanel);
 })
 onUnmounted(() => {
@@ -179,29 +180,48 @@ function validateEditInput(e: FormResolverOptions, ...rules: ValidationRule[]) {
   return validateInput("input", e.values.input, rules);
 }
 function refreshMemoryPanel() {
-  memView.value.data = Array.from(
-    { length: Math.floor((window.innerHeight) / 27) - 8},
-    () => ({
-      addr: 0,
-      value: 0,
-      line: "",
-      label: "",
-      flash: false,
-      updated: false
-    })
-  );
+  const oldLen = memView.value.data.length;
+  const newLen = Math.max(0, Math.floor(memViewWrapper.value.parentElement.offsetHeight / 25));
 
-  updateUI();
-  jumpToPC(true);
-}
-function handleMemoryScroll(e: WheelEvent) {
-  if (!lc3.isSimRunning()) {
-    memScrollOffset += e.deltaY;
-    if (Math.abs(memScrollOffset) > 20) {
-      jumpToPartMemView(Math.floor(memScrollOffset / 20));
-      memScrollOffset = 0;
+  if (newLen < oldLen) {
+    // Truncate if new size is smaller:
+    memView.value.data.length = newLen;
+  } else {
+    // Add elements if new size is larger:
+    for (let i = oldLen; i < newLen; i++) {
+      memView.value.data.push({
+        addr: 0,
+        value: 0,
+        line: "",
+        label: "",
+        flash: false,
+        updated: false
+      });
     }
   }
+
+  updateUI();
+}
+
+let scrollInterval: any = undefined;
+const scrolling = ref(false);
+function handleMemoryScroll(e: WheelEvent) {
+  if (!lc3.isSimRunning()) {
+    scrolling.value = true; // track scrolling
+
+    memScrollOffset += e.deltaY;
+    if (Math.abs(memScrollOffset) > 20) {
+      jumpToPartMemView(Math.trunc(memScrollOffset / 20));
+      memScrollOffset = 0;
+    }
+
+    // untrack scrolling event
+    clearInterval(scrollInterval);
+    scrollInterval = setInterval(() => {
+      scrolling.value = false;
+    }, 50);
+  }
+
 }
 
 async function dropFile(e: DragEvent) {
@@ -392,14 +412,18 @@ async function openRegContextMenu(item: RegDataRow) {
 async function openMemContextMenu(item: MemDataRow) {
   if (lc3.isSimRunning()) return;
 
-  const options = ["Jump to Address"];
+  const options = [];
+  if ((item.value & 0xF800) == 0x4800 /* is JSR */) {
+    options.push("Jump to Subroutine");
+  }
+  options.push("Jump to Address");
 
   const hasLabel = !!item.label;
   const hasInstr = typeof lc3.getAddrSourceRange(item.addr) !== "undefined";
   if (hasLabel && hasInstr) {
-    options.push("Jump to Source (Label)", "Jump to Source (Instruction)");
+    options.push("View Source (Label)", "View Source (Instruction)");
   } else if (hasLabel || hasInstr) {
-    options.push("Jump to Source");
+    options.push("View Source");
   }
 
   options.push("Copy Hex", "Copy Decimal");
@@ -408,7 +432,13 @@ async function openMemContextMenu(item: MemDataRow) {
     case "Jump to Address":
       jumpToMemView(item.value);
       break;
-    
+    case "Jump to Subroutine": {
+      // v get PC + sext(PCOffset11)
+      const addr = item.addr + 1 + ((item.value << (32 - 11)) >> (32 - 11));
+      jumpToMemView(addr);
+      break;
+    }
+
     case "Jump to Source":
       jumpToSource(item.label || item.addr);
       break;
@@ -906,7 +936,7 @@ function toInt16(value: number) {
               Registers
             </h3>
           </div>
-          <div>
+          <div class="rounded">
             <table class="sim-data-table">
               <colgroup>
                 <col style="width: 20%">
@@ -934,6 +964,7 @@ function toInt16(value: number) {
                 <tr
                   v-for="item of sim.regs"
                   :key="item.name"
+                  class="even:bg-surface-elevated-0"
                   :class="{
                     'row-update-flash': item.flash,
                     'row-updated': item.updated,
@@ -1008,7 +1039,7 @@ function toInt16(value: number) {
             </div>
             <div>
               <!-- TODO: Add functionality -->
-              <div class="flex rounded bg-surface-100 dark:bg-surface-800">
+              <div class="flex rounded bg-surface-elevated-1 border border-surface">
                 <Button
                   v-tooltip.top="'Step Over'"
                   icon="pi"
@@ -1042,15 +1073,15 @@ function toInt16(value: number) {
                 >
                   <MdiDebugStepOut />
                 </Button>
+                <div class="flex-1" />
                 <div class="flex items-center">
                   <Badge
-                    v-tooltip.top="'Frame Count'"
+                    v-tooltip.top="sim.frame_no > 0 ? 'Frame Count' : ''"
                     :value="sim.frame_no"
                     :class="{ 'hide-badge': sim.frame_no <= 0 }"
                     severity="info"
                   />
                 </div>
-                <div class="flex-1" />
                 <Button
                   v-tooltip.top="'Adjust Stack'"
                   icon="pi"
@@ -1075,8 +1106,8 @@ function toInt16(value: number) {
                 v-if="stackDialog.show"
                 class="grid grid-cols-[1fr_auto] grid-rows-1 gap-3"
               >
-                <div class="grid grid-cols-[1fr_1fr_6em] border shadow dark:border-surface-800 gap-x-2">
-                  <div class="grid grid-cols-subgrid col-span-3 border-t last:border-b dark:border-surface-800 px-2 even:bg-surface-100 even:dark:bg-surface-900 bg-surface-400 dark:bg-surface-600 font-bold">
+                <div class="grid grid-cols-[1fr_1fr_6em] shadow border border-surface gap-x-2">
+                  <div class="grid grid-cols-subgrid col-span-3 border-t last:border-b border-surface px-2 bg-table-header font-bold">
                     <div class="text-right">
                       Addr
                     </div>
@@ -1090,16 +1121,18 @@ function toInt16(value: number) {
                   <div
                     v-for="(addr, i) in Array.from({ length: 15 }, (_, i) => sim.regs[stackDialog.stackReg].value + stackDialog.offset + i)"
                     :key="i"
-                    class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 dark:border-surface-800"
+                    class="grid grid-cols-subgrid col-span-3 border-t last:border-b font-mono px-2 border-surface"
                     :class="{
-                      'even:bg-surface-100 even:dark:bg-surface-900': stackDialog.offset + i < 0,
-                      'odd:bg-indigo-200 even:bg-indigo-300 odd:dark:bg-indigo-800 even:dark:bg-indigo-900': stackDialog.offset + i >= 0
+                      // Note that this doesn't update based on address when the grid moves.
+                      // This has been intentionally omitted because it is hard to read.
+                      'even:bg-surface-elevated-1': stackDialog.offset + i < 0,
+                      'odd:bg-stack-lo even:bg-stack-hi': stackDialog.offset + i >= 0,
                     }"
                     @wheel.passive="e => {
                       if (!lc3.isSimRunning()) {
                         stackDialog.wheelOffset += e.deltaY;
                         if (Math.abs(stackDialog.wheelOffset) > 20) {
-                          stackDialog.offset += Math.floor(stackDialog.wheelOffset / 20);
+                          stackDialog.offset += Math.trunc(stackDialog.wheelOffset / 20);
                           stackDialog.wheelOffset = 0;
                         }
                       }
@@ -1250,12 +1283,12 @@ function toInt16(value: number) {
                 </div>
               </div>
             </Dialog>
-            <div class="border shadow dark:border-surface-800 flex-1 auto-rows-fr max-h-full overflow-auto">
+            <div class="shadow border border-surface flex-1 auto-rows-fr max-h-full overflow-auto rounded bg-surface-elevated-0">
               <div class="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-1">
                 <div
                   v-for="bp of sim.breakpoints"
                   :key="bp.addr"
-                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b dark:border-surface-800 px-4 even:bg-surface-100 even:dark:bg-surface-900"
+                  class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b border-surface px-4 even:bg-surface-elevated-1"
                 >
                   <div>
                     <MdiCircleMedium class="breakpoint-icon icon-active" />
@@ -1293,9 +1326,20 @@ function toInt16(value: number) {
               Memory
             </h3>
             <OverlayBadge
-              severity="secondary"
+              severity="primary"
               :value="sim.timer.remaining"
               :class="{ 'hide-badge': !timerRemBadgeShow }"
+              :pt="{
+                // Offset badge to the left (for timer button)
+                pcBadge: {
+                  root: {
+                    style: {
+                      transform: 'translate(-2em, 0%)',
+                      'transform-origin': 'right',
+                    }
+                  }
+                }
+              }"
             >
               <Button
                 v-tooltip.left="'Configure Timer Interrupt'"
@@ -1400,116 +1444,121 @@ function toInt16(value: number) {
               </div>
             </Popover>
           </div>
-          <table
-            ref="memViewWrapper"
-            class="sim-data-table" 
-          >
-            <colgroup>
-              <col style="width: 2em">
-              <col style="width: 2em">
-              <col style="width: 10%">
-              <col style="width: 10%">
-              <col style="width: 10%">
-              <col style="width: 15%">
-              <col style="width: 45%">
-            </colgroup>
-            <thead>
-              <tr>
-                <th class="data-cell-btn">
-                  BP
-                </th>
-                <th class="data-cell-btn">
-                  PC
-                </th>
-                <th class="data-cell-num">
-                  Address
-                </th>
-                <th class="data-cell-num">
-                  Hex
-                </th>
-                <th class="data-cell-num">
-                  Decimal
-                </th>
-                <th class="data-cell-text">
-                  Label
-                </th>
-                <th class="data-cell-text">
-                  Instructions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(item, index) of memView.data"
-                :key="index"
-                :class="{
-                  'row-update-flash': item.flash,
-                  'row-updated': item.updated,
-                  'row-disabled': sim.running,
-                  'row-curr-pc': isPCAt(item.addr)
-                }"
-                @contextmenu="openMemContextMenu(item)"
-              >
-                <td class="data-cell-btn">
-                  <div class="flex items-center">
-                    <button @click="toggleBreakpoint(item.addr)">
-                      <MdiAlertOctagon 
-                        class="breakpoint-icon"
-                        :class="{
-                          'icon-active': isBreakpointAt(item.addr),
-                          '!text-red-500/50': sim.breakpoints.some(bp => bp.addr == item.addr && !bp.enabled)
-                        }"
-                      />
-                    </button>
-                  </div>
-                </td>
-                <td class="data-cell-btn">
-                  <div class="flex items-center">
-                    <button @click="setPC(item.addr)">
-                      <MdiPlay
-                        class="pc-icon"
-                        :class="{ 'icon-active': isPCAt(item.addr) }"
-                      />
-                    </button>
-                  </div>
-                </td>
-                <td class="data-cell-num">
-                  <strong>{{ toHex(item.addr) }}</strong>
-                </td>
-                <td
-                  class="data-cell-num clickable"
-                  @click="e => showEditPopover('hex', e, item)"
-                >
-                  <span>{{ toHex(item.value) }}</span>
-                </td>
-                <td
-                  class="data-cell-num clickable"
-                  @click="e => showEditPopover('dec', e, item)"
-                >
-                  <span>{{ toFormattedDec(item.value) }}</span>
-                </td>
-                <td
-                  class="data-cell-text"
+          <div class="flex grow min-h-0">
+            <table
+              ref="memViewWrapper"
+              class="sim-data-table" 
+            >
+              <colgroup>
+                <col style="width: 2em">
+                <col style="width: 2em">
+                <col style="width: 10%">
+                <col style="width: 10%">
+                <col style="width: 10%">
+                <col style="width: 15%">
+                <col style="width: 45%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="data-cell-btn">
+                    BP
+                  </th>
+                  <th class="data-cell-btn">
+                    PC
+                  </th>
+                  <th class="data-cell-num">
+                    Address
+                  </th>
+                  <th class="data-cell-num">
+                    Hex
+                  </th>
+                  <th class="data-cell-num">
+                    Decimal
+                  </th>
+                  <th class="data-cell-text">
+                    Label
+                  </th>
+                  <th class="data-cell-text">
+                    Instructions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(item, index) of memView.data"
+                  :key="index"
                   :class="{
-                    'clickable': item.label.trim().length != 0
+                    'row-update-flash': item.flash,
+                    'row-updated': item.updated,
+                    'row-disabled': sim.running,
+                    'row-curr-pc': isPCAt(item.addr),
+                    'even:bg-surface-elevated-0': memView.data[0]?.addr % 2 == 0,
+                    'odd:bg-surface-elevated-0': memView.data[0]?.addr % 2 != 0,
+                    scrolling,
                   }"
-                  @click="jumpToSource(item.label)"
+                  @contextmenu="openMemContextMenu(item)"
                 >
-                  <i>{{ item.label }}</i>
-                </td>
-                <td 
-                  class="data-cell-text" 
-                  :class="{
-                    'clickable': item.line.trim().length != 0
-                  }"
-                  @click="jumpToSource(item.addr)"
-                >
-                  <i>{{ item.line }}</i>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="flex items-end justify-between grow">
+                  <td class="data-cell-btn">
+                    <div class="flex items-center">
+                      <button @click="toggleBreakpoint(item.addr)">
+                        <MdiAlertOctagon 
+                          class="breakpoint-icon"
+                          :class="{
+                            'icon-active': isBreakpointAt(item.addr),
+                            'text-red-500/50!': sim.breakpoints.some(bp => bp.addr == item.addr && !bp.enabled)
+                          }"
+                        />
+                      </button>
+                    </div>
+                  </td>
+                  <td class="data-cell-btn">
+                    <div class="flex items-center">
+                      <button @click="setPC(item.addr)">
+                        <MdiPlay
+                          class="pc-icon"
+                          :class="{ 'icon-active': isPCAt(item.addr) }"
+                        />
+                      </button>
+                    </div>
+                  </td>
+                  <td class="data-cell-num">
+                    <strong>{{ toHex(item.addr) }}</strong>
+                  </td>
+                  <td
+                    class="data-cell-num clickable"
+                    @click="e => showEditPopover('hex', e, item)"
+                  >
+                    <span>{{ toHex(item.value) }}</span>
+                  </td>
+                  <td
+                    class="data-cell-num clickable"
+                    @click="e => showEditPopover('dec', e, item)"
+                  >
+                    <span>{{ toFormattedDec(item.value) }}</span>
+                  </td>
+                  <td
+                    class="data-cell-text"
+                    :class="{
+                      'clickable': item.label.trim().length != 0
+                    }"
+                    @click="jumpToSource(item.label)"
+                  >
+                    <i>{{ item.label }}</i>
+                  </td>
+                  <td 
+                    class="data-cell-text" 
+                    :class="{
+                      'clickable': item.line.trim().length != 0
+                    }"
+                    @click="jumpToSource(item.addr)"
+                  >
+                    <i>{{ item.line }}</i>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex items-end pt-5 justify-between">
             <div>
               <Form @submit="e => jumpToMemViewStr(e.states.input.value)">
                 <FloatLabel variant="on">
@@ -1575,13 +1624,11 @@ function toInt16(value: number) {
 </template>
   
 
-<style scoped lang="postcss">
-.sim-data-table tbody tr {
-  @apply transition duration-300 ease-in-out;
-}
+<style scoped>
+@reference "@/style.css";
 
 .sim-top:not(.reduce-flashing) .row-disabled {
-  @apply text-surface-500 bg-surface-300 dark:bg-surface-700;
+  @apply text-muted-color bg-emphasis;
   /* For slow computers, add a delay so we aren't flashing the disabled BG repeatedly */
   @apply delay-100;
 
@@ -1591,7 +1638,7 @@ function toInt16(value: number) {
 }
 
 .sim-data-table {
-  @apply border shadow dark:border-surface-800 table-fixed w-full;
+  @apply shadow border border-surface table-fixed w-full;
 }
 .sim-data-table th, .sim-data-table td {
   /* Add padding to all cells */
@@ -1599,13 +1646,20 @@ function toInt16(value: number) {
   @apply px-2 overflow-hidden whitespace-nowrap;
 }
 .sim-data-table thead tr {
-  @apply bg-surface-400 dark:bg-surface-600;
+  @apply bg-table-header;
 }
 .sim-data-table tr {
-  @apply border-b border-surface-200 dark:border-surface-800;
+  @apply border-b border-surface;
 }
 .sim-data-table tbody tr:hover {
-  @apply bg-surface-500/25;
+  @apply bg-emphasis;
+}
+/* If scrolling, then ignore all color transitions (makes things easier to follow) */
+.sim-data-table tbody tr:not(.scrolling) {
+  @apply transition-colors;
+  .breakpoint-icon, .pc-icon {
+    @apply transition;
+  }
 }
 
 .sim-data-table tbody .data-cell-text, .sim-data-table tbody .data-cell-num {
@@ -1616,9 +1670,9 @@ function toInt16(value: number) {
 }
 .data-cell-btn {
   @apply text-center;
-}
-.data-cell-btn button {
-  @apply h-6 w-6 flex justify-center items-center transition;
+  button {
+    @apply h-6 w-6 flex justify-center items-center;
+  }
 }
 .data-cell-num {
   @apply text-right;
@@ -1651,12 +1705,8 @@ tr:not(.row-disabled) .clickable {
 .row-curr-pc {
   background-color: #008cff4d;
 }
-
-.breakpoint-icon, .pc-icon {
-  @apply transition;
-}
 .breakpoint-icon:not(.icon-active), .pc-icon:not(.icon-active) {
-  @apply text-surface-400 scale-[80%];
+  @apply text-surface-400 scale-75;
 }
 .breakpoint-icon.icon-active {
   @apply text-red-500;
@@ -1678,20 +1728,5 @@ tr:not(.row-disabled) .pc-icon:hover {
 }
 .popover-menu label {
   @apply flex justify-between items-center gap-2;
-}
-
-:deep(.p-badge) {
-  @apply transition;
-}
-.p-overlaybadge :deep(.p-badge) {
-  /* Move badge to the left side (for the timer button specifically) */
-  transform: translate(-2em, 0%);
-  transform-origin: right;
-}
-.p-overlaybadge.hide-badge :deep(.p-badge) {
-  @apply opacity-0;
-}
-:deep(.p-badge).hide-badge {
-  @apply opacity-0;
 }
 </style>

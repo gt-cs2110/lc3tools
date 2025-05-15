@@ -1,3 +1,5 @@
+import path from "node:path";
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import Components from 'unplugin-vue-components/vite';
@@ -8,6 +10,7 @@ import IconsResolver from 'unplugin-icons/resolver';
 // https://vitejs.dev/config
 export default defineConfig({
     plugins: [
+        tailwindcss(),
         vue(),
         Components({
             resolvers: [
@@ -19,8 +22,13 @@ export default defineConfig({
             ]
         }),
         Icons({
-			scale: 1.5,
-			compiler: 'vue3'
-		})
-    ]
+            scale: 1.5,
+            compiler: 'vue3'
+        })
+    ],
+    resolve: {
+        alias: [
+            { find: "@", replacement: path.resolve(__dirname, "./src") }
+        ]
+    }
 });

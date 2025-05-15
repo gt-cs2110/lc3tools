@@ -2,9 +2,9 @@
 name = "lc3-backend"
 version = "0.1.0"
 license = "MIT"
-edition = "2021"
+edition = "2024"
 exclude = ["index.node"]
-rust-version = "1.80"
+rust-version = "1.85"
 
 [lib]
 crate-type = ["cdylib"]
@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ariadne = "0.5.0"
-lc3-ensemble = "0.9.2"
+lc3-ensemble = "0.10.0"
+miette = { version = "7.6.0", features = ["fancy"] }
 neon = "1"
+owo-colors = "4.2.0"

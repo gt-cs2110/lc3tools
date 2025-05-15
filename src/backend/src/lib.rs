@@ -6,7 +6,7 @@ mod obj;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::{Range, RangeBounds};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
@@ -20,8 +20,9 @@ use lc3_ensemble::sim::device::ExternalDevice;
 use lc3_ensemble::sim::mem::MachineInitStrategy;
 use lc3_ensemble::sim::{SimErr, Simulator};
 use neon::prelude::*;
-use err::{error_reporter, io_reporter, simple_reporter};
+use err::Reporter;
 use obj::ObjContents;
+use owo_colors::OwoColorize;
 use sim::SimController;
 
 static CONTROLLER: LazyLock<Mutex<SimController>> = LazyLock::new(Mutex::default);
@@ -33,12 +34,28 @@ fn obj_contents() -> MutexGuard<'static, ObjContents> {
 fn controller() -> MutexGuard<'static, SimController> {
     CONTROLLER.lock().unwrap_or_else(|e| e.into_inner())
 }
-
 pub fn deserialize_obj_file(bytes: Vec<u8>) -> Option<ObjectFile> {
     match String::from_utf8(bytes) {
         Ok(s) => TextFormat::deserialize(&s),
         Err(e) => BinaryFormat::deserialize(e.as_bytes()),
     }
+}
+
+/// Get the common ancestor of all listed paths.
+fn common_ancestor<'p>(p: impl IntoIterator<Item=&'p Path>) -> &'p Path {
+    fn common_ancestor2<'p>(p1: &'p Path, p2: &'p Path) -> &'p Path {
+        p1.ancestors()
+            .find(|ancestor| p2.starts_with(ancestor))
+            .unwrap_or_else(|| Path::new(""))
+    }
+
+    p.into_iter()
+        .reduce(common_ancestor2)
+        .unwrap_or_else(|| Path::new(""))
+}
+/// Get a path display, assuming `p` is relative to `ancestor`.
+fn display_path<'p>(p: &'p Path, ancestor: &'p Path) -> impl std::fmt::Display + 'p {
+    p.strip_prefix(ancestor).unwrap_or(p).display()
 }
 
 fn reset_machine(zeroed: bool) {
@@ -108,14 +125,18 @@ fn assemble(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let src = std::fs::read_to_string(&in_path).or_throw(&mut cx)?;
 
     let ast = parse_ast(&src)
-        .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| Reporter::ensemble(&e, &in_path, &src).report_and_throw(&mut controller().output_buf(), &mut cx))?;
     let obj = assemble_debug(ast, &src)
-        .map_err(|e| error_reporter(&e, &in_path, &src).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| Reporter::ensemble(&e, &in_path, &src).report_and_throw(&mut controller().output_buf(), &mut cx))?;
     
     std::fs::write(&out_path, TextFormat::serialize(&obj))
-        .map_err(|e| io_reporter(&e, &in_path).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+        .map_err(|e| Reporter::io(&e, &out_path).report_and_throw(&mut controller().output_buf(), &mut cx))?;
 
-    writeln!(controller().output_buf(), "successfully assembled {} into {}", in_path.display(), out_path.display()).unwrap();
+    let ancestor = common_ancestor([&*in_path, &*out_path]);
+    let rel_in = display_path(&in_path, ancestor);
+    let rel_out = display_path(&out_path, ancestor);
+    writeln!(controller().output_buf(), "successfully assembled {} into {}", rel_in.underline(), rel_out.underline())
+        .unwrap();
     Ok(cx.undefined())
 }
 
@@ -134,16 +155,26 @@ fn link(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         // Parse object file:
         let src = std::fs::read_to_string(fp).or_throw(&mut cx)?;
         let obj = deserialize_obj_file(src.into_bytes())
-            .ok_or(())
-            .or_else(|()| cx.throw_error(format!("cannot deserialize object file at {}", fp.display())))?;
+            .ok_or_else(|| {
+                Reporter::io("cannot deserialize object file", fp)
+                    .report_and_throw(&mut controller().output_buf(), &mut cx)
+            })?;
 
         // Link to current result obj:
         result_obj = ObjectFile::link(result_obj, obj)
-            .map_err(|e| simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx))?;
+            .map_err(|e| Reporter::simple(&e).report_and_throw(&mut controller().output_buf(), &mut cx))?;
     }
     std::fs::write(&out, TextFormat::serialize(&result_obj)).or_throw(&mut cx)?;
 
-    writeln!(controller().output_buf(), "successfully linked object files {file_paths:?} to {}", out.display()).unwrap();
+    let ancestor = common_ancestor(file_paths.iter().chain([&out]).map(|p| &**p));
+    let in_fs = file_paths.iter()
+        .map(|p| display_path(p, ancestor).underline().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let out_f = display_path(&out, ancestor);
+
+    writeln!(controller().output_buf(), "successfully linked object files [{}] to {}", in_fs.underline(), out_f.underline()).unwrap();
+
     Ok(cx.undefined())
 }
 //--------- SIMULATOR FUNCTIONS ---------//
@@ -168,12 +199,15 @@ fn load_object_file(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let bytes = std::fs::read(&in_path).or_throw(&mut cx)?;
     
     let Some(obj) = deserialize_obj_file(bytes) else {
-        return Err(io_reporter("malformed object file", &in_path).report_and_throw(&mut *controller().output_buf(), &mut cx));
+        return Err(
+            Reporter::io("malformed object file", &in_path)
+                .report_and_throw(&mut controller().output_buf(), &mut cx)
+        );
     };
     
     match load_obj_file(obj) {
         Ok(_) => Ok(cx.undefined()),
-        Err(e) => Err(simple_reporter(&e).report_and_throw(&mut *controller().output_buf(), &mut cx)),
+        Err(e) => Err(Reporter::simple(&e).report_and_throw(&mut controller().output_buf(), &mut cx)),
     }
 }
 fn reinitialize_machine(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -200,8 +234,8 @@ fn finish_execution(channel: Channel, cb: Root<JsFunction>, result: Result<(), S
                 .or_throw(&mut cx)?
                 .prefetch_pc();
             
-            simple_reporter(&format!("{e} (PC: x{pc:04X})"))
-                .report(&mut *controller().output_buf());
+            Reporter::simple(&format!("{e} (PC: x{pc:04X})"))
+                .report(&mut controller().output_buf());
         }
 
         cb.into_inner(&mut cx)
@@ -342,7 +376,10 @@ fn take_mem_changes(mut cx: FunctionContext) -> JsResult<JsArray> {
     let mut contents = obj_contents();
     
     let simulator = controller.simulator().or_throw(&mut cx)?;
-    let changes: Vec<_> = simulator.observer.take_mem_changes().collect();
+    let changes: Vec<_> = simulator.observer
+        .take_mem_accesses()
+        .filter_map(|(addr, access)| access.modified().then_some(addr))
+        .collect();
     // Update mem lines:
     for &addr in &changes {
         let value = controller.read_mem(addr).or_throw(&mut cx)?;

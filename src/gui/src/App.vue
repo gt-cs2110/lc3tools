@@ -213,7 +213,7 @@ function saveSettings(setting: SettingKeys) {
             <span>Ignore privileged mode</span>
             <MdiAlert
               v-tooltip="settings.ignore_privilege ? 'This setting may result in behavior inconsistent with the autograder' : ''"
-              class="text-red-500 inline-block transition"
+              class="text-red-500 inline-block transition-opacity"
               :class="{ 'opacity-0': !settings.ignore_privilege }"
             />
           </div>
@@ -225,7 +225,7 @@ function saveSettings(setting: SettingKeys) {
         </label>
       </div>
       <Divider />
-      <div>Issues? Post on CS 2110 Ed/Piazza!</div>
+      <div>Issues? Post on CS 2110 Piazza!</div>
     </div>
   </Popover>
 </template>
@@ -263,7 +263,9 @@ html {
 }
 </style>
 
-<style scoped lang="postcss">
+<style scoped>
+@reference "@/style.css";
+
 .popover-menu > div {
   @apply flex flex-col gap-3;
 }

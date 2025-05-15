@@ -12,6 +12,7 @@ import type { VAceEditorInstance } from "vue3-ace-editor/types";
 import { CreateLc3CompletionProvider } from "./completions";
 //
 import Console from "../Console.vue";
+
 const { lc3, dialog, fs } = window.api;
 const activeFileStore = useActiveFileStore();
 const settings = useSettingsStore();
@@ -356,14 +357,17 @@ export default {
       </nav-icon>
     </nav-menu>
     <main class="contents">
-      <div class="flex flex-col flex-grow gap-3 p-4">
-        <h3 class="font-bold text-lg text-center">
+      <div class="flex flex-col grow gap-3 p-4">
+        <h3
+          class="font-bold text-lg text-center"
+          :title="activeFileStore.path"
+        >
           {{ filename }}
         </h3>
         <v-ace-editor
           ref="aceEditorRef"
           v-model:value="editor.current_content"
-          class="border shadow dark:border-surface-800 overflow-hidden h-full"
+          class="shadow border border-surface overflow-hidden h-full rounded"
           lang="lc3"
           :theme="editorTheme"
           @drop.prevent="dropFile"
