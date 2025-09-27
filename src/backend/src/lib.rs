@@ -368,8 +368,11 @@ fn set_mem_value(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let value = cx.argument::<JsNumber>(1)?.value(&mut cx) as u16;
     
     controller().write_mem(addr, value)
-        .or_throw(&mut cx)
-        .try_into_js(&mut cx)
+        .or_throw(&mut cx)?;
+
+    obj_contents().set_mem_line(addr, value);
+
+    Ok(cx.undefined())
 }
 fn take_mem_changes(mut cx: FunctionContext) -> JsResult<JsArray> {
     let mut controller = controller();
