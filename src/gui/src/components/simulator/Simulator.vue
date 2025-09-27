@@ -17,14 +17,14 @@ const router = useRouter();
 const toast = useToast();
 const timerPopover = useTemplateRef("timerPopover");
 
-const editPopovers = {
-  hex: useTemplateRef("hexPopover"),
-  dec: useTemplateRef("decPopover")
-}
+type EditPopoverMode = "hex" | "dec";
+const editPopover = useTemplateRef("popover");
 const editInputs = {
   item: undefined as MemDataRow | RegDataRow | undefined,
+  editMode: "hex" as EditPopoverMode,
   input: ref("")
 };
+
 const sim = ref({
   regs: [
     { flash: false, updated: false, name: "r0", value: 0 },
@@ -142,28 +142,38 @@ onActivated(() => {
 function showFileLoadedToast() {
   toast.add({ severity: 'contrast', summary: 'Object File Loaded!', life: 2500 });
 }
-async function showEditPopover(popoverKey: keyof typeof editPopovers, e: Event, item: RegDataRow | MemDataRow) {
+
+const POPOVER_PROPS = {
+  hex: {
+    rule: rules.hex,
+    label: "Hex Value"
+  },
+  dec: {
+    rule: rules.dec,
+    label: "Decimal Value"
+  }
+} satisfies Record<EditPopoverMode, unknown>;
+async function showEditPopover(popoverMode: EditPopoverMode, e: Event, item: RegDataRow | MemDataRow) {
   editInputs.item = item;
-  if (popoverKey === "dec") {
+  editInputs.editMode = popoverMode;
+  if (popoverMode === "dec") {
     editInputs.input.value = toFormattedDec(item.value);
-  } else if (popoverKey === "hex") {
+  } else if (popoverMode === "hex") {
     editInputs.input.value = toHex(item.value);
   }
 
-  const popover = editPopovers[popoverKey].value;
-  popover.hide();
-
+  // Hide if currently displayed
+  editPopover.value.hide();
   await nextTick();
+
   // Adjust popover to always point to span
   const target = e.target instanceof HTMLTableCellElement ? e.target.firstElementChild : e.target;
-  popover.show(e, target);
+  editPopover.value.show(e, target);
 }
 function applyEditInput(e: FormSubmitEvent) {
   if (e.valid) {
     setDataValue(editInputs.item, parseInputString(e.states.input.value));
-    for (const popover of Object.values(editPopovers)) {
-      popover.value.hide();
-    }
+    editPopover.value.hide();
   }
 }
 function validateInput(key: string, input: string, rules: ValidationRule[]): { errors: Record<string, any> } {
@@ -858,57 +868,24 @@ function toInt16(value: number) {
     <!-- Edit value popovers -->
     <Popover
       v-if="!sim.running"
-      ref="hexPopover"
+      ref="popover"
     >
       <div>
         <Form
           v-slot="$form"
           :initial-values="{ input: editInputs.input.value }"
-          :resolver="e => validateEditInput(e, rules.hex, rules.size16bit)"
+          :resolver="e => validateEditInput(e, POPOVER_PROPS[editInputs.editMode].rule, rules.size16bit)"
           @submit="e => applyEditInput(e)"
         >
           <div class="flex flex-col gap-1">
             <IftaLabel>
               <InputText
-                id="hex-popover-input"
+                id="popover-input"
                 name="input"
                 size="small"
                 :invalid="$form.input?.invalid"
               />
-              <label for="hex-popover-input">Hex Value</label>
-            </IftaLabel>
-            <Message
-              v-if="$form.input?.invalid"
-              severity="error"
-              variant="simple"
-              size="small"
-            >
-              {{ $form.input?.error }}
-            </Message>
-          </div>
-        </Form>
-      </div>
-    </Popover>
-    <Popover
-      v-if="!sim.running"
-      ref="decPopover"
-    >
-      <div>
-        <Form
-          v-slot="$form"
-          :initial-values="{ input: editInputs.input.value }"
-          :resolver="e => validateEditInput(e, rules.dec, rules.size16bit)"
-          @submit="e => applyEditInput(e)"
-        >
-          <div class="flex flex-col gap-1">
-            <IftaLabel>
-              <InputText
-                id="dec-popover-input"
-                name="input"
-                size="small"
-                :invalid="$form.input?.invalid"
-              />
-              <label for="dec-popover-input">Decimal Value</label>
+              <label for="popover-input">{{ POPOVER_PROPS[editInputs.editMode].label }}</label>
             </IftaLabel>
             <Message
               v-if="$form.input?.invalid"
