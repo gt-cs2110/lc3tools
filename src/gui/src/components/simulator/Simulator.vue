@@ -1307,7 +1307,9 @@ function toInt16(value: number) {
                   class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b border-surface px-4 even:bg-surface-elevated-1"
                 >
                   <div>
-                    <MdiCircleMedium class="breakpoint-icon icon-active" />
+                    <MdiCircleMedium
+                      class="breakpoint-icon icon-active"
+                      aria-label="Breakpoint" />
                   </div>
                   <Checkbox
                     v-model="bp.enabled"
@@ -1323,6 +1325,7 @@ function toInt16(value: number) {
                     </span>
                   </div>
                   <button
+                    aria-label="Delete breakpoint"
                     @click="removeBreakpoint(bp.addr)"
                   >
                     <MdiClose
