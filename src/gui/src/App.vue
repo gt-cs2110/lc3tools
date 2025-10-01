@@ -87,7 +87,7 @@ function saveSettings(setting: SettingKeys) {
             variant="text"
             rounded
             severity="secondary"
-            aria-label="Settings"
+            label="Settings"
             @click="settingsPopover?.toggle"
           >
             <MdiCog />

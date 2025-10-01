@@ -85,7 +85,13 @@ const stackDialog = ref({
   offset: 0,
   wheelOffset: 0
 });
-
+const jumpBtnText = {
+  rewind2: computed(() => 'Jump to ' + toHex(toUint16(memView.value.start - memView.value.data.length))),
+  rewind1: computed(() => 'Jump to ' + toHex(toUint16(memView.value.start - 5))),
+  pc: "Jump to PC",
+  forward1: computed(() => 'Jump to ' + toHex(toUint16(memView.value.start + 5))),
+  forward2: computed(() => 'Jump to ' + toHex(toUint16(memView.value.start + memView.value.data.length))),
+}
 type RegDataRow = typeof sim.value.regs[number];
 type MemDataRow = typeof memView.value.data[number];
 
@@ -718,6 +724,15 @@ function updateTimerProperties(e: FormSubmitEvent) {
     }
   }
 }
+function getStackAddrTooltip(addr: number): string {
+  if (addr == sim.value.regs[stackDialog.value.stackReg].value) {
+    return "Stack Pointer";
+  }
+  if (addr == sim.value.regs[stackDialog.value.frameReg].value) {
+    return "Frame Pointer";
+  }
+  return "";
+}
 
 // Helper functions
 function psrToCC(psr: number) {
@@ -990,6 +1005,7 @@ function toInt16(value: number) {
                 rounded
                 variant="text"
                 severity="secondary"
+                label="Clear Console"
                 @click="clearConsoleOutput()"
               >
                 <MdiDelete />
@@ -1116,15 +1132,10 @@ function toInt16(value: number) {
                     }"
                   >
                     <div
-                      v-tooltip.top="
-                        addr == sim.regs[stackDialog.stackReg].value ? 
-                          'Stack Pointer' : 
-                          addr == sim.regs[stackDialog.frameReg].value ? 
-                            'Frame Pointer' :
-                            ''
-                      "
+                      v-tooltip.top="getStackAddrTooltip(addr)"
                       class="text-right"
                       :class="{'underline': [sim.regs[stackDialog.frameReg].value, sim.regs[stackDialog.stackReg].value].includes(addr) }"
+                      :aria-label="toHex(addr) + `(${getStackAddrTooltip(addr)})`.replace('()', '')"
                     >
                       {{ toHex(addr) }}
                     </div>
@@ -1143,6 +1154,7 @@ function toInt16(value: number) {
                       icon="pi"
                       severity="secondary"
                       rounded
+                      label="Up"
                       @click="stackDialog.offset--"
                     >
                       <MdiChevronUp />
@@ -1151,6 +1163,7 @@ function toInt16(value: number) {
                       v-tooltip.bottom="'Home'"
                       icon="pi"
                       severity="secondary"
+                      label="Home"
                       @click="stackDialog.offset = 0"
                     >
                       <MdiHome />
@@ -1160,6 +1173,7 @@ function toInt16(value: number) {
                       icon="pi"
                       severity="secondary"
                       rounded
+                      label="Down"
                       @click="stackDialog.offset++"
                     >
                       <MdiChevronDown />
@@ -1223,6 +1237,7 @@ function toInt16(value: number) {
                         icon="pi"
                         variant="text"
                         severity="secondary"
+                        label="Push"
                         rounded
                         type="submit"
                       >
@@ -1233,6 +1248,7 @@ function toInt16(value: number) {
                         icon="pi"
                         variant="text"
                         severity="secondary"
+                        label="Pop"
                         rounded
                         @click="() => {
                           const reg = sim.regs[stackDialog.stackReg];
@@ -1268,7 +1284,9 @@ function toInt16(value: number) {
                   class="grid grid-cols-subgrid col-span-4 items-center border-t last:border-b border-surface px-4 even:bg-surface-elevated-1"
                 >
                   <div>
-                    <MdiCircleMedium class="breakpoint-icon icon-active" />
+                    <MdiCircleMedium
+                      class="breakpoint-icon icon-active"
+                      aria-label="Breakpoint" />
                   </div>
                   <Checkbox
                     v-model="bp.enabled"
@@ -1284,6 +1302,7 @@ function toInt16(value: number) {
                     </span>
                   </div>
                   <button
+                    aria-label="Delete breakpoint"
                     @click="removeBreakpoint(bp.addr)"
                   >
                     <MdiClose
@@ -1324,6 +1343,7 @@ function toInt16(value: number) {
                 icon="pi"
                 rounded
                 :severity="timerBtnColor"
+                label="Configure Timer Interrupt"
                 @click="e => timerPopover?.toggle(e)"
               >
                 <MdiTimer />
@@ -1549,7 +1569,8 @@ function toInt16(value: number) {
             </div>
             <div class="flex gap-1">
               <Button
-                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start - memView.data.length))"
+                v-tooltip.top="jumpBtnText.rewind2.value"
+                :label="jumpBtnText.rewind2.value"
                 icon="pi"
                 rounded
                 severity="secondary"
@@ -1558,7 +1579,8 @@ function toInt16(value: number) {
                 <MdiChevronDoubleLeft />
               </Button>
               <Button
-                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start - 5))"
+                v-tooltip.top="jumpBtnText.rewind1.value"
+                :label="jumpBtnText.rewind1.value"
                 icon="pi"
                 rounded
                 severity="secondary"
@@ -1567,7 +1589,8 @@ function toInt16(value: number) {
                 <MdiChevronLeft />
               </Button>
               <Button
-                v-tooltip.top="'Jump to PC'"
+                v-tooltip.top="jumpBtnText.pc"
+                :label="jumpBtnText.pc"
                 icon="pi"
                 severity="secondary"
                 @click="jumpToPC(true)"
@@ -1575,7 +1598,8 @@ function toInt16(value: number) {
                 <MdiHome />
               </Button>
               <Button
-                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start + 5))"
+                v-tooltip.top="jumpBtnText.forward1.value"
+                :label="jumpBtnText.forward1.value"
                 icon="pi"
                 rounded
                 severity="secondary"
@@ -1584,7 +1608,8 @@ function toInt16(value: number) {
                 <MdiChevronRight />
               </Button>
               <Button
-                v-tooltip.top="'Jump to ' + toHex(toUint16(memView.start + memView.data.length))"
+                v-tooltip.top="jumpBtnText.forward2.value"
+                :label="jumpBtnText.forward2.value"
                 icon="pi"
                 rounded
                 severity="secondary"
