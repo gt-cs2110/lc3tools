@@ -182,6 +182,7 @@ function validateEditInput(e: FormResolverOptions, ...rules: ValidationRule[]) {
 }
 function refreshMemoryPanel() {
   const oldLen = memView.value.data.length;
+  // Calculate rows based on available height, minimum 16 to keep panel visible
   const newLen = Math.max(16, Math.floor(simTop.value.clientHeight / 25) - 6);
 
   if (newLen < oldLen) {
