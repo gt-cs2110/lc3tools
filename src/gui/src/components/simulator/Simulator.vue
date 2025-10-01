@@ -939,9 +939,9 @@ function toInt16(value: number) {
           <div class="rounded">
             <table class="sim-data-table">
               <colgroup>
-                <col style="width: 20%">
-                <col style="width: 20%">
-                <col style="width: 20%">
+                <col style="width: 20%; min-width: 3em;">
+                <col style="width: 20%; min-width: 5em;">
+                <col style="width: 20%; min-width: 6em;">
                 <col style="width: 40%">
               </colgroup>
               <thead>
@@ -1452,9 +1452,9 @@ function toInt16(value: number) {
               <colgroup>
                 <col style="width: 2em">
                 <col style="width: 2em">
-                <col style="width: 10%">
-                <col style="width: 10%">
-                <col style="width: 10%">
+                <col style="width: 10%; min-width: 5em;">
+                <col style="width: 10%; min-width: 5em;">
+                <col style="width: 10%; min-width: 6em;">
                 <col style="width: 15%">
                 <col style="width: 45%">
               </colgroup>
