@@ -113,6 +113,7 @@ const rules: Record<string, ValidationRule> = {
 }
 type ValidationRule = (value: string) => boolean | string;
 
+const simTop = useTemplateRef("simTop");
 const memViewWrapper = useTemplateRef("memViewWrapper");
 watch(memViewWrapper, el => {
   el.addEventListener("wheel", handleMemoryScroll, { passive: true });
@@ -181,7 +182,7 @@ function validateEditInput(e: FormResolverOptions, ...rules: ValidationRule[]) {
 }
 function refreshMemoryPanel() {
   const oldLen = memView.value.data.length;
-  const newLen = Math.max(0, Math.floor(memViewWrapper.value.parentElement.offsetHeight / 25));
+  const newLen = Math.max(16, Math.floor(simTop.value.clientHeight / 25) - 6);
 
   if (newLen < oldLen) {
     // Truncate if new size is smaller:
@@ -757,6 +758,7 @@ function toInt16(value: number) {
 
 <template>
   <div 
+    ref="simTop"
     class="sim-top"
     :class="{
       'reduce-flashing': settings.reduce_flashing
@@ -1444,7 +1446,7 @@ function toInt16(value: number) {
               </div>
             </Popover>
           </div>
-          <div class="flex grow min-h-0">
+          <div class="flex min-h-0">
             <table
               ref="memViewWrapper"
               class="sim-data-table" 
@@ -1558,7 +1560,7 @@ function toInt16(value: number) {
               </tbody>
             </table>
           </div>
-          <div class="flex items-end pt-5 justify-between">
+          <div class="flex grow items-end pt-5 justify-between">
             <div>
               <Form @submit="e => jumpToMemViewStr(e.states.input.value)">
                 <FloatLabel variant="on">
