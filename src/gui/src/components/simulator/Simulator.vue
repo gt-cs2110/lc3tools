@@ -119,6 +119,7 @@ const rules: Record<string, ValidationRule> = {
 }
 type ValidationRule = (value: string) => boolean | string;
 
+const simTop = useTemplateRef("simTop");
 const memViewWrapper = useTemplateRef("memViewWrapper");
 watch(memViewWrapper, el => {
   el.addEventListener("wheel", handleMemoryScroll, { passive: true });
@@ -197,7 +198,8 @@ function validateEditInput(e: FormResolverOptions, ...rules: ValidationRule[]) {
 }
 function refreshMemoryPanel() {
   const oldLen = memView.value.data.length;
-  const newLen = Math.max(0, Math.floor(memViewWrapper.value.parentElement.offsetHeight / 25));
+  // Calculate rows based on available height, minimum 16 to keep panel visible
+  const newLen = Math.max(16, Math.floor(simTop.value.clientHeight / 25) - 6);
 
   if (newLen < oldLen) {
     // Truncate if new size is smaller:
@@ -782,6 +784,7 @@ function toInt16(value: number) {
 
 <template>
   <div 
+    ref="simTop"
     class="sim-top"
     :class="{
       'reduce-flashing': settings.reduce_flashing
@@ -931,9 +934,9 @@ function toInt16(value: number) {
           <div class="rounded">
             <table class="sim-data-table">
               <colgroup>
-                <col style="width: 20%">
-                <col style="width: 20%">
-                <col style="width: 20%">
+                <col style="width: 20%; min-width: 3em;">
+                <col style="width: 20%; min-width: 5em;">
+                <col style="width: 20%; min-width: 6em;">
                 <col style="width: 40%">
               </colgroup>
               <thead>
@@ -1441,7 +1444,7 @@ function toInt16(value: number) {
               </div>
             </Popover>
           </div>
-          <div class="flex grow min-h-0">
+          <div class="flex min-h-0">
             <table
               ref="memViewWrapper"
               class="sim-data-table" 
@@ -1449,9 +1452,9 @@ function toInt16(value: number) {
               <colgroup>
                 <col style="width: 2em">
                 <col style="width: 2em">
-                <col style="width: 10%">
-                <col style="width: 10%">
-                <col style="width: 10%">
+                <col style="width: 10%; min-width: 5em;">
+                <col style="width: 10%; min-width: 5em;">
+                <col style="width: 10%; min-width: 6em;">
                 <col style="width: 15%">
                 <col style="width: 45%">
               </colgroup>
@@ -1555,7 +1558,7 @@ function toInt16(value: number) {
               </tbody>
             </table>
           </div>
-          <div class="flex items-end pt-5 justify-between">
+          <div class="flex grow items-end pt-5 justify-between">
             <div>
               <Form @submit="e => jumpToMemViewStr(e.states.input.value)">
                 <FloatLabel variant="on">
