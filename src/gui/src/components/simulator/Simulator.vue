@@ -59,7 +59,7 @@ const memView = ref({
   symTable: {} as Record<number, string>
 })
 
-const consoleStr = ref("");
+const consoleEl = useTemplateRef("console");
 const timerRemBadgeShow = computed(() => sim.value.timer.enabled && !sim.value.timer.hide_badge && (sim.value.running || sim.value.timer.remaining != 0));
 const timerBtnVariant = computed(() => {
   if (sim.value.timer.enabled) {
@@ -378,7 +378,7 @@ function endSimulation(jumpToPC_: boolean) {
   }
 }
 function clearConsoleOutput() {
-  consoleStr.value = "";
+  consoleEl.value.setText("");
   lc3.clearOutput();
 }
 function handleConsoleInput(e: KeyboardEvent) {
@@ -548,7 +548,7 @@ function updateUI(showUpdates = false, updateReg = true) {
   updateTimer();
 }
 function updateConsole() {
-  consoleStr.value += lc3.getAndClearOutput();
+  consoleEl.value.pushText(lc3.getAndClearOutput());
 }
 function updateTimer() {
   if (sim.value.timer.enabled) {
@@ -994,7 +994,7 @@ function toInt16(value: number) {
             </table>
           </div>
           <div
-            v-if="panels.showConsole"
+            v-show="panels.showConsole"
             class="flex flex-col flex-1 min-h-0"
           >
             <div class="header-bar">
@@ -1015,7 +1015,7 @@ function toInt16(value: number) {
               </Button>
             </div>
             <console 
-              v-model="consoleStr"
+              ref="console"
               float="bottom"
               show-focus
               show-cursor
