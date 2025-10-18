@@ -1289,7 +1289,8 @@ function toInt16(value: number) {
                   <div>
                     <MdiCircleMedium
                       class="breakpoint-icon icon-active"
-                      aria-label="Breakpoint" />
+                      aria-label="Breakpoint"
+                    />
                   </div>
                   <Checkbox
                     v-model="bp.enabled"
