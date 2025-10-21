@@ -23,7 +23,7 @@ const editor = ref({
 });
 const editorContentChanged = computed(() => editor.value.original_content != editor.value.current_content);
 const editorIsEmpty = computed(() => editor.value.original_content === "" && editor.value.current_content === "");
-const consoleStr = ref("");
+const consoleEl = useTemplateRef("console");
 const showConsole = ref(false);
 
 const settingsRefs = storeToRefs(settings);
@@ -141,7 +141,7 @@ async function link() {
     }
     
     showConsole.value = true;
-    consoleStr.value = lc3.getAndClearOutput();
+    consoleEl.value.setText(lc3.getAndClearOutput());
   }
 }
 
@@ -277,7 +277,7 @@ async function build() {
     success = false;
     output = `Cannot build file ${activeFileStore.path}`;
   }
-  consoleStr.value = output;
+  consoleEl.value.setText(output);
   
   if (success) {
     activeFileStore.touchBuildTime();
@@ -374,11 +374,11 @@ export default {
           @dragover.prevent
         />
         <div
-          v-if="showConsole"
+          v-show="showConsole"
           class="flex-initial"
         >
           <console 
-            v-model="consoleStr"
+            ref="console"
             float="top"
             class="h-48"
           />

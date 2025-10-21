@@ -22,14 +22,17 @@
 
 <script setup lang="ts">
 import Convert from 'ansi-to-html';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 const props = defineProps<{
     float?: "top" | "bottom",
     showFocus?: boolean,
     showCursor?: boolean
 }>();
 
-const consoleStr = defineModel<string, string>();
+/** Maximum number of characters to be displayed in console. */
+const DISPLAY_LIMIT = 65536;
+const consoleStr = ref("");
+const consoleHtml = computed(() => format(consoleStr.value));
 
 const convert = new Convert({
   colors: [
@@ -39,24 +42,11 @@ const convert = new Convert({
     "#3B8EEA", "#D670D6", "#29B8DB", "#E5E5E5"
   ]
 });
-const consoleHtml = computed(() => {
-  // Handle backspaces:
-  const buf: string[] = [];
-  // pattern represents: (ANSI escape code | new line | any non-new-line character)
-  // ANSI escape code is of format: \x1B[999;999;999
-  // eslint-disable-next-line no-control-regex
-  for (const ch of consoleStr.value.match(/(?:\x1B\[(?:\d+;)*\d+m|\n|.)/g) ?? []) {
-    if (ch === '\b') {
-        if (buf.length === 0) continue;
-        if (buf[buf.length - 1] === '\n') continue;
-        buf.pop();
-    } else {
-        buf.push(ch);
-    }
-  }
-
-  // Escape console string:
-  const string = buf.join("").replace(/[&<>"']/g, m => ({
+/**
+ * Format the text for HTML display (dealing with HTML escapes and ANSI escape code colorization).
+ */
+function format(buf: string): string {
+  const string = buf.replace(/[&<>"']/g, m => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -66,7 +56,48 @@ const consoleHtml = computed(() => {
 
   // Colorize:
   return convert.toHtml(string);
-});
+}
+
+/** Returns the internal text buffer. */
+function getText(): string {
+  return consoleStr.value;
+}
+/** Appends text to the end of the text buffer. */
+function pushText(s: string) {
+  if (s.length > 0) {
+    setText(consoleStr.value + s);
+  }
+}
+/** Sets the text buffer. */
+function setText(s: string) {
+  consoleStr.value = removeBackspaces(s).slice(-DISPLAY_LIMIT);
+}
+defineExpose({ getText, pushText, setText });
+
+/**
+ * Remove the backspaces from the given text.
+ * If any backspaces (\b) are in the input, then it removes the previous character from the text
+ * (as long as the previous character is not a new line).
+ */
+function removeBackspaces(s: string): string {
+  let buf = "";
+  let maxErasable = 0; // the maximum number of erasable characters
+
+  // eslint-disable-next-line no-control-regex
+  for (const seg of s.split(/(\x08+|\n+)/)) {
+    if (seg.startsWith('\b')) {
+      if (maxErasable) {
+        buf = buf.slice(0, -Math.min(maxErasable, seg.length));
+      }
+    } else {
+      buf += seg;
+      // New line => clear "maxErasable"
+      maxErasable = seg.startsWith("\n") ? 0 : maxErasable + seg.length;
+    }
+  }
+
+  return buf;
+}
 
 // Handle where we're at:
 const consoleRef = useTemplateRef<HTMLDivElement>("consoleRef");
