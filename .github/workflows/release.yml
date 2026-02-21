@@ -85,7 +85,7 @@ jobs:
         os:
           [
             { name: 'macos', image: 'macos-latest' },
-            { name: 'macos-x86', image: 'macos-13' },
+            { name: 'macos-x86', image: 'macos-15-intel' },
           ]
     runs-on: ${{ matrix.os.image }}
     defaults:
