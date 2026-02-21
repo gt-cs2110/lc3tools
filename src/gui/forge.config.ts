@@ -47,6 +47,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: "static/icons/icon",
+    executableName: "LC3Tools",
     ...osxSignNotarize(),
   },
   hooks: {
