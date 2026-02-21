@@ -33,12 +33,12 @@ import router from "./router/index";
 // Theming
 import PrimeVue, { PrimeVueConfiguration } from 'primevue/config';
 import ToastService from 'primevue/toastservice';
-import Aura from '@primevue/themes/aura';
+import Aura from '@primeuix/themes/aura';
 import "./style.css";
 
 // Pinia
 import { createPinia } from 'pinia';
-import { definePreset } from '@primevue/themes';
+import { definePreset } from '@primeuix/themes';
 const pinia = createPinia();
 
 createApp(App)
