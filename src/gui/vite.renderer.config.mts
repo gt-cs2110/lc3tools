@@ -9,6 +9,11 @@ import IconsResolver from 'unplugin-icons/resolver';
 
 // https://vitejs.dev/config
 export default defineConfig({
+    server: {
+        watch: {
+            ignored: ['**/components.d.ts']
+        }
+    },
     plugins: [
         tailwindcss(),
         vue(),
