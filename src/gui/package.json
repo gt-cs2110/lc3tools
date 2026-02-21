@@ -1,6 +1,7 @@
 {
   "name": "lc3tools",
-  "version": "4.3.0",
+  "productName": "LC3Tools",
+  "version": "4.3.1",
   "author": "gt-cs2110",
   "description": "LC3Tools frontend",
   "license": "MIT",
