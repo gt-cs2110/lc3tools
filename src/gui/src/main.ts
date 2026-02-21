@@ -133,22 +133,7 @@ ipcMain.handle("show_modal", (e, kind, config) => {
 
     // As such, they have to be added here to be accepted.
     if (kind === "save") {
-      return dialog.showSaveDialog(config).then(result => {
-        // some versions of macos with different things installed
-        // do weird things with UTIs. this forces the extension to be the one
-        // filtered for.
-        // currently all of our saving has exactly one filter with one extension
-        // so the first few conditions here should always be true
-        if (
-          !result.canceled && result.filePath && config.filters?.length === 1 &&
-          !config.filters[0].extensions.some((e: string) => result.filePath.endsWith(`.${e}`))
-        ) {
-          const ext = config.filters[0].extensions[0];
-          // remove other file extension if exists but unconditionally add ours
-          result.filePath = result.filePath.replace(/\.[^.]+$/, "") + `.${ext}`;
-        }
-        return result;
-      })
+      return dialog.showSaveDialog(config);
     } else if (kind === "open") {
       return dialog.showOpenDialog(config);
     } else if (kind === "box") {
