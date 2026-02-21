@@ -154,6 +154,7 @@ async function _writeFile(fp: string, content: string | undefined = undefined) {
 }
 async function saveFileAs() {
   const new_file = await dialog.showModal("save", {
+    defaultPath: "untitled.asm",
     filters: [
       { name: "Assembly", extensions: ["asm"] }
     ]
